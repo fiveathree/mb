@@ -1,6 +1,9 @@
 /** 超巨型敵人：主角企喺腳邊，抬頭先見到個頭。height 係公尺 */
 export const COLOSSI: Record<string, { height: number; radius: number }> = {
   boss_chaos: { height: 36, radius: 5 },
+  boss_cyclops: { height: 22, radius: 3.5 },
+  boss_ancient: { height: 28, radius: 4.5 },
+  boss_hive: { height: 26, radius: 5 },
   boss_lightgod: { height: 38, radius: 5.5 },
   boss_kronos: { height: 40, radius: 5.5 },
   boss_gonggong: { height: 34, radius: 5 },
@@ -46,7 +49,7 @@ export const COLOSSUS = {
   /** 幾遠先感受到腳步震動 */
   shakeRange: 80,
   /** 血量倍率 */
-  hpMult: 1.6,
+  hpMult: 1.2,
 };
 
 /** 大地圖滅世攻擊：radius 係地圖格，城鎮喺範圍內都會崩 */
