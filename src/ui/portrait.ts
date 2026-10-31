@@ -1,3 +1,4 @@
+import { CROWN_ART, artUrl } from '../data/art';
 import type { CrownDef } from '../data/crowns';
 import { RACES } from '../data/races';
 
@@ -10,6 +11,8 @@ const CLASS_BG: Record<string, [string, string]> = {
 
 /** 冠位頭像：背景跟類別，面同頭飾跟種族同劇本 */
 export function portrait(c: CrownDef): string {
+  const art = c.id.replace('crown_', '');
+  if (CROWN_ART.has(art)) return artUrl(`crown/${art}`);
   const hit = cache.get(c.id);
   if (hit) return hit;
   const el = document.createElement('canvas');

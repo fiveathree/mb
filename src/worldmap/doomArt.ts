@@ -1,6 +1,7 @@
+import { CALAMITY_ART, artUrl } from '../data/art';
 import { CALAMITY } from '../data/tomb';
 
-/** 災厄本體：大尺寸分層繪畫，唔用外部圖檔 */
+/** 災厄本體：大尺寸分層繪畫，有生成圖就用生成圖 */
 const S = 384;
 const cache = new Map<string, HTMLCanvasElement>();
 
@@ -370,6 +371,16 @@ export function calamityIcon(kind: string): HTMLCanvasElement {
   else if (kind === 'witch') witch(g);
   else if (kind === 'wyrm') dragon(g, ['#6a4ab0', '#3a2470', '#160c30'], ['#7a4ae0', '#2a1458'], '#c06aff', 3);
   else dragon(g, ['#e0542a', '#a02a18', '#3a0e0a'], ['#c8402a', '#5a1812'], '#ff8a2a', 2);
+  // 有生成圖就蓋上去，未載入或者載入失敗都仲有程式畫嘅版本
+  const art = CALAMITY_ART[key];
+  if (art) {
+    const img = new Image();
+    img.onload = () => {
+      g.clearRect(0, 0, S, S);
+      g.drawImage(img, 0, 0, S, S);
+    };
+    img.src = artUrl(`calamity/${art}`);
+  }
   cache.set(key, c);
   return c;
 }
