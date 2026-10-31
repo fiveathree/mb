@@ -33,6 +33,8 @@ export interface HorseDef {
   /** 身體配色 */
   color: number;
   barded: boolean;
+  /** 只畀部隊用，玩家開局揀唔到 */
+  troopOnly?: boolean;
 }
 
 export const HORSES: HorseDef[] = [
@@ -59,6 +61,12 @@ export const HORSES: HorseDef[] = [
     accel: 2.4, brake: 7, coast: 2, trotSpeed: 6.5, gallopSpeed: 10.5, reverseSpeed: 2,
     turnRadius: 7, maxTurnRate: 1.25, stamina: 160, staminaDrain: 7, staminaRegen: 9, staminaResume: 20,
     hp: 130, armor: 3, jumpSpeed: 4.2, ramMult: 0.85, color: 0x8c8078, barded: false,
+  },
+  {
+    id: 'wolf', name: '座狼', desc: '獸人坐騎', troopOnly: true,
+    accel: 5.2, brake: 11, coast: 2.6, trotSpeed: 8.5, gallopSpeed: 14.5, reverseSpeed: 2.6,
+    turnRadius: 4.5, maxTurnRate: 2.2, stamina: 85, staminaDrain: 11, staminaRegen: 8, staminaResume: 22,
+    hp: 95, armor: 2, jumpSpeed: 6, ramMult: 0.6, color: 0x5a5650, barded: false,
   },
 ];
 

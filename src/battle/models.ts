@@ -5,6 +5,7 @@ import {
 } from '../data/animation';
 import { COLORS } from '../data/battlefield';
 import { SADDLE_HEIGHT, type HorseDef } from '../data/horses';
+import { RACES, type RaceLook } from '../data/races';
 import { TEAM_STYLES, type UnitDef } from '../data/units';
 import type { WeaponDef } from '../data/weapons';
 import { flushParts, type Batches, type Part } from './batch';
@@ -116,13 +117,49 @@ function buildWeapon(w: WeaponDef): THREE.Group {
   return g;
 }
 
+/** 非人類嘅面部特徵 */
+function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
+  const side = (fn: (s: number) => THREE.Object3D) => torso.add(fn(1), fn(-1));
+  switch (look) {
+    case 'ears':
+      side((s) => {
+        const ear = cone(0.04, 0.2, 4, skin);
+        ear.position.set(s * 0.17, 0.86, -0.02);
+        ear.rotation.z = -s * 1.2;
+        return ear;
+      });
+      break;
+    case 'tusks':
+      side((s) => box(0.035, 0.09, 0.035, 0xf0ead8, s * 0.07, 0.75, 0.12));
+      break;
+    case 'skull':
+      side((s) => box(0.05, 0.05, 0.02, 0x121018, s * 0.055, 0.84, 0.125));
+      break;
+    case 'bull':
+      torso.add(box(0.16, 0.13, 0.2, skin, 0, 0.77, 0.14));
+      side((s) => {
+        const horn = cone(0.06, 0.42, 5, 0xe8dcc0);
+        horn.position.set(s * 0.26, 0.98, 0);
+        horn.rotation.z = -s * 0.85;
+        return horn;
+      });
+      break;
+    case 'snout':
+      torso.add(box(0.13, 0.1, 0.18, skin, 0, 0.78, 0.15));
+      break;
+    default:
+      break;
+  }
+}
+
 export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
   ctx = { batches, parts: [], gate: null };
   const style = TEAM_STYLES[team];
   const bodyColor = style.body;
+  const race = RACES[def.race ?? 'human'];
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
-  if (def.hero) root.scale.setScalar(1.14);
+  root.scale.setScalar(race.scale * (def.hero ? 1.14 : 1));
   const hips = new THREE.Group();
   hips.position.y = 0.95;
   root.add(hips);
@@ -133,11 +170,15 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   torso.add(box(0.48, 0.08, 0.29, def.trimColor, 0, 0.05, 0));
   torso.add(box(0.52, 0.12, 0.3, def.trimColor, 0, 0.6, 0));
 
-  const head = ico(0.135, COLORS.skin);
+  const head = ico(0.135, race.skin);
   head.position.y = 0.82;
-  const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
-  helmet.position.y = 0.93;
-  torso.add(head, helmet);
+  torso.add(head);
+  addRaceFeatures(torso, race.look, race.skin);
+  if (race.look !== 'bull') {
+    const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
+    helmet.position.y = 0.93;
+    torso.add(helmet);
+  }
 
   // 盔飾：我軍羽飾、敵軍牛角
   if (style.crest === 'plume') {

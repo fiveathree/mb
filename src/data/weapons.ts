@@ -151,6 +151,12 @@ const WEAPON_LIST: WeaponDef[] = [
     ranged: { speed: 66, spreadDeg: 1.6, undrawnSpreadDeg: 0, mountedSpreadDeg: 4, ammo: 14, minDamageMult: 1 },
   },
   {
+    ...melee, id: 'troop_javelin', name: '投槍', model: 'javelin', damageType: 'pierce',
+    baseDamage: 30, reach: 0, windupMin: 0.45, chargeFull: 0.6,
+    swingTime: 0, recoverTime: 1.2, arcDeg: 0, shieldBreak: 2, length: 1.4,
+    ranged: { speed: 28, spreadDeg: 2.4, undrawnSpreadDeg: 2, mountedSpreadDeg: 2, ammo: 8, minDamageMult: 0.6 },
+  },
+  {
     ...melee, id: 'troop_lance', name: '騎兵槍', model: 'lance', damageType: 'pierce',
     baseDamage: 11, reach: 3.3, windupMin: 0.3, chargeFull: 0.5,
     swingTime: 0.3, recoverTime: 0.5, arcDeg: 30, thrustOnly: true, couchable: true, length: 3.1,

@@ -84,6 +84,7 @@ export function thinkEnemy(groups: Group[], foes: Combatant[], time: number) {
 
   const [inf, arc, cav] = groups;
   const infAlive = inf.alive;
+  // 冇步兵嘅敵軍，弓兵照樣用自己位置判斷
   let ix = cx;
   let iz = cz + FORMATION.startZ;
   if (infAlive.length) {

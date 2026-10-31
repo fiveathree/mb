@@ -1,4 +1,5 @@
-import type { Rarity } from './gacha';
+import type { PoolId, Rarity } from './gacha';
+import type { Race } from './races';
 
 export type Role = 'infantry' | 'archer' | 'cavalry';
 
@@ -35,6 +36,10 @@ export interface UnitDef {
   /** 見到快馬衝埋嚟時閃避嘅機率 */
   dodgeChance: number;
   trimColor: number;
+  /** 種族，預設人類 */
+  race?: Race;
+  /** 抽卡卡池，預設 human */
+  pool?: PoolId;
   /** 抽卡稀有度，預設普通 */
   rarity?: Rarity;
   /** 出身地域或者一句介紹 */
@@ -220,7 +225,159 @@ export const UNITS: Record<string, UnitDef> = {
     blockSkill: 0.6, blockChance: 0.4, reaction: 0.2, attackCooldown: [0.9, 1.6], dodgeChance: 0.05,
     trimColor: 0xd98a2c, rarity: 'hero', hero: true, aura: 3, plumeColor: 0xd98a2c,
   },
+
+  // ── 獸人部落 ──
+  goblin_spear: {
+    id: 'goblin_spear', name: '哥布林矛兵', role: 'infantry', race: 'goblin', pool: 'orc', tier: 1,
+    hp: 42, armor: 2, walkSpeed: 2.5, runSpeed: 5, radius: 0.38,
+    weapons: ['spear'], morale: 40,
+    blockSkill: 0.2, blockChance: 0.15, reaction: 0.35, attackCooldown: [1.2, 2.2], dodgeChance: 0.4,
+    trimColor: 0x5a4a2a,
+  },
+  orc_warrior: {
+    id: 'orc_warrior', name: '獸人戰士', role: 'infantry', race: 'orc', pool: 'orc', tier: 2,
+    hp: 95, armor: 6, walkSpeed: 2.2, runSpeed: 4.5, radius: 0.5,
+    weapons: ['infantry_axe'], morale: 65,
+    blockSkill: 0.25, blockChance: 0.2, reaction: 0.3, attackCooldown: [1.3, 2.4], dodgeChance: 0.1,
+    trimColor: 0x4a3a28,
+  },
+  orc_berserker: {
+    id: 'orc_berserker', name: '獸人狂戰士', role: 'infantry', race: 'orc', pool: 'orc', tier: 3,
+    hp: 120, armor: 5, walkSpeed: 2.4, runSpeed: 5.2, radius: 0.5,
+    weapons: ['elite_axe'], morale: 85,
+    blockSkill: 0.1, blockChance: 0.05, reaction: 0.3, attackCooldown: [0.8, 1.4], dodgeChance: 0.1,
+    trimColor: 0x8a2a20, rarity: 'fine',
+  },
+  wolf_rider: {
+    id: 'wolf_rider', name: '座狼騎兵', role: 'cavalry', race: 'orc', pool: 'orc', tier: 3,
+    hp: 90, armor: 6, walkSpeed: 2.3, runSpeed: 4.6, radius: 0.48,
+    weapons: ['cavalry_sword'], horse: 'wolf', morale: 70,
+    blockSkill: 0.3, blockChance: 0.25, reaction: 0.3, attackCooldown: [1, 1.9], dodgeChance: 0.1,
+    trimColor: 0x55504a, rarity: 'fine',
+  },
+  orc_chief_guard: {
+    id: 'orc_chief_guard', name: '黑牙親衛', desc: '酋長親兵，寧死不退', role: 'infantry', race: 'orc', pool: 'orc', tier: 5,
+    hp: 150, armor: 13, walkSpeed: 2.2, runSpeed: 4.6, radius: 0.52,
+    weapons: ['elite_axe'], morale: 115,
+    blockSkill: 0.45, blockChance: 0.3, reaction: 0.22, attackCooldown: [0.9, 1.6], dodgeChance: 0.1,
+    trimColor: 0x24242a, rarity: 'special', plumeColor: 0xd04a2a,
+  },
+  hero_gorak: {
+    id: 'hero_gorak', name: '獸人酋長 格拉克', desc: '一聲戰吼，三軍膽寒', role: 'infantry', race: 'orc', pool: 'orc', tier: 6,
+    hp: 340, armor: 15, walkSpeed: 2.4, runSpeed: 5, radius: 0.54,
+    weapons: ['hero_axe'], morale: 135,
+    blockSkill: 0.4, blockChance: 0.3, reaction: 0.18, attackCooldown: [0.7, 1.3], dodgeChance: 0.1,
+    trimColor: 0xd04a2a, rarity: 'hero', hero: true, aura: 3.5, plumeColor: 0xd04a2a,
+  },
+
+  // ── 亡靈軍團 ──
+  skeleton: {
+    id: 'skeleton', name: '骷髏兵', role: 'infantry', race: 'undead', pool: 'undead', tier: 1,
+    hp: 50, armor: 3, walkSpeed: 2, runSpeed: 3.9, radius: 0.42,
+    weapons: ['infantry_sword'], morale: 200,
+    blockSkill: 0.25, blockChance: 0.3, reaction: 0.35, attackCooldown: [1.4, 2.6], dodgeChance: 0,
+    trimColor: 0x3a3844,
+  },
+  skeleton_archer: {
+    id: 'skeleton_archer', name: '骷髏弓手', role: 'archer', race: 'undead', pool: 'undead', tier: 2,
+    hp: 46, armor: 2, walkSpeed: 2, runSpeed: 3.9, radius: 0.42,
+    weapons: ['troop_bow', 'short_sword'], morale: 200,
+    blockSkill: 0.2, blockChance: 0.1, reaction: 0.4, attackCooldown: [1.5, 2.8], dodgeChance: 0,
+    trimColor: 0x3a3844,
+  },
+  grave_knight: {
+    id: 'grave_knight', name: '墓園騎士', role: 'infantry', race: 'undead', pool: 'undead', tier: 3,
+    hp: 105, armor: 11, walkSpeed: 2, runSpeed: 4, radius: 0.47,
+    weapons: ['elite_sword'], morale: 200,
+    blockSkill: 0.45, blockChance: 0.5, reaction: 0.3, attackCooldown: [1.2, 2.2], dodgeChance: 0,
+    trimColor: 0x2a2640, rarity: 'fine',
+  },
+  death_rider: {
+    id: 'death_rider', name: '死亡騎士', desc: '不知疲倦嘅黑甲騎士', role: 'cavalry', race: 'undead', pool: 'undead', tier: 5,
+    hp: 135, armor: 15, walkSpeed: 2.2, runSpeed: 4.4, radius: 0.48,
+    weapons: ['elite_lance', 'cavalry_sword'], horse: 'warhorse', morale: 200,
+    blockSkill: 0.5, blockChance: 0.4, reaction: 0.25, attackCooldown: [1, 1.8], dodgeChance: 0,
+    trimColor: 0x1c1a26, rarity: 'special', plumeColor: 0x62d0a8,
+  },
+  hero_morvain: {
+    id: 'hero_morvain', name: '骸骨君王 莫凡', desc: '死過一次，唔會再怕', role: 'infantry', race: 'undead', pool: 'undead', tier: 6,
+    hp: 300, armor: 20, walkSpeed: 2.2, runSpeed: 4.5, radius: 0.5,
+    weapons: ['hero_blade'], morale: 300,
+    blockSkill: 0.8, blockChance: 0.7, reaction: 0.16, attackCooldown: [0.7, 1.2], dodgeChance: 0,
+    trimColor: 0x62d0a8, rarity: 'hero', hero: true, aura: 3, plumeColor: 0x62d0a8,
+  },
+
+  // ── 迷宮異族 ──
+  lizard_warrior: {
+    id: 'lizard_warrior', name: '蜥蜴戰士', role: 'infantry', race: 'lizard', pool: 'beast', tier: 2,
+    hp: 80, armor: 7, walkSpeed: 2.3, runSpeed: 4.7, radius: 0.46,
+    weapons: ['infantry_sword'], morale: 60,
+    blockSkill: 0.4, blockChance: 0.4, reaction: 0.28, attackCooldown: [1.2, 2.2], dodgeChance: 0.2,
+    trimColor: 0x2f6a52,
+  },
+  lizard_javelin: {
+    id: 'lizard_javelin', name: '蜥蜴標槍手', role: 'archer', race: 'lizard', pool: 'beast', tier: 2,
+    hp: 62, armor: 4, walkSpeed: 2.4, runSpeed: 4.9, radius: 0.45,
+    weapons: ['troop_javelin', 'short_sword'], morale: 55,
+    blockSkill: 0.3, blockChance: 0.2, reaction: 0.3, attackCooldown: [1.3, 2.4], dodgeChance: 0.25,
+    trimColor: 0x2f6a52,
+  },
+  kobold_miner: {
+    id: 'kobold_miner', name: '狗頭礦工兵', role: 'infantry', race: 'goblin', pool: 'beast', tier: 3,
+    hp: 70, armor: 8, walkSpeed: 2.3, runSpeed: 4.6, radius: 0.4,
+    weapons: ['elite_axe'], morale: 60,
+    blockSkill: 0.3, blockChance: 0.2, reaction: 0.3, attackCooldown: [1.1, 2], dodgeChance: 0.3,
+    trimColor: 0x8a6a3a, rarity: 'fine',
+  },
+  minotaur_guard: {
+    id: 'minotaur_guard', name: '牛頭守衛', desc: '迷宮守衛，一撞飛人', role: 'infantry', race: 'minotaur', pool: 'beast', tier: 5,
+    hp: 210, armor: 12, walkSpeed: 2.3, runSpeed: 4.9, radius: 0.62,
+    weapons: ['elite_axe'], morale: 110,
+    blockSkill: 0.2, blockChance: 0.1, reaction: 0.3, attackCooldown: [1, 1.8], dodgeChance: 0,
+    trimColor: 0x4a3020, rarity: 'special', plumeColor: 0xc88a3a,
+  },
+  hero_asterion: {
+    id: 'hero_asterion', name: '迷宮之主 阿斯泰', desc: '牛頭人之王，雙斧開路', role: 'infantry', race: 'minotaur', pool: 'beast', tier: 6,
+    hp: 420, armor: 16, walkSpeed: 2.4, runSpeed: 5.1, radius: 0.66,
+    weapons: ['hero_axe'], morale: 140,
+    blockSkill: 0.3, blockChance: 0.2, reaction: 0.2, attackCooldown: [0.8, 1.4], dodgeChance: 0,
+    trimColor: 0xc88a3a, rarity: 'hero', hero: true, aura: 2.5, plumeColor: 0xc88a3a,
+  },
+  hero_ignara: {
+    id: 'hero_ignara', name: '龍裔將軍 伊格娜', desc: '身負龍血，刀火同行', role: 'cavalry', race: 'dragonkin', pool: 'beast', tier: 6,
+    hp: 290, armor: 19, walkSpeed: 2.4, runSpeed: 5, radius: 0.52,
+    weapons: ['hero_lance', 'hero_blade'], horse: 'warhorse', morale: 135,
+    blockSkill: 0.75, blockChance: 0.6, reaction: 0.16, attackCooldown: [0.7, 1.2], dodgeChance: 0.1,
+    trimColor: 0xe0502c, rarity: 'hero', hero: true, aura: 3, plumeColor: 0xe0502c,
+  },
+
+  // ── 精靈與矮人 ──
+  elf_scout: {
+    id: 'elf_scout', name: '精靈斥候', role: 'archer', race: 'elf', pool: 'fair', tier: 2,
+    hp: 56, armor: 3, walkSpeed: 2.6, runSpeed: 5.3, radius: 0.43,
+    weapons: ['troop_bow', 'short_sword'], morale: 60,
+    blockSkill: 0.35, blockChance: 0.2, reaction: 0.28, attackCooldown: [1.3, 2.4], dodgeChance: 0.4,
+    trimColor: 0x5f9a4a,
+  },
+  dwarf_guard: {
+    id: 'dwarf_guard', name: '矮人守衛', role: 'infantry', race: 'dwarf', pool: 'fair', tier: 2,
+    hp: 95, armor: 11, walkSpeed: 1.9, runSpeed: 3.9, radius: 0.48,
+    weapons: ['infantry_sword'], morale: 75,
+    blockSkill: 0.5, blockChance: 0.5, reaction: 0.28, attackCooldown: [1.3, 2.3], dodgeChance: 0.05,
+    trimColor: 0x8a5a2c,
+  },
+  dwarf_crossbow: {
+    id: 'dwarf_crossbow', name: '矮人弩手', role: 'archer', race: 'dwarf', pool: 'fair', tier: 3,
+    hp: 80, armor: 9, walkSpeed: 1.9, runSpeed: 3.8, radius: 0.48,
+    weapons: ['troop_crossbow', 'infantry_sword'], morale: 70,
+    blockSkill: 0.4, blockChance: 0.35, reaction: 0.28, attackCooldown: [1.3, 2.4], dodgeChance: 0.05,
+    trimColor: 0x8a5a2c, rarity: 'fine',
+  },
 };
+
+// 原有精靈同矮人歸入山林卡池
+for (const id of ['elf_longbow', 'hero_sylvia']) Object.assign(UNITS[id], { race: 'elf', pool: 'fair' });
+for (const id of ['dwarf_breaker', 'hero_barn']) Object.assign(UNITS[id], { race: 'dwarf', pool: 'fair' });
 
 /** 步兵同弓兵行為參數 */
 export const AI = {

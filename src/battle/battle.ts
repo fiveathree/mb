@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
-import { ARMIES, BATTLEFIELD as F, COLORS, FORMATION, REWARDS } from '../data/battlefield';
+import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
+import { THEMES, type BattleTheme } from '../data/world';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
 import {
@@ -41,6 +42,17 @@ export interface ReportRow {
   fled: number;
 }
 
+export interface BattleSetup {
+  horse: HorseDef;
+  loadout: string[];
+  soldiers: Soldier[];
+  enemy: ArmyEntry[];
+  enemyLevel: number;
+  theme: BattleTheme;
+  /** 部隊士氣對戰鬥士氣嘅倍率 */
+  moraleMult: number;
+}
+
 export interface BattleResult {
   win: boolean;
   retreated: boolean;
@@ -61,6 +73,7 @@ export class Battle implements CombatWorld {
   readonly camera = new THREE.PerspectiveCamera(CAMERA.baseFov, 1, 0.1, 500);
   private scene = new THREE.Scene();
   private sun = new THREE.DirectionalLight(0xfff0d6, 2.3);
+  private hemi = new THREE.HemisphereLight(0xcfe6ff, 0x6a6a4a, 1.5);
   private obstacles: Obstacle[];
   private batches: Batches;
   fx: Fx;
@@ -90,6 +103,8 @@ export class Battle implements CombatWorld {
   private slotT = 0;
   private followT = 0;
   running = false;
+  /** 大地圖時唔使渲染 */
+  active = false;
   private lastNow = 0;
   private fpsT = 0;
   private fpsN = 0;
@@ -106,7 +121,7 @@ export class Battle implements CombatWorld {
 
     this.scene.background = new THREE.Color(COLORS.sky);
     this.scene.fog = new THREE.Fog(COLORS.fog, 90, 330);
-    this.scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x6a6a4a, 1.5));
+    this.scene.add(this.hemi);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     const s = this.sun.shadow.camera;
@@ -151,7 +166,17 @@ export class Battle implements CombatWorld {
   }
 
   /** 開一場新戰鬥 */
-  start(horseDef: HorseDef, loadout: string[], soldiers: Soldier[], enemyLevel: number) {
+  start(setup: BattleSetup) {
+    const { horse: horseDef, loadout, soldiers, enemy, enemyLevel } = setup;
+    const theme = THEMES[setup.theme];
+    (this.scene.background as THREE.Color).set(theme.sky);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.set(theme.fog);
+    fog.near = theme.near;
+    fog.far = theme.far;
+    this.hemi.intensity = 1.5 * theme.light;
+    this.sun.intensity = 2.3 * theme.light;
+
     this.batches.reset();
     this.projectiles.reset();
     this.units = [];
@@ -178,10 +203,11 @@ export class Battle implements CombatWorld {
       const c = this.createUnit(def, team, def.weapons);
       c.ai = makeAi(group);
       c.soldier = soldier;
+      if (team === 0) c.morale *= setup.moraleMult;
       group.members.push(c);
     };
     for (const s of soldiers) recruit(s.unit, 0, s.level, s);
-    for (const entry of ARMIES[1]) {
+    for (const entry of enemy) {
       for (let i = 0; i < entry.count; i++) {
         recruit(entry.unit, 1, Math.max(1, enemyLevel - Math.floor(Math.random() * 2)), null);
       }
@@ -200,6 +226,7 @@ export class Battle implements CombatWorld {
     });
 
     this.running = true;
+    this.active = true;
     this.lastNow = 0;
   }
 
@@ -257,6 +284,7 @@ export class Battle implements CombatWorld {
   }
 
   private frame(now: number) {
+    if (!this.active) return;
     if (!this.lastNow) this.lastNow = now;
     const real = Math.min((now - this.lastNow) / 1000, 1 / 20);
     this.lastNow = now;
@@ -281,17 +309,9 @@ export class Battle implements CombatWorld {
       this.simulate(dt, real);
       this.updateCamera(real);
       this.hud.update(this);
-    } else if (!this.player) {
-      this.idleCamera(now);
     }
     this.input.endFrame(real);
     this.renderer.render(this.scene, this.camera);
-  }
-
-  private idleCamera(now: number) {
-    const a = now * 0.00004;
-    this.camera.position.set(Math.sin(a) * 110, 26, Math.cos(a) * 110);
-    this.camera.lookAt(0, 4, 0);
   }
 
   private simulate(dt: number, real: number) {
@@ -722,6 +742,7 @@ export class Battle implements CombatWorld {
       if (!u.soldier) continue;
       outcomes.push({
         soldier: u.soldier, xp: u.xpEarned, kills: u.killCount, dead: u.dead && !u.fled && !u.wounded,
+        wounded: u.dead && u.wounded,
       });
     }
     return {

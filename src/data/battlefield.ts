@@ -22,20 +22,6 @@ export interface ArmyEntry {
   count: number;
 }
 
-/** 雙方編成（玩家另計） */
-export const ARMIES: ArmyEntry[][] = [
-  [
-    { unit: 'footman', count: 10 }, { unit: 'pikeman', count: 8 }, { unit: 'axeman', count: 3 },
-    { unit: 'archer', count: 8 }, { unit: 'crossbowman', count: 3 },
-    { unit: 'lancer', count: 4 }, { unit: 'horseman', count: 3 },
-  ],
-  [
-    { unit: 'footman', count: 13 }, { unit: 'pikeman', count: 6 }, { unit: 'axeman', count: 5 },
-    { unit: 'archer', count: 7 }, { unit: 'crossbowman', count: 3 },
-    { unit: 'lancer', count: 3 }, { unit: 'horseman', count: 3 },
-  ],
-];
-
 /** 陣形 */
 export const FORMATION = {
   /** 我軍步兵中心，敵軍鏡像 */

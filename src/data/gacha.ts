@@ -1,4 +1,5 @@
 export type Rarity = 'common' | 'fine' | 'special' | 'hero';
+export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair';
 
 export const RARITY_ORDER: Rarity[] = ['common', 'fine', 'special', 'hero'];
 
@@ -9,15 +10,24 @@ export const RARITY: Record<Rarity, { name: string; color: string; rate: number 
   hero: { name: '英雄', color: '#f2c14e', rate: 0.01 },
 };
 
+export const POOLS: Record<PoolId, { name: string; ticket: string; source: string }> = {
+  human: { name: '四方豪傑', ticket: '通用招募令', source: '城鎮購買、清剿賊巢' },
+  orc: { name: '獸人部落', ticket: '獸牙令', source: '攻陷黑牙堡' },
+  undead: { name: '亡靈軍團', ticket: '骸骨令', source: '攻破枯骨墓穴' },
+  beast: { name: '迷宮異族', ticket: '牛角令', source: '闖過牛角迷宮' },
+  fair: { name: '精靈與矮人', ticket: '山林令', source: '攻下鐵砧山城' },
+};
+export const POOL_ORDER: PoolId[] = ['human', 'orc', 'undead', 'beast', 'fair'];
+
 export const GACHA = {
-  /** 單抽金幣 */
-  cost: 300,
-  /** 十連金幣 */
-  tenCost: 2700,
-  /** 連續幾多抽未出英雄就保底 */
+  /** 十連用幾多張招募令 */
+  tenTickets: 9,
+  /** 連續幾多抽未出英雄就保底，每個卡池獨立計 */
   pity: 60,
   /** 抽到重複英雄時退還金幣 */
   duplicateHeroRefund: 1500,
+  /** 城鎮通用招募令售價 */
+  ticketPrice: 1200,
 };
 
 /** 士兵個體成長 */
@@ -39,17 +49,21 @@ export const LEVEL = {
 };
 
 export const CAMPAIGN = {
-  startGold: 3000,
+  startGold: 1200,
+  startFood: 60,
+  startTickets: 3,
+  /** 開局部隊 */
+  startArmy: [
+    { unit: 'footman', count: 8 }, { unit: 'archer', count: 4 }, { unit: 'horseman', count: 2 },
+  ],
   /** 每場最多出戰人數（玩家另計） */
   deployMax: 39,
-  /** 兵力低過呢個數，戰後自動補新兵 */
-  minRoster: 15,
-  refillUnit: 'footman',
+  /** 受傷休養日數 */
+  hurtDays: 3,
   /** 戰敗或者撤退時，戰利品保留比例 */
   loseGoldRatio: 0.3,
-  /** 敵軍平均等級 = 1 + 勝場 ÷ 呢個數 */
-  winsPerEnemyLevel: 2,
-  enemyLevelMax: 8,
   /** 呢啲稀有度倒下都唔會永久陣亡 */
   protectedRarities: ['special', 'hero'] as Rarity[],
+  /** 密令 */
+  cheatCode: 'ironhorse',
 };

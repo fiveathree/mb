@@ -92,6 +92,11 @@ export class Hud {
     this.hudEl.hidden = true;
   }
 
+  closeScreen() {
+    this.screen.classList.remove('open');
+    this.screen.innerHTML = '';
+  }
+
   hideScreen() {
     this.screen.classList.remove('open');
     this.screen.innerHTML = '';
@@ -102,7 +107,7 @@ export class Hud {
     return `<div class="controls">${CONTROLS.map(([k, v]) => `<div><kbd>${k}</kbd><span>${v}</span></div>`).join('')}</div>`;
   }
 
-  showPause(onResume: () => void, onRestart: () => void, onRetreat: () => void, message = '') {
+  showPause(onResume: () => void, onRetreat: () => void, message = '') {
     this.showScreen(`
       <div class="card">
         <h2>暫停</h2>
@@ -111,11 +116,9 @@ export class Hud {
         <div class="row">
           <button class="go" id="resume">繼續</button>
           <button class="alt" id="retreat">撤退</button>
-          <button class="alt" id="restart">重新開始</button>
         </div>
       </div>`);
     this.q('#resume').onclick = onResume;
-    this.q('#restart').onclick = onRestart;
     this.q('#retreat').onclick = onRetreat;
   }
 
@@ -132,17 +135,18 @@ export class Hud {
       </table>`;
   }
 
-  private progressHtml(p: BattleProgress): string {
+  private progressHtml(p: BattleProgress, extra: string): string {
     const ups = p.levelUps.slice(0, 8).map((l) => `${l.name} Lv${l.level}`).join('、');
     const more = p.levelUps.length > 8 ? ` 等 ${p.levelUps.length} 項` : '';
     return `<div class="progress">
       ${ups ? `<div><b>升級</b>${ups}${more}</div>` : ''}
       ${p.lost.length ? `<div><b>永久陣亡</b>${p.lost.length} 人</div>` : ''}
-      ${p.refilled ? `<div><b>補充新兵</b>${p.refilled} 人</div>` : ''}
+      ${p.hurt ? `<div><b>傷兵休養</b>${p.hurt} 人</div>` : ''}
+      ${extra ? `<div><b>獎勵</b>${extra}</div>` : ''}
     </div>`;
   }
 
-  showResult(r: BattleResult, p: BattleProgress, onRestart: () => void, onTitle: () => void) {
+  showResult(r: BattleResult, p: BattleProgress, extra: string, onContinue: () => void) {
     const s = r.stats;
     this.hudEl.hidden = true;
     const title = r.win ? '大獲全勝' : r.retreated ? '撤退' : '戰敗';
@@ -161,11 +165,10 @@ export class Hud {
           <div><small>最高時速</small><b>${Math.round(s.topSpeed * 3.6)} km/h</b></div>
           <div><small>用時</small><b>${Math.round(s.time)} 秒</b></div>
         </div>
-        ${this.progressHtml(p)}
-        <div class="row"><button class="go" id="title">返回軍營</button><button class="alt" id="again">再打一場</button></div>
+        ${this.progressHtml(p, extra)}
+        <div class="row"><button class="go" id="next">返回大地圖</button></div>
       </div>`);
-    this.q('#again').onclick = onRestart;
-    this.q('#title').onclick = onTitle;
+    this.q('#next').onclick = onContinue;
   }
 
   announce(text: string, kind: 'hit' | 'kill' | 'guard' | 'hurt') {
