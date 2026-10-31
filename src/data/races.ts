@@ -24,6 +24,8 @@ export interface RaceDef {
   nightVision?: boolean;
   /** 唔騎得馬 */
   noRide?: boolean;
+  /** 一體，落唔到馬 */
+  alwaysRide?: boolean;
   warcry?: typeof WARCRY;
 }
 
@@ -43,7 +45,7 @@ export const RACES: Record<Race, RaceDef> = {
   golem: { name: '魔像', skin: 0x7c7f88, scale: 2.4, look: 'plain', food: 0, wage: 1 },
   giant: { name: '巨人', skin: 0x9a7a58, scale: 2.8, look: 'tusks', food: 4, wage: 2, noRide: true },
   dragon: { name: '龍', skin: 0xb02a1e, scale: 3.4, look: 'dragon', food: 6, wage: 3 },
-  centaur: { name: '半人馬', skin: 0xc89a70, scale: 1, look: 'plain', food: 1.8, wage: 1.3 },
+  centaur: { name: '半人馬', skin: 0xc89a70, scale: 1, look: 'plain', food: 1.8, wage: 1.3, alwaysRide: true },
   harpy: { name: '哈比', skin: 0xd8b48c, scale: 0.9, look: 'wings', food: 0.7, wage: 0.9, jump: 2 },
   merfolk: { name: '人魚', skin: 0x7fc8c0, scale: 1, look: 'fins', food: 0.9, wage: 1.1 },
   vampire: { name: '吸血鬼', skin: 0xe8e0e8, scale: 1.02, look: 'ears', food: 0, wage: 1.6, nightVision: true },

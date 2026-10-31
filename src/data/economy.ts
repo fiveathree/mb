@@ -205,16 +205,41 @@ export const HERO = {
 
 // ── 士兵升階 ──
 export const UPGRADES: Record<string, string[]> = {
-  footman: ['pikeman', 'axeman'],
+  // 步兵：一路升到鐵甲陷陣
+  footman: ['pikeman', 'axeman', 'sergeant'],
+  dao_guard: ['axeman', 'sergeant'],
+  barbarian: ['axeman'],
+  sergeant: ['legionary'],
+  hoplite: ['griffin_guard'],
+  legionary: ['griffin_guard'],
+  pikeman: ['griffin_guard', 'shu_mountaineer'],
+  axeman: ['ya_guard'],
+  griffin_guard: ['vanguard'],
+  shu_mountaineer: ['vanguard'],
+  ya_guard: ['vanguard'],
+  // 弓兵：一路升到神射手
   archer: ['crossbowman'],
-  horseman: ['lancer'],
+  auxilia: ['crossbowman'],
+  crossbowman: ['jiangdong_marine', 'elf_longbow'],
+  jiangdong_marine: ['sharpshooter'],
+  elf_longbow: ['sharpshooter'],
+  // 騎兵：一路升到聖殿騎士
+  horseman: ['lancer', 'mamluk'],
+  lancer: ['blackmail_rider', 'crusader'],
+  mamluk: ['blackmail_rider'],
+  crusader: ['templar'],
+  blackmail_rider: ['templar'],
+  // 異族
   goblin_spear: ['orc_warrior'],
   orc_warrior: ['orc_berserker'],
+  orc_berserker: ['orc_chief_guard'],
   skeleton: ['grave_knight'],
+  grave_knight: ['death_rider'],
   lizard_warrior: ['kobold_miner'],
+  kobold_miner: ['minotaur_guard'],
   dwarf_guard: ['dwarf_crossbow'],
-  pikeman: ['griffin_guard'],
-  lancer: ['blackmail_rider'],
+  dwarf_crossbow: ['dwarf_breaker'],
+  elf_scout: ['elf_longbow'],
 };
 
 export const PROMOTION = {

@@ -2,7 +2,7 @@ import {
   ARENA, ARMORS, CAPTIVE, COMPANIONS, GOODS, GOOD_ORDER, LOCAL, LOOT, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
   type GoodId,
 } from '../data/economy';
-import { ARTIFACTS, SIEGE } from '../data/factions';
+import { ARTIFACTS, POLITICS, SIEGE } from '../data/factions';
 import { HONOR, type StoryHero } from '../data/honor';
 import { currentScenario } from '../data/scenarios';
 import { GACHA, POOLS, POOL_ORDER } from '../data/gacha';
@@ -16,7 +16,7 @@ import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
 import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
 import { freeArmor, horsePrice, skillOf, weaponPrice } from '../core/hero';
 import {
-  addSoldier, armyPower, armySize, canAfford, rosterPower, spend, wageOf, type Roster,
+  addSoldier, armyPower, armySize, canAfford, rarityOf, rosterPower, sortedSoldiers, spend, wageOf, type Roster,
 } from '../core/roster';
 import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
@@ -498,6 +498,31 @@ export class PlaceScreens {
   }
 
   /** 領地：城鎮同城堡共用嘅勢力區 */
+  /** 派守將：特殊同英雄級先得，收入加成兼有機會自己解圍 */
+  private governorRow(p: PlaceDef, h: Record<string, () => void>): string {
+    const pol = this.world.politics;
+    const reopen = () => (p.kind === 'town' ? this.town(p) : p.kind === 'village' ? this.village(p) : this.site(p));
+    const guard = this.roster.soldiers.find((s) => s.post === p.id);
+    if (guard) {
+      h.recall = () => {
+        guard.post = undefined;
+        delete pol.s.governors[p.id];
+        reopen();
+      };
+      return `<div class="pick-title">你嘅領地，守將 ${UNITS[guard.unit].name}，收入 +${Math.round((POLITICS.governorIncome - 1) * 100)}%。
+        <button class="mini" id="recall">召回</button></div>`;
+    }
+    const next = sortedSoldiers(this.roster).find((s) => !s.post && ['special', 'hero'].includes(rarityOf(UNITS[s.unit])));
+    if (!next) return '<div class="pick-title">呢度係你嘅領地，每週收稅。特殊或者英雄級可以做守將。</div>';
+    h.assign = () => {
+      next.post = p.id;
+      pol.s.governors[p.id] = UNITS[next.unit].name;
+      reopen();
+    };
+    return `<div class="pick-title">呢度係你嘅領地，每週收稅。
+      <button class="mini" id="assign">派 ${UNITS[next.unit].name} 做守將</button></div>`;
+  }
+
   private fiefActions(p: PlaceDef, h: Record<string, () => void>): string {
     const pol = this.world.politics;
     const owner = pol.ownerOf(p.id);
@@ -514,7 +539,7 @@ export class PlaceScreens {
         return `<div class="pick-title">呢度係你嘅山寨，佔地為王，每週收保護費。</div>
           <div class="row"><button class="go" id="lairRecruit">招嘍囉 ${count} 人（${cost} 金）</button></div>`;
       }
-      if (!t) return '<div class="pick-title">呢度係你嘅領地，每週收稅。</div>';
+      if (!t) return this.governorRow(p, h);
       h.defend = () => this.act.onDefend(p, t.by);
       return `<div class="pick-title">${pol.nameOf(t.by)}圍攻緊呢度，第 ${t.deadline} 日前要解圍！</div>
         <div class="row"><button class="go" id="defend">保衛領地</button></div>`;

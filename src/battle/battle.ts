@@ -21,7 +21,7 @@ import { Sfx } from './audio';
 import { Fliers } from './fliers';
 import { Batches } from './batch';
 import {
-  startBlock, startCharge, updateAction, updateCouch, updateRam, type BattleStats, type CombatWorld,
+  explode, startBlock, startCharge, updateAction, updateCouch, updateRam, type BattleStats, type CombatWorld,
 } from './combat';
 import { Combatant, Horse, angleDiff, clamp, flatDist, moveToward } from './entities';
 import { Fx } from './fx';
@@ -120,6 +120,7 @@ export class Battle implements CombatWorld {
   private formationT = 0;
   private warcryT = 0;
   private rockT = 0;
+  private traps: { x: number; z: number; cd: number }[] = [];
   private rockSide = 0;
   private defending = false;
   private fliers!: Fliers;
@@ -214,13 +215,19 @@ export class Battle implements CombatWorld {
     this.walls = [];
     this.siege = breaches > 0 || dungeon;
     this.dungeon = dungeon;
+    this.traps = [];
     this.obstacles = this.baseObstacles;
     if (!this.siege) return;
     const spots: { x: number; z: number }[] = [];
     if (dungeon) {
       const { walls, halfWidth, doorWidth, zMin, zMax } = DUNGEON;
       // 門左右交錯，要行之字
-      walls.forEach((z, i) => this.walls.push({ z, gaps: [(i % 2 ? 1 : -1) * halfWidth * 0.5], width: doorWidth }));
+      const start = Math.random() < 0.5 ? 1 : -1;
+      walls.forEach((z, i) => {
+        const offset = DUNGEON.doorMin + Math.random() * (DUNGEON.doorMax - DUNGEON.doorMin);
+        this.walls.push({ z, gaps: [(i % 2 ? start : -start) * halfWidth * offset], width: doorWidth });
+      });
+      this.layTraps();
       for (const z of [zMin, zMax]) this.walls.push({ z, gaps: [], width: 0 });
       for (let z = zMin; z <= zMax; z += 2) {
         spots.push({ x: -halfWidth, z }, { x: halfWidth, z });
@@ -245,6 +252,32 @@ export class Battle implements CombatWorld {
     mesh.castShadow = true;
     this.wall.add(mesh);
     this.obstacles = [...this.obstacles, ...spots.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 地下城地板陷阱：稍微睇得出，唔留心就中 */
+  private layTraps() {
+    const { traps, halfWidth, startZ, zMax } = DUNGEON;
+    this.traps = Array.from({ length: traps }, () => {
+      const x = (Math.random() - 0.5) * halfWidth * 1.6;
+      const z = startZ + 16 + Math.random() * (zMax - startZ - 24);
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 2.4), new THREE.MeshLambertMaterial({ color: 0x4a2a24 }));
+      plate.position.set(x, heightAt(x, z) + 0.05, z);
+      this.wall.add(plate);
+      return { x, z, cd: 0 };
+    });
+  }
+
+  private updateTraps(dt: number) {
+    const owner = this.units.find((u) => u.team === 1 && !u.dead);
+    if (!owner) return;
+    for (const t of this.traps) {
+      t.cd -= dt;
+      if (t.cd > 0) continue;
+      const hit = this.units.some((u) => u.team === 0 && !u.dead && Math.hypot(u.pos.x - t.x, u.pos.z - t.z) < DUNGEON.trapRadius);
+      if (!hit) continue;
+      t.cd = DUNGEON.trapReset;
+      explode(this, owner, WEAPONS.dungeon_trap, new THREE.Vector3(t.x, heightAt(t.x, t.z) + 0.3, t.z), 1);
+    }
   }
 
   /** 攻城器械：缺口兩旁攻城塔，城牆搭雲梯 */
@@ -648,6 +681,7 @@ export class Battle implements CombatWorld {
   private tickCommand(dt: number) {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
+    if (this.dungeon) this.updateTraps(dt);
     if (this.siege && !this.dungeon) {
       this.rockT -= dt;
       if (this.rockT <= 0) {
@@ -826,6 +860,7 @@ export class Battle implements CombatWorld {
 
   private toggleMount() {
     const p = this.player;
+    if (RACES[p.def.race ?? 'human'].alwaysRide) return;
     if (p.horse) {
       const h = p.horse;
       if (h.speed > MAX_DISMOUNT_SPEED) {

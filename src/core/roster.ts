@@ -17,6 +17,8 @@ export interface Soldier {
   kills: number;
   /** 留喺候補，唔出戰 */
   benched: boolean;
+  /** 派駐緊邊塊領地 */
+  post?: string;
   /** 仲要休養幾多日 */
   hurtDays: number;
   /** 英雄自己嘅裝備 */
@@ -196,7 +198,7 @@ export function sortedSoldiers(r: Roster): Soldier[] {
 /** 今場出戰名單（傷兵同候補唔出） */
 export function deployment(r: Roster): Soldier[] {
   const limit = Math.min(CAMPAIGN.deployMax, partyLimit(r.hero, r.soldiers));
-  return sortedSoldiers(r).filter((s) => !s.benched && s.hurtDays <= 0).slice(0, limit);
+  return sortedSoldiers(r).filter((s) => !s.benched && !s.post && s.hurtDays <= 0).slice(0, limit);
 }
 
 export function roleCounts(list: Soldier[]): Record<Role, number> {

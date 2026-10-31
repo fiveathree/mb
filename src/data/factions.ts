@@ -91,6 +91,11 @@ export const POLITICS = {
   /** 無條件放人 */
   freeRelation: 14,
   freeJustice: 3,
+  /** 有守將：解圍機率、收入倍率 */
+  governorHold: 0.6,
+  governorIncome: 1.25,
+  /** 領地失守，守將受傷歸隊日數 */
+  governorHurtDays: 5,
   /** 打贏該國部隊加好感 */
   beatEnemyRelation: 3,
   /** 聲望：打贏普通仗、攻陷領地 */
@@ -132,6 +137,13 @@ export const DUNGEON = {
   zMin: -72,
   zMax: 66,
   startZ: -62,
+  /** 門位左右偏移範圍（房闊比例） */
+  doorMin: 0.3,
+  doorMax: 0.7,
+  /** 地板陷阱 */
+  traps: 7,
+  trapRadius: 1.5,
+  trapReset: 6,
 };
 
 /** 世界大事：每隔幾日擲一次 */
@@ -167,7 +179,7 @@ export const ARTIFACTS: ArtifactDef[] = [
 /** 主角開局 */
 export type PlayableRace =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon'
-  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy';
+  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy' | 'centaur';
 
 export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>; spell?: string; friend?: string; foe?: string }> = {
   human: { name: '人類', desc: '平均，起步多 2 技能點', attrs: { cha: 1 } },
@@ -188,6 +200,7 @@ export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs:
   merfolk: { name: '人魚', desc: '智敏各 +1，江東友好', attrs: { int: 1, agi: 1 }, friend: 'jiangdong' },
   treant: { name: '樹人', desc: '力量 +3、敏捷 −2，唔騎馬唔使食', attrs: { str: 3, agi: -2 }, friend: 'sylvan', foe: 'dwarves' },
   fairy: { name: '妖精', desc: '智力 +3、力量 −2，起步火球', attrs: { int: 3, str: -2 }, spell: 'fireball', friend: 'sylvan' },
+  centaur: { name: '半人馬', desc: '力敏各 +1，人馬一體，落唔到馬', attrs: { str: 1, agi: 1 } },
 };
 
 export interface StartOption {

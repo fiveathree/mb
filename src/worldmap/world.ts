@@ -324,6 +324,13 @@ export class World {
     }
 
     this.companionFeud();
+    for (const s of r.soldiers) {
+      if (s.post && !w.pol.governors[s.post]) {
+        s.post = undefined;
+        s.hurtDays = POLITICS.governorHurtDays;
+        this.note(`${UNITS[s.unit].name}失守領地，帶傷歸隊`);
+      }
+    }
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
     else if (w.pol.loyalty < HONOR.desertLoyalty && Math.random() < HONOR.desertChance) this.desert();

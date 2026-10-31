@@ -194,6 +194,7 @@ const WEAPON_LIST: WeaponDef[] = [
     { id: 'dragon_bolt', name: '龍雷', base: 34, draw: 1.2, recover: 2.2, speed: 200, spell: { mp: 0, flat: true } },
     { id: 'dragon_poison', name: '毒霧', base: 18, draw: 1.3, recover: 1.8, speed: 24, spell: { mp: 0, aoe: 9 } },
     { id: 'dragon_acid', name: '蝕液', base: 32, draw: 1.5, recover: 2.4, speed: 28, spell: { mp: 0, aoe: 5 } },
+    { id: 'dungeon_trap', name: '機關', base: 26, draw: 1, recover: 1, speed: 1, spell: { mp: 0, aoe: 2.6 } },
     { id: 'siege_rock', name: '投石', base: 30, draw: 1, recover: 1, speed: 30, spell: { mp: 0, aoe: 4 } },
     { id: 'flying_sword', name: '飛劍', base: 38, draw: 0.9, recover: 1.1, speed: 120, spell: { mp: 0, flat: true } },
   ].map((s): WeaponDef => ({

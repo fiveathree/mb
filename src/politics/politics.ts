@@ -17,6 +17,8 @@ export interface PoliticsSave {
   owners: Record<string, string>;
   /** 俘虜咗嘅領主（勢力 id） */
   lords: string[];
+  /** 領地 → 守將名 */
+  governors: Record<string, string>;
   relations: Record<string, number>;
   wars: [string, string][];
   rank: Rank;
@@ -44,12 +46,13 @@ export function migratePolitics(s: PoliticsSave): PoliticsSave {
   s.outlaw ??= false;
   s.storyMet ??= [];
   s.lords ??= [];
+  s.governors ??= {};
   return s;
 }
 
 export function newPolitics(): PoliticsSave {
   return {
-    lords: [],
+    lords: [], governors: {},
     owners: { ...FIEF_OWNERS }, relations: Object.fromEntries(FACTIONS.map((f) => [f.id, 0])),
     wars: [['griffin', 'orcs'], ['xuan', 'jiangdong'], ['wuyi', 'chishui'], ['sylvan', 'undead']],
     rank: 'free', liege: null, renown: 0, threats: [], kingdom: null, won: false,
@@ -226,7 +229,10 @@ export class Politics {
 
   /** 每週領地收入 */
   fiefIncome(): number {
-    return this.fiefsOf(PLAYER).reduce((s, p) => s + (p.kind === 'town' ? P.incomeTown : p.kind === 'village' ? P.incomeVillage : P.incomeCastle), 0);
+    return Math.round(this.fiefsOf(PLAYER).reduce((s, p) => {
+      const base = p.kind === 'town' ? P.incomeTown : p.kind === 'village' ? P.incomeVillage : P.incomeCastle;
+      return s + base * (this.s.governors[p.id] ? P.governorIncome : 1);
+    }, 0));
   }
 
   dailyPay(): number {
@@ -238,6 +244,13 @@ export class Politics {
   daily(day: number) {
     for (const t of [...this.s.threats]) {
       if (day > t.deadline) {
+        const guard = this.s.governors[t.place];
+        if (guard && Math.random() < P.governorHold) {
+          this.s.threats = this.s.threats.filter((x) => x !== t);
+          this.note(`${guard}守住${PLACES.find((x) => x.id === t.place)?.name}，敵軍退兵`);
+          continue;
+        }
+        delete this.s.governors[t.place];
         this.s.owners[t.place] = t.by;
         this.s.threats = this.s.threats.filter((x) => x !== t);
         const place = PLACES.find((x) => x.id === t.place);

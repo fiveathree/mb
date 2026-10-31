@@ -246,9 +246,9 @@ export class Camp {
     const rarity = RARITY[rarityOf(def)];
     const need = xpToNext(s.level);
     const pct = s.level >= LEVEL.max ? 100 : Math.round((s.xp / need) * 100);
-    const state = s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
+    const state = s.post ? '・駐守' : s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
     const promos = promotions(s).map((p) => `<span class="promo" data-id="${s.id}" data-to="${p.to.id}">升 ${p.to.name} ${p.cost}</span>`).join('');
-    return `<button class="sold ${s.benched || s.hurtDays > 0 ? 'bench' : ''}" data-id="${s.id}" style="--r:${rarity.color}">
+    return `<button class="sold ${s.benched || s.post || s.hurtDays > 0 ? 'bench' : ''}" data-id="${s.id}" style="--r:${rarity.color}">
       <b>${def.name}</b>
       <small>Lv${s.level}・${RACES[raceOf(def)].name}・殺 ${s.kills}${state}</small>
       <small>糧 ${foodOf(def).toFixed(2)}・餉 ${wageOf(def)}</small>

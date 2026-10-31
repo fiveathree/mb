@@ -439,6 +439,10 @@ for (const u of [
   troop('demon_grunt', '深淵魔卒', 'infantry', 3, 100, 8, ['elite_axe'], 0x7a1a24, { race: 'demon' }),
   troop('awakened', '覺醒者', 'infantry', 4, 120, 9, ['elite_sword'], 0xe8c04a),
   troop('kobold', '狗頭人', 'infantry', 1, 45, 2, ['spear'], 0x8a6a3a, { race: 'goblin' }),
+  // 升階樹頂
+  troop('vanguard', '鐵甲陷陣', 'infantry', 5, 160, 18, ['elite_sword'], 0x8a93a0, { plumeColor: 0xe0e4ec, desc: '步兵頂點，全身板甲' }),
+  troop('sharpshooter', '神射手', 'archer', 5, 95, 8, ['elite_bow', 'infantry_sword'], 0x4e8a3a, { plumeColor: 0x9ae86a, desc: '弓兵頂點，百發百中' }),
+  troop('templar', '聖殿騎士', 'cavalry', 5, 150, 17, ['elite_lance', 'cavalry_sword'], 0xf0ece0, { horse: 'warhorse', plumeColor: 0xc0302a, desc: '騎兵頂點，人馬俱甲' }),
   // 異族
   troop('centaur', '半人馬戰士', 'cavalry', 3, 100, 6, ['cavalry_sword'], 0x8a6a3a, { race: 'centaur', pool: 'beast', horse: 'steppe', desc: '人馬一體，草原之子' }),
   troop('harpy', '哈比', 'archer', 2, 50, 2, ['troop_bow', 'short_sword'], 0xb06a8a, { race: 'harpy', pool: 'beast', desc: '尖叫同利爪' }),
