@@ -1,7 +1,9 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { CAMPAIGN, GACHA, LEVEL, POOL_ORDER, RARITY, RARITY_ORDER, type PoolId, type Rarity } from '../data/gacha';
 import { RACES, UPKEEP, type Race } from '../data/races';
+import { PROMOTION, UPGRADES } from '../data/economy';
 import { UNITS, type Role, type UnitDef } from '../data/units';
+import { newHero, partyLimit, skillOf, type Hero } from './hero';
 
 const AUTO_PLAYER_POWER = 8;
 
@@ -19,6 +21,7 @@ export interface Soldier {
 }
 
 export interface Roster {
+  hero: Hero;
   gold: number;
   /** 密令：無限金幣 */
   infiniteGold: boolean;
@@ -71,10 +74,16 @@ export function addSoldier(r: Roster, unit: string): Soldier {
 export function newRoster(): Roster {
   const counts = () => Object.fromEntries(POOL_ORDER.map((p) => [p, 0])) as Record<PoolId, number>;
   const r: Roster = {
-    gold: CAMPAIGN.startGold, infiniteGold: false, nextId: 1, soldiers: [], tickets: counts(), pity: counts(), wins: 0, battles: 0,
+    hero: newHero(), gold: CAMPAIGN.startGold, infiniteGold: false, nextId: 1, soldiers: [], tickets: counts(), pity: counts(), wins: 0, battles: 0,
   };
   r.tickets.human = CAMPAIGN.startTickets;
   for (const entry of CAMPAIGN.startArmy) for (let i = 0; i < entry.count; i++) addSoldier(r, entry.unit);
+  return r;
+}
+
+/** 舊存檔補上新欄位 */
+export function migrateRoster(r: Roster): Roster {
+  r.hero ??= newHero();
   return r;
 }
 
@@ -128,7 +137,23 @@ export function partyFood(r: Roster): number {
 }
 
 export function partyWage(r: Roster): number {
-  return r.soldiers.reduce((sum, s) => sum + wageOf(UNITS[s.unit]), 0);
+  const discount = 1 - skillOf(r.hero, r.soldiers, 'leadership') * 0.03;
+  return Math.round(r.soldiers.reduce((sum, s) => sum + wageOf(UNITS[s.unit]), 0) * Math.max(0.5, discount));
+}
+
+/** 呢個士兵可以升去邊啲兵種 */
+export function promotions(s: Soldier): { to: UnitDef; cost: number }[] {
+  if (s.level < PROMOTION.needLevel) return [];
+  return (UPGRADES[s.unit] ?? []).map((id) => ({ to: UNITS[id], cost: UNITS[id].tier * PROMOTION.costPerTier }));
+}
+
+export function promote(r: Roster, s: Soldier, unit: string): boolean {
+  const option = promotions(s).find((p) => p.to.id === unit);
+  if (!option || !spend(r, option.cost)) return false;
+  s.unit = unit;
+  s.level = Math.max(1, s.level - PROMOTION.levelLoss);
+  s.xp = 0;
+  return true;
 }
 
 /** 混種族士氣懲罰 */
@@ -167,7 +192,8 @@ export function sortedSoldiers(r: Roster): Soldier[] {
 
 /** 今場出戰名單（傷兵同候補唔出） */
 export function deployment(r: Roster): Soldier[] {
-  return sortedSoldiers(r).filter((s) => !s.benched && s.hurtDays <= 0).slice(0, CAMPAIGN.deployMax);
+  const limit = Math.min(CAMPAIGN.deployMax, partyLimit(r.hero, r.soldiers));
+  return sortedSoldiers(r).filter((s) => !s.benched && s.hurtDays <= 0).slice(0, limit);
 }
 
 export function roleCounts(list: Soldier[]): Record<Role, number> {
@@ -177,7 +203,7 @@ export function roleCounts(list: Soldier[]): Record<Role, number> {
 }
 
 export function poolUnits(pool: PoolId, rarity: Rarity): UnitDef[] {
-  return Object.values(UNITS).filter((u) => (u.pool ?? 'human') === pool && rarityOf(u) === rarity);
+  return Object.values(UNITS).filter((u) => !u.companion && (u.pool ?? 'human') === pool && rarityOf(u) === rarity);
 }
 
 function rollRarity(): Rarity {
@@ -233,7 +259,7 @@ export function applyBattle(r: Roster, outcomes: BattleOutcome[], gold: number, 
       continue;
     }
     if (o.dead || o.wounded) {
-      s.hurtDays = CAMPAIGN.hurtDays;
+      s.hurtDays = Math.max(1, CAMPAIGN.hurtDays - Math.floor(skillOf(r.hero, r.soldiers, 'medicine') / 2));
       hurt++;
     }
     s.kills += o.kills;

@@ -5,7 +5,7 @@ import { THEMES, type BattleTheme } from '../data/world';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
 import {
-  ENEMY_COMMAND, PLAYER_UNIT, ROLE_KEYS, ROLE_LABEL, UNITS, type Role, type UnitDef,
+  ENEMY_COMMAND, ROLE_KEYS, ROLE_LABEL, UNITS, type Role, type UnitDef,
 } from '../data/units';
 import { LEVEL } from '../data/gacha';
 import { WEAPONS } from '../data/weapons';
@@ -43,6 +43,7 @@ export interface ReportRow {
 }
 
 export interface BattleSetup {
+  playerDef: UnitDef;
   horse: HorseDef;
   loadout: string[];
   soldiers: Soldier[];
@@ -64,6 +65,7 @@ export interface BattleResult {
   renown: number;
   captives: number;
   outcomes: BattleOutcome[];
+  playerKills: number;
 }
 
 export class Battle implements CombatWorld {
@@ -192,7 +194,7 @@ export class Battle implements CombatWorld {
     this.camPitch = 0.16;
 
     const pz = -FORMATION.startZ + FORMATION.holdAhead * 2;
-    const player = this.createUnit(PLAYER_UNIT, 0, loadout);
+    const player = this.createUnit(setup.playerDef, 0, loadout);
     player.pos.set(0, heightAt(0, pz), pz);
     this.player = player;
     this.lastHorse = this.createHorse(horseDef, player);
@@ -747,7 +749,7 @@ export class Battle implements CombatWorld {
     }
     return {
       win: this.win, retreated: this.retreated, playerDown: this.player.dead, stats: this.stats, rows,
-      gold, exp, renown: Math.round(renown), captives, outcomes,
+      gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills,
     };
   }
 

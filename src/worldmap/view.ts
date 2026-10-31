@@ -1,4 +1,5 @@
 import { MAP, PLACES, PLACE_ICON, type PlaceDef } from '../data/world';
+import { NPC, NPC_RULES } from '../data/economy';
 import { partyFood, partyWage } from '../core/roster';
 import { dayOf, hourOf, isNight, isOpen, type World, type WorldEvent } from './world';
 
@@ -74,6 +75,12 @@ export class WorldView {
     const place = this.visiblePlaces().find((p) => Math.hypot(p.x - m.x, p.y - m.y) < CLICK_RADIUS);
     this.follow = true;
     const w = this.world.save;
+    const npc = w.npcs.find((n) => Math.hypot(n.x - m.x, n.y - m.y) < 1.8
+      && Math.hypot(n.x - w.x, n.y - w.y) < this.world.vision);
+    if (npc) {
+      this.world.chase(npc);
+      return;
+    }
     if (place && Math.hypot(place.x - w.x, place.y - w.y) < 1.5) this.onEvent?.({ type: 'place', place });
     else if (place) this.world.goTo(place.x, place.y, place);
     else this.world.goTo(m.x, m.y, null);
@@ -172,6 +179,29 @@ export class WorldView {
       g.fillStyle = '#fff';
       g.font = '11px "Microsoft JhengHei", sans-serif';
       g.fillText(`山賊 ${b.size}`, sx(b.x), sy(b.y) - 13);
+    }
+
+    g.font = '11px "Microsoft JhengHei", sans-serif';
+    for (const n of w.npcs) {
+      const dist = Math.hypot(n.x - w.x, n.y - w.y);
+      if (dist > this.world.vision) continue;
+      const def = NPC[n.kind];
+      g.fillStyle = def.color;
+      g.strokeStyle = '#1b2433';
+      g.lineWidth = 1.5;
+      g.beginPath();
+      if (n.size > 3) g.rect(sx(n.x) - 5, sy(n.y) - 5, 10, 10);
+      else g.arc(sx(n.x), sy(n.y), 4, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      if (dist < NPC_RULES.labelDist) {
+        const text = `${def.name}：${n.job}`;
+        g.lineWidth = 3;
+        g.strokeStyle = 'rgba(12,15,22,.85)';
+        g.strokeText(text, sx(n.x), sy(n.y) - 13);
+        g.fillStyle = '#fff4dc';
+        g.fillText(text, sx(n.x), sy(n.y) - 13);
+      }
     }
 
     g.fillStyle = '#f2c14e';

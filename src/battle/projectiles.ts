@@ -67,7 +67,7 @@ export class Projectiles {
     const r = c.weapon.ranged;
     if (!r) return 0;
     const speedRatio = c.horse ? clamp(Math.abs(c.horse.speed) / c.horse.def.gallopSpeed, 0, 1) : 0;
-    return r.spreadDeg + (1 - c.charge) * r.undrawnSpreadDeg + speedRatio * r.mountedSpreadDeg;
+    return (r.spreadDeg + (1 - c.charge) * r.undrawnSpreadDeg + speedRatio * r.mountedSpreadDeg) * (c.def.spreadMult ?? 1);
   }
 
   fire(world: CombatWorld, c: Combatant) {

@@ -1,15 +1,18 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
-import { applyBattle, autoResolve, deployment, newRoster, racePenalty, type BattleProgress, type Roster } from './core/roster';
+import { gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
+import {
+  applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
+} from './core/roster';
 import { SLOT_COUNT, deleteSlot, readSlots, writeSlot, type GameSave } from './core/save';
 import type { ArmyEntry } from './data/battlefield';
+import { ARENA, HERO, NPC_RULES } from './data/economy';
 import { CAMPAIGN, POOLS } from './data/gacha';
-import { HORSES } from './data/horses';
-import { DEFAULT_LOADOUT } from './data/weapons';
 import { MORALE_PARTY, type BattleTheme, type PlaceDef } from './data/world';
-import { Camp, type CampChoice } from './ui/camp';
+import { Camp } from './ui/camp';
 import { Hud } from './ui/hud';
 import { PlaceScreens } from './ui/place';
+import { raiderArmy, type Npc } from './worldmap/npcs';
 import { WorldView } from './worldmap/view';
 import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type WorldSave } from './worldmap/world';
 
@@ -17,15 +20,16 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
-const choice: CampChoice = { horse: HORSES[0], loadout: DEFAULT_LOADOUT };
 
 let slot = 0;
 let roster: Roster = newRoster();
 let world = new World(newWorld(), roster);
-const camp = new Camp(hud, roster, choice);
+const camp = new Camp(hud, roster);
 let inBattle = false;
 let ignoreUnlock = false;
 let afterBattle: (win: boolean) => string = () => '';
+/** 競技場唔計部隊戰利品 */
+let arenaFight = false;
 /** 而家喺邊個地點入面，返回用 */
 let currentPlace: PlaceDef | null = null;
 
@@ -35,6 +39,8 @@ const screens = new PlaceScreens(hud, world, roster, {
   onAttack: (p) => attackPlace(p),
   onBandit: (b, auto) => fightBandit(b, auto),
   onEscaped: () => backToMap(),
+  onArena: (town, bet) => fightArena(town, bet),
+  onRaider: (n) => fightRaider(n),
 });
 const view = new WorldView(mapCanvas, world);
 
@@ -48,11 +54,11 @@ function saveGame() {
 }
 
 function useGame(r: Roster, w: WorldSave) {
-  roster = r;
-  world = new World(w, r);
+  roster = migrateRoster(r);
+  world = new World(w, roster);
   view.setWorld(world);
-  camp.setRoster(r);
-  screens.bind(world, r);
+  camp.setRoster(roster);
+  screens.bind(world, roster);
 }
 
 function backToMap() {
@@ -84,7 +90,7 @@ function openPlace(p: PlaceDef) {
 function moraleMult(): number {
   const { battleMin, battleMax } = MORALE_PARTY;
   const m = Math.max(0, world.save.morale - racePenalty(roster)) / 100;
-  return battleMin + (battleMax - battleMin) * m;
+  return (battleMin + (battleMax - battleMin) * m) * (1 + skillOf(roster.hero, roster.soldiers, 'tactics') * 0.03);
 }
 
 /** Esc 之後瀏覽器要隔約一秒先再鎖得滑鼠，失敗就留喺暫停畫面 */
@@ -104,14 +110,16 @@ function releaseMouse() {
   }
 }
 
-async function startBattle(enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string) {
-  const soldiers = deployment(roster);
+async function startBattle(
+  enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
+) {
   afterBattle = done;
   view.stop();
   battle.sfx.unlock();
   hud.hideScreen();
+  const h = roster.hero;
   battle.start({
-    horse: choice.horse, loadout: choice.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(),
+    playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(),
   });
   inBattle = true;
   await lockMouse();
@@ -132,6 +140,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
   if (auto) {
     const res = autoResolve(roster, army, b.level);
     const progress = applyBattle(roster, res.outcomes, res.gold, res.win);
+    if (res.win) gainHeroXp(roster.hero, HERO.xpBattleWin);
     world.winMorale(res.win);
     if (res.win) world.removeBandit(b);
     else world.escape(b);
@@ -143,6 +152,31 @@ function fightBandit(b: BanditParty, auto: boolean) {
     else world.escape(b);
     return '';
   });
+}
+
+function fightRaider(n: Npc) {
+  void startBattle(raiderArmy(n), NPC_RULES.raiderLevel, 'plains', (win) => {
+    if (!win) return '';
+    world.npcs.remove(n);
+    roster.gold += NPC_RULES.raiderGold;
+    return `截擊掠奪隊 ${NPC_RULES.raiderGold} 金`;
+  });
+}
+
+function fightArena(town: PlaceDef, bet: boolean) {
+  const w = world.save;
+  const round = ARENA.rounds[Math.min(w.arenaWins, ARENA.rounds.length - 1)];
+  if (bet && !roster.infiniteGold) roster.gold -= ARENA.bet;
+  arenaFight = true;
+  void startBattle(round.enemy, round.level, 'fort', (win) => {
+    w.arenaUntil[town.id] = dayOf(w) + ARENA.cooldownDays;
+    if (!win) return '';
+    w.arenaWins++;
+    const prize = round.reward + (bet ? ARENA.bet * ARENA.betMult : 0);
+    roster.gold += prize;
+    gainHeroXp(roster.hero, ARENA.renownXp);
+    return `比武獎金 ${prize} 金`;
+  }, []);
 }
 
 function showAutoResult(win: boolean, p: BattleProgress) {
@@ -190,10 +224,13 @@ battle.onEnd = (result: BattleResult) => {
   inBattle = false;
   battle.active = false;
   releaseMouse();
-  const gold = Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
+  const gold = arenaFight ? 0 : Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
   const progress = applyBattle(roster, result.outcomes, gold, result.win);
-  world.winMorale(result.win);
-  const extra = afterBattle(result.win);
+  if (!arenaFight) world.winMorale(result.win);
+  arenaFight = false;
+  const xp = result.playerKills * HERO.xpPerKill + (result.win ? HERO.xpBattleWin : 0);
+  const ups = gainHeroXp(roster.hero, xp);
+  const extra = [afterBattle(result.win), `主角經驗 +${xp}`, ups ? `主角升到 ${roster.hero.level} 級！` : ''].filter(Boolean).join('、');
   hud.showResult(result, progress, extra, backToMap);
 };
 
@@ -201,7 +238,8 @@ view.onEvent = (e) => {
   if (e.type === 'place') openPlace(e.place);
   else {
     view.stop();
-    screens.bandit(e.bandit);
+    if (e.type === 'bandit') screens.bandit(e.bandit);
+    else screens.npc(e.npc);
   }
 };
 view.onParty = () => {
@@ -253,5 +291,5 @@ async function showMenu() {
 void showMenu();
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { __mb: { battle, view, get world() { return world; }, get roster() { return roster; } } });
+  Object.assign(window, { __mb: { battle, view, screens, get world() { return world; }, get roster() { return roster; } } });
 }

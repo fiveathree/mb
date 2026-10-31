@@ -52,6 +52,12 @@ export interface UnitDef {
   aura?: number;
   /** 由等級計出嚟嘅傷害倍率 */
   damageMult?: number;
+  /** 遠程散布倍率 */
+  spreadMult?: number;
+  /** 出招速度倍率 */
+  actionSpeed?: number;
+  /** 酒館同伴，唔喺卡池 */
+  companion?: boolean;
 }
 
 /** 兩軍外觀：顏色同盔型都要一眼分到 */
@@ -374,6 +380,16 @@ export const UNITS: Record<string, UnitDef> = {
     trimColor: 0x8a5a2c, rarity: 'fine',
   },
 };
+
+// 酒館同伴
+const companion = (id: string, name: string, desc: string, role: Role, weapons: string[], trimColor: number): UnitDef => ({
+  id, name, desc, role, weapons, trimColor, tier: 4, hp: 130, armor: 10, walkSpeed: 2.4, runSpeed: 4.8, radius: 0.46, morale: 110,
+  blockSkill: 0.6, blockChance: 0.5, reaction: 0.2, attackCooldown: [1, 1.8], dodgeChance: 0.25,
+  rarity: 'special', companion: true, plumeColor: trimColor,
+});
+UNITS.comp_medic = companion('comp_medic', '軍醫 白薇', '傷兵好得快', 'archer', ['troop_bow', 'short_sword'], 0xe8e8f0);
+UNITS.comp_trader = companion('comp_trader', '行商 錢滿', '識講價', 'infantry', ['infantry_sword'], 0xd9b24a);
+UNITS.comp_veteran = companion('comp_veteran', '老兵 鐵叔', '百戰餘生，部下信服', 'infantry', ['elite_sword'], 0x8a8a92);
 
 // 原有精靈同矮人歸入山林卡池
 for (const id of ['elf_longbow', 'hero_sylvia']) Object.assign(UNITS[id], { race: 'elf', pool: 'fair' });

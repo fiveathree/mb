@@ -1,5 +1,7 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
+import { GOODS, GOOD_ORDER, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
 import { CAMPAIGN } from '../data/gacha';
 import {
@@ -36,19 +38,57 @@ export interface WorldSave {
   /** 欠餉週數 */
   unpaid: number;
   log: string[];
+  npcs: Npc[];
+  /** 城鎮 → 貨物存量 */
+  stock: Record<string, Record<GoodId, number>>;
+  /** 農民運到嘅糧，令糧價跌 */
+  townFood: Record<string, number>;
+  cargo: Record<GoodId, number>;
+  /** 村莊 → 第幾日先修復 */
+  burnedUntil: Record<string, number>;
+  nextRaid: number;
+  /** 城鎮 → 作坊 id */
+  workshops: Record<string, string>;
+  /** 城鎮 → 第幾日可以再比武 */
+  arenaUntil: Record<string, number>;
+  arenaWins: number;
+}
+
+function townStock(id: string): Record<GoodId, number> {
+  const t = TOWN_TRADE[id];
+  return Object.fromEntries(GOOD_ORDER.map((g) => [g, stockTarget(t, g)])) as Record<GoodId, number>;
+}
+
+function stockTarget(t: { makes: GoodId[]; needs: GoodId[] }, g: GoodId): number {
+  return t.makes.includes(g) ? MARKET.stockMakes : t.needs.includes(g) ? MARKET.stockNeeds : MARKET.stockNormal;
+}
+
+/** 舊存檔補上新欄位 */
+export function migrateWorld(w: WorldSave): WorldSave {
+  w.npcs ??= [];
+  w.stock ??= Object.fromEntries(Object.keys(TOWN_TRADE).map((id) => [id, townStock(id)]));
+  w.townFood ??= {};
+  w.cargo ??= Object.fromEntries(GOOD_ORDER.map((g) => [g, 0])) as Record<GoodId, number>;
+  w.burnedUntil ??= {};
+  w.nextRaid ??= 4;
+  w.workshops ??= {};
+  w.arenaUntil ??= {};
+  w.arenaWins ??= 0;
+  return w;
 }
 
 export function newWorld(): WorldSave {
   const start = PLACES[0];
-  return {
+  return migrateWorld({
     x: start.x + 3, y: start.y + 2, hours: 8, food: CAMPAIGN.startFood, morale: MORALE_PARTY.start, bandits: [], nextBandit: 1,
     clearedUntil: {}, discovered: [], recruitedUntil: {}, unpaid: 0, log: [],
-  };
+  } as unknown as WorldSave);
 }
 
 export type WorldEvent =
   | { type: 'place'; place: PlaceDef }
-  | { type: 'bandit'; bandit: BanditParty };
+  | { type: 'bandit'; bandit: BanditParty }
+  | { type: 'npc'; npc: Npc };
 
 export function banditArmy(b: BanditParty): ArmyEntry[] {
   return BANDIT.army.map((a) => ({ unit: a.unit, count: Math.max(1, Math.round(b.size * a.share)) }));
@@ -79,8 +119,24 @@ export class World {
   paused = false;
   private spawnT = 0;
   private graceT = 0;
+  /** 跟緊邊隊 NPC */
+  private chasing: number | null = null;
+  private rechase = 0;
+  readonly npcs: NpcSystem;
 
-  constructor(public save: WorldSave, public roster: Roster) {}
+  constructor(public save: WorldSave, public roster: Roster) {
+    migrateWorld(save);
+    this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
+    this.npcs.refill();
+  }
+
+  /** 行去 NPC 嗰度 */
+  chase(n: Npc) {
+    this.chasing = n.id;
+    this.rechase = 0;
+    this.goTo(n.x, n.y, null);
+    this.chasing = n.id;
+  }
 
   get vision(): number {
     return isNight(this.save) ? TIME.nightVision : TIME.dayVision;
@@ -99,6 +155,7 @@ export class World {
     if (!route) return false;
     this.path = route;
     this.destination = place;
+    this.chasing = null;
     this.paused = false;
     return true;
   }
@@ -109,9 +166,34 @@ export class World {
 
   /** 推進時間；回傳新事件 */
   update(dt: number): WorldEvent | null {
-    if (!this.moving) return null;
+    if (!this.moving && this.chasing === null) return null;
+    if (this.paused) return null;
     this.advanceTime(dt);
-    return this.move(dt) ?? this.updateBandits(dt);
+    this.npcs.update(dt, this.save.bandits);
+    return this.updateChase(dt) ?? this.move(dt) ?? this.updateBandits(dt);
+  }
+
+  private updateChase(dt: number): WorldEvent | null {
+    if (this.chasing === null) return null;
+    const n = this.save.npcs.find((x) => x.id === this.chasing);
+    if (!n) {
+      this.chasing = null;
+      return null;
+    }
+    const w = this.save;
+    if (Math.hypot(n.x - w.x, n.y - w.y) < NPC_RULES.contactDist * 1.3) {
+      this.chasing = null;
+      this.path = [];
+      return { type: 'npc', npc: n };
+    }
+    this.rechase -= dt;
+    if (this.rechase <= 0) {
+      this.rechase = 0.8;
+      const id = this.chasing;
+      this.path = this.terrain.path(w.x, w.y, n.x, n.y) ?? this.path;
+      this.chasing = id;
+    }
+    return null;
   }
 
   /** 休息一日（城鎮用） */
@@ -142,6 +224,8 @@ export class World {
     const w = this.save;
     const r = this.roster;
     for (const s of r.soldiers) if (s.hurtDays > 0) s.hurtDays--;
+    this.driftMarkets();
+    if (day % NPC_RULES.refillEvery === 0) this.npcs.refill();
 
     w.food -= partyFood(r);
     if (w.food <= 0) {
@@ -153,6 +237,11 @@ export class World {
     }
 
     if ((day - 1) % TIME.daysPerWeek === 0) {
+      const income = this.workshopIncome();
+      if (income) {
+        r.gold += income;
+        this.note(`作坊收入 ${income} 金`);
+      }
       const wage = partyWage(r);
       if (r.infiniteGold) {
         this.note(`發餉 ${wage} 金`);
@@ -169,6 +258,45 @@ export class World {
 
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
+  }
+
+  private driftMarkets() {
+    const w = this.save;
+    for (const [id, stock] of Object.entries(w.stock)) {
+      for (const g of GOOD_ORDER) stock[g] += (stockTarget(TOWN_TRADE[id], g) - stock[g]) * MARKET.dailyDrift;
+      w.townFood[id] = (w.townFood[id] ?? 0) * 0.8;
+    }
+  }
+
+  /** 每週作坊收入：當地貨物愈貴賺愈多 */
+  workshopIncome(): number {
+    const w = this.save;
+    let sum = 0;
+    for (const [town, id] of Object.entries(w.workshops)) {
+      const def = WORKSHOPS.find((x) => x.id === id);
+      if (def) sum += Math.round(def.income * (this.goodPrice(town, def.good) / GOODS[def.good].base));
+    }
+    return sum;
+  }
+
+  /** 而家市價 */
+  goodPrice(town: string, g: GoodId): number {
+    // 以普通存貨做基準，特產地自然平、短缺地自然貴
+    const ratio = 1 + ((MARKET.stockNormal - this.save.stock[town][g]) / MARKET.stockNormal) * MARKET.priceSwing;
+    return Math.round(GOODS[g].base * Math.min(MARKET.priceMax, Math.max(MARKET.priceMin, ratio)));
+  }
+
+  /** 糧價：農民運到嘅糧愈多愈平 */
+  foodPrice(town: string): number {
+    return Math.max(1, SHOP.foodPrice - Math.min(1, (this.save.townFood[town] ?? 0) / 40));
+  }
+
+  cargoCount(): number {
+    return GOOD_ORDER.reduce((s, g) => s + this.save.cargo[g], 0);
+  }
+
+  cargoCap(): number {
+    return MARKET.cargoBase + this.roster.soldiers.length * MARKET.cargoPerSoldier;
   }
 
   private desert() {
@@ -246,7 +374,13 @@ export class World {
       const weak = armyPower(banditArmy(b), b.level) < mine * BANDIT.fleeRatio;
       let mx = b.tx - b.x;
       let my = b.ty - b.y;
-      if (dist < BANDIT.chaseDist) {
+      const prey = this.npcs.preyFor(b);
+      if (prey && dist >= BANDIT.chaseDist) {
+        // 山賊會去劫商隊同農民，唔係亂行
+        mx = prey.x - b.x;
+        my = prey.y - b.y;
+        if (Math.hypot(mx, my) < NPC_RULES.contactDist) this.npcs.robbed(prey);
+      } else if (dist < BANDIT.chaseDist) {
         const sign = weak ? -1 : 1;
         mx = (w.x - b.x) * sign;
         my = (w.y - b.y) * sign;

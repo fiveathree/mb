@@ -1,25 +1,22 @@
-import { HORSES, type HorseDef } from '../data/horses';
+import { ATTR_DESC, ATTR_NAME, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
+import { HORSES } from '../data/horses';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type PoolId } from '../data/gacha';
 import { RACES } from '../data/races';
 import { ROLE_LABEL, UNITS } from '../data/units';
-import { LOADOUT_SIZE, PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
+import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
+import { armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
 import {
-  applyCheat, deployment, draw, foodOf, partyFood, partyWage, raceOf, racePenalty, rarityOf, roleCounts,
+  applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rarityOf, roleCounts,
   sortedSoldiers, wageOf, xpToNext, type DrawResult, type Roster, type Soldier,
 } from '../core/roster';
 import type { Hud } from './hud';
 
-type Tab = 'party' | 'roster' | 'gacha';
+type Tab = 'party' | 'hero' | 'roster' | 'gacha';
 
 const PAGE_SIZE = 12;
-const TABS: [Tab, string][] = [['party', '部隊'], ['roster', '軍營'], ['gacha', '抽卡']];
+const TABS: [Tab, string][] = [['party', '部隊'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡']];
 
-export interface CampChoice {
-  horse: HorseDef;
-  loadout: string[];
-}
-
-/** 部隊畫面：裝備、士兵、抽卡，全部一屏 */
+/** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
   private tab: Tab = 'party';
   private page = 0;
@@ -28,7 +25,7 @@ export class Camp {
   private notice = '';
   private onBack: () => void = () => {};
 
-  constructor(private hud: Hud, private roster: Roster, private choice: CampChoice) {}
+  constructor(private hud: Hud, private roster: Roster) {}
 
   setRoster(r: Roster) {
     this.roster = r;
@@ -43,7 +40,7 @@ export class Camp {
 
   private render() {
     const r = this.roster;
-    const body = this.tab === 'party' ? this.partyHtml() : this.tab === 'roster' ? this.rosterHtml() : this.gachaHtml();
+    const body = { party: () => this.partyHtml(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml() }[this.tab]();
     this.hud.showScreen(`
       <div class="card camp">
         <div class="camp-head">
@@ -61,6 +58,7 @@ export class Camp {
   }
 
   private bind() {
+    const hero = this.roster.hero;
     this.$$('#back', (el) => { el.onclick = this.onBack; });
     this.$$('.tab', (el) => {
       el.onclick = () => {
@@ -70,16 +68,35 @@ export class Camp {
     });
     this.$$('.horse', (el) => {
       el.onclick = () => {
-        this.choice.horse = HORSES.find((h) => h.id === el.dataset.id)!;
+        hero.horse = el.dataset.id!;
         this.render();
       };
     });
     this.$$('.wp', (el) => {
       el.onclick = () => {
         const id = el.dataset.id!;
-        const picks = this.choice.loadout;
+        const picks = hero.loadout;
         const next = picks.includes(id) ? picks.filter((p) => p !== id) : [...picks, id].slice(-LOADOUT_SIZE);
-        if (next.length) this.choice.loadout = next;
+        if (next.length) hero.loadout = next;
+        this.render();
+      };
+    });
+    this.$$('.attr', (el) => {
+      el.onclick = () => {
+        if (hero.attrPoints > 0) {
+          hero.attrPoints--;
+          hero.attrs[el.dataset.id as AttrId]++;
+        }
+        this.render();
+      };
+    });
+    this.$$('.skill', (el) => {
+      el.onclick = () => {
+        const id = el.dataset.id as SkillId;
+        if (hero.skillPoints > 0 && hero.skills[id] < HERO.skillMax) {
+          hero.skillPoints--;
+          hero.skills[id]++;
+        }
         this.render();
       };
     });
@@ -87,6 +104,14 @@ export class Camp {
       el.onclick = () => {
         const s = this.roster.soldiers.find((x) => x.id === Number(el.dataset.id));
         if (s) s.benched = !s.benched;
+        this.render();
+      };
+    });
+    this.$$('.promo', (el) => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const s = this.roster.soldiers.find((x) => x.id === Number(el.dataset.id));
+        if (s && !promote(this.roster, s, el.dataset.to!)) this.notice = '金幣不足';
         this.render();
       };
     });
@@ -120,28 +145,50 @@ export class Camp {
   }
 
   private partyHtml(): string {
-    const { horse, loadout } = this.choice;
     const r = this.roster;
+    const hero = r.hero;
     const list = deployment(r);
     const c = roleCounts(list);
     const penalty = racePenalty(r);
+    const limit = Math.min(CAMPAIGN.deployMax, partyLimit(hero, r.soldiers));
+    const notice = this.notice;
+    this.notice = '';
     return `
-      <div class="pick-title">可出戰 ${list.length}／${CAMPAIGN.deployMax} 人：${ROLE_LABEL.infantry} ${c.infantry}・${ROLE_LABEL.archer} ${c.archer}・${ROLE_LABEL.cavalry} ${c.cavalry}</div>
+      <div class="pick-title">可出戰 ${list.length}／${limit} 人：${ROLE_LABEL.infantry} ${c.infantry}・${ROLE_LABEL.archer} ${c.archer}・${ROLE_LABEL.cavalry} ${c.cavalry}</div>
       <div class="pick-title">每日食糧 ${partyFood(r).toFixed(1)}・每週工資 ${partyWage(r)} 金${penalty ? `・混種族士氣 −${penalty}` : ''}</div>
       <div class="pick-title">坐騎</div>
       <div class="horses">
-        ${HORSES.filter((h) => !h.troopOnly).map((h) => `<button class="horse ${h.id === horse.id ? 'on' : ''}" data-id="${h.id}"><b>${h.name}</b><small>${h.desc}</small></button>`).join('')}
+        ${HORSES.filter((h) => hero.horses.includes(h.id)).map((h) => `<button class="horse ${h.id === hero.horse ? 'on' : ''}" data-id="${h.id}"><b>${h.name}</b><small>${h.desc}</small></button>`).join('')}
       </div>
-      <div class="pick-title">武器（揀 ${LOADOUT_SIZE} 件，已揀 ${loadout.length}）</div>
+      <div class="pick-title">武器（揀 ${LOADOUT_SIZE} 件，已揀 ${hero.loadout.length}；更多武器喺城鎮鐵匠買）</div>
       <div class="weapons">
-        ${PLAYER_ARSENAL.map((id) => `<button class="wp ${loadout.includes(id) ? 'on' : ''}" data-id="${id}">${WEAPONS[id].name}</button>`).join('')}
+        ${hero.weapons.map((id) => `<button class="wp ${hero.loadout.includes(id) ? 'on' : ''}" data-id="${id}">${WEAPONS[id].name}</button>`).join('')}
       </div>
       ${this.hud.controlsHtml()}
       <div class="cheat">
         <input id="code" placeholder="密令" maxlength="20" autocomplete="off" />
         <button class="alt small" id="cheat">輸入</button>
-        <span>${this.notice}</span>
+        <span>${notice}</span>
       </div>`;
+  }
+
+  private heroHtml(): string {
+    const r = this.roster;
+    const h = r.hero;
+    const def = playerDef(h);
+    const attrs = (Object.keys(ATTR_NAME) as AttrId[]).map((k) => `
+      <button class="attr" data-id="${k}" ${h.attrPoints ? '' : 'disabled'}><b>${ATTR_NAME[k]} ${h.attrs[k]}</b><small>${ATTR_DESC[k]}</small></button>`).join('');
+    const skills = SKILL_ORDER.map((k) => {
+      const total = skillOf(h, r.soldiers, k);
+      const bonus = total - h.skills[k];
+      return `<button class="skill" data-id="${k}" ${h.skillPoints && h.skills[k] < HERO.skillMax ? '' : 'disabled'}><b>${SKILLS[k].name} ${h.skills[k]}${bonus ? ` +${bonus}` : ''}</b><small>${SKILLS[k].desc}</small></button>`;
+    }).join('');
+    return `
+      <div class="pick-title">等級 ${h.level}・經驗 ${h.xp}／${heroXpNeed(h.level)}・生命 ${def.hp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, r.soldiers)}</div>
+      <div class="pick-title">屬性點 ${h.attrPoints}</div>
+      <div class="attrs">${attrs}</div>
+      <div class="pick-title">技能點 ${h.skillPoints}</div>
+      <div class="skills">${skills}</div>`;
   }
 
   private soldierCard(s: Soldier): string {
@@ -150,11 +197,13 @@ export class Camp {
     const need = xpToNext(s.level);
     const pct = s.level >= LEVEL.max ? 100 : Math.round((s.xp / need) * 100);
     const state = s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
+    const promos = promotions(s).map((p) => `<span class="promo" data-id="${s.id}" data-to="${p.to.id}">升 ${p.to.name} ${p.cost}</span>`).join('');
     return `<button class="sold ${s.benched || s.hurtDays > 0 ? 'bench' : ''}" data-id="${s.id}" style="--r:${rarity.color}">
       <b>${def.name}</b>
       <small>Lv${s.level}・${RACES[raceOf(def)].name}・殺 ${s.kills}${state}</small>
       <small>糧 ${foodOf(def).toFixed(2)}・餉 ${wageOf(def)}</small>
       <i class="xp"><u style="width:${pct}%"></u></i>
+      ${promos}
     </button>`;
   }
 
@@ -164,7 +213,7 @@ export class Camp {
     this.page = Math.min(Math.max(0, this.page), pages - 1);
     const items = all.slice(this.page * PAGE_SIZE, (this.page + 1) * PAGE_SIZE);
     return `
-      <div class="pick-title">全軍 ${all.length} 人，勝 ${this.roster.wins} 場。撳士兵切換出戰／候補；每個兵種食量同工資都唔同。</div>
+      <div class="pick-title">全軍 ${all.length} 人，勝 ${this.roster.wins} 場。撳士兵切換出戰／候補；3 級起可以升階。</div>
       <div class="soldiers">${items.map((s) => this.soldierCard(s)).join('')}</div>
       <div class="row pagerow">
         <button class="alt pager" data-step="-1" ${this.page ? '' : 'disabled'}>上一頁</button>

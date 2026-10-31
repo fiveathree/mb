@@ -321,7 +321,7 @@ export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Comba
 /** 推進出招狀態機 */
 export function updateAction(c: Combatant, dt: number, world: CombatWorld) {
   const w = c.weapon;
-  c.phaseT += dt;
+  c.phaseT += dt * (c.def.actionSpeed ?? 1);
   switch (c.phase) {
     case 'charge':
       c.charge = clamp(c.phaseT / w.chargeFull, 0, 1);
