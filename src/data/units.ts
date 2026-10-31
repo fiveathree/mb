@@ -428,6 +428,7 @@ UNITS.boss_witch = {
   ...boss('boss_witch', '滅國魔女', 'human', 'witch_curse', 2000, 12, 0.7, 5), role: 'mage', weapons: ['witch_curse', 'lich_bolt', 'boss_fist'],
   scale: 1.25, trimColor: 0x6a1a7a, plumeColor: 0xc040e0, skin: 0xf0d8e0,
 };
+UNITS.boss_warlord = { ...boss('boss_warlord', '割據梟雄', 'human', 'boss_club', 1500, 18, 0.9, 4.6), scale: 1.25, trimColor: 0x8a2a1a, plumeColor: 0xd9b24a, horse: undefined };
 /** 離巢巨龍輪流係五色之一 */
 export const DRAGON_BREEDS = ['boss_dragon', 'boss_dragon_white', 'boss_dragon_blue', 'boss_dragon_green', 'boss_dragon_black'];
 

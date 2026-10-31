@@ -1,5 +1,6 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
-import { FIGURES, GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
+import { GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, figuresFor, type RoutineStep } from '../data/figures';
+import { isMagic } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
@@ -105,7 +106,7 @@ export class NpcSystem {
     while (count('patrol') < NPC.patrol.max) this.spawn('patrol', towns[count('patrol') % towns.length]);
     while (count('fisher') < NPC.fisher.max) this.spawn('fisher', pick(villages));
     while (count('miner') < NPC.miner.max) this.spawn('miner', pick(villages));
-    for (const f of FIGURES) {
+    for (const f of figuresFor(isMagic())) {
       if (this.save.pol.storyMet.includes(f.id) || list.some((n) => n.figure === f.id)) continue;
       const n = this.spawn('figure', placeOf(f.home));
       n.figure = f.id;
@@ -116,14 +117,15 @@ export class NpcSystem {
     if (this.day() >= this.save.nextRaid && count('raider') < NPC.raider.max) {
       this.spawn('raider', placeOf('blackfang'));
       this.save.nextRaid = this.day() + NPC_RULES.raidEveryDays;
-      this.note('黑牙堡嘅掠奪隊出動！');
+      this.note(`${placeOf('blackfang').name}嘅掠奪隊出動！`);
     }
-    if (this.day() >= this.save.nextDragon && count('dragon') < NPC.dragon.max) {
+    if (isMagic() && this.day() >= this.save.nextDragon && count('dragon') < NPC.dragon.max) {
       this.spawn('dragon', placeOf('dragonlair'));
       this.save.nextDragon = this.day() + NPC_RULES.dragonEveryDays;
       this.note('巨龍離巢！全大陸震動');
     }
     for (const kind of ['witch', 'wyrm'] as const) {
+      if (!isMagic()) break;
       const rule = CALAMITY[kind];
       const key = kind === 'witch' ? 'nextWitch' : 'nextWyrm';
       if (this.day() < this.save[key] || count(kind) >= NPC[kind].max) continue;
@@ -294,7 +296,7 @@ export class NpcSystem {
       case 'witch':
       case 'wyrm': {
         if (n.done) {
-          this.setTrip(n, home, n.kind === 'raider' ? '搶完返黑牙堡' : `返去${home.name}`);
+          this.setTrip(n, home, `返去${home.name}`);
         } else {
           // 災厄連城鎮都會打
           const to = pick(n.kind === 'witch' || n.kind === 'wyrm' ? [...villages, ...towns] : villages);

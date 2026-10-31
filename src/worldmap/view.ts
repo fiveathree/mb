@@ -180,7 +180,7 @@ export class WorldView {
 
   private visiblePlaces(): PlaceDef[] {
     const w = this.world.save;
-    return PLACES.filter((p) => !p.hidden || w.discovered.includes(p.id));
+    return PLACES.filter((p) => !p.gone && (!p.hidden || w.discovered.includes(p.id)));
   }
 
   private click(e: MouseEvent) {

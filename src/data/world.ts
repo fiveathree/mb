@@ -196,6 +196,8 @@ export interface PlaceDef {
   hidden?: boolean;
   /** 攻破掉落神器 */
   artifact?: string;
+  /** 呢個劇本冇呢個地點 */
+  gone?: boolean;
   /** 魔物城市：地圖上畫成獠牙寨城 */
   monster?: boolean;
   /** 酒館傭兵，冇就跟劇本 */

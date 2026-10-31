@@ -59,12 +59,19 @@ export const FACTIONS: FactionDef[] = [
 
 export const factionOf = (id: string) => FACTIONS.find((f) => f.id === id);
 
+const BASE_NAMES = FACTIONS.map((f) => f.name);
+
 /** 各國領主，同勢力次序對應 */
 export const LORDS = [
   '獅盔公 雷昂', '鐵顎伯 霍恩', '玄甲侯 司徒烈', '蜀山君 嚴棠', '江東將軍 陸沉', '烏衣都督 墨淵', '赤水將軍 岳鋒', '青城侯 林霽',
   '月冠女公 希蕾', '岩心領主 杜林', '碎顱酋長 格倫', '蒼白司教 瓦倫', '霜狼領主 布蘭', '影語主母 薇拉', '魔物之長 利姆',
 ];
-export const lordOf = (id: string) => LORDS[FACTIONS.findIndex((f) => f.id === id)] ?? '無名領主';
+/** 冇 realms 嘅劇本先用奇幻領主名，其餘用勢力名 */
+export const lordOf = (id: string) => {
+  const i = FACTIONS.findIndex((f) => f.id === id);
+  if (i < 0) return '無名領主';
+  return BASE_NAMES[i] === FACTIONS[i].name ? LORDS[i] : `${FACTIONS[i].name}之主`;
+};
 
 /** 領主部隊：好感同人數 */
 export const LORD_RULES = { visitCost: 200, visitRelation: 3, renown: 6, partyShare: 0.7, level: 3 };

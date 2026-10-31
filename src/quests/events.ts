@@ -1,5 +1,5 @@
 import { EVENTS, EVENT_RULES, type StoryEvent } from '../data/quests';
-import { currentScenario } from '../data/scenarios';
+import { currentScenario, isMagic } from '../data/scenarios';
 import { addSoldier, spend } from '../core/roster';
 import { gainHeroXp } from '../core/hero';
 import type { World } from '../worldmap/world';
@@ -8,7 +8,7 @@ import type { World } from '../worldmap/world';
 export function rollEvent(world: World, day: number): StoryEvent | null {
   if (day < EVENT_RULES.firstDay || Math.random() > EVENT_RULES.chance) return null;
   const men = world.roster.soldiers.length;
-  const list = EVENTS.filter((e) => men >= (e.needMen ?? 0));
+  const list = EVENTS.filter((e) => men >= (e.needMen ?? 0) && (!e.magic || isMagic()));
   return list[Math.floor(Math.random() * list.length)] ?? null;
 }
 

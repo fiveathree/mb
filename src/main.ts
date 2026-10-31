@@ -5,7 +5,8 @@ import { ARTIFACTS, DUNGEON, LORD_RULES, PLAYABLE, SIEGE, START_REGIONS, faction
 import { showNewGame } from './ui/newgame';
 import { showFormationPick } from './ui/formation';
 import { formationsFor, type FormationCheck } from './core/formation';
-import { applyScenario, currentScenario, scenarioOf } from './data/scenarios';
+import { applyScenario, currentScenario, isMagic, scenarioOf } from './data/scenarios';
+import { UNITS } from './data/units';
 import {
   addSoldier, applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
 } from './core/roster';
@@ -206,6 +207,7 @@ function storyHeroAt(p: PlaceDef): StoryHero | undefined {
   const w = world.save;
   const s = w.pol;
   return STORY_HEROES.find((h) => h.place === p.id
+    && (isMagic() || (UNITS[h.unit].race ?? 'human') === 'human')
     && !s.storyMet.includes(h.id) && !roster.soldiers.some((x) => x.unit === h.unit)
     && s.justice >= (h.minJustice ?? -101) && s.justice <= (h.maxJustice ?? 101)
     && s.loyalty >= (h.minLoyalty ?? -101) && s.renown >= (h.minRenown ?? 0)
@@ -328,7 +330,7 @@ function fieldTheme(): BattleTheme {
 function grantMount(key: string): string {
   const id = MOUNT_REWARD[key];
   const def = HORSES.find((h) => h.id === id);
-  if (!def || roster.hero.horses.includes(id)) return '';
+  if (!def || roster.hero.horses.includes(id) || (def.fantasy && !isMagic())) return '';
   roster.hero.horses.push(id);
   return `[${RARITY[HORSE_RANK[id]].name}] 坐騎 ${def.name}`;
 }

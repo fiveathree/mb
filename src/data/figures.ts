@@ -58,7 +58,7 @@ export const FIGURES: FigureDef[] = [
   },
   {
     id: 'fig_miner', name: '礦頭 石老大', desc: '一鎚可以開山', rarity: 'special', role: 'infantry', tier: 4, hp: 170, armor: 10, weapons: ['elite_axe'],
-    color: 0x6a6258, race: 'dwarf', aura: 2, home: 'anvilhold', price: 1200, renown: 5,
+    color: 0x6a6258, aura: 2, home: 'anvilhold', price: 1200, renown: 5,
     routine: [{ job: '落礦坑掘礦', go: 'mine', wait: 12, grow: true }, sellAtTown, rest],
   },
   {
@@ -153,6 +153,10 @@ export const MILESTONES: Record<string, Record<number, { text: string; seize?: b
 };
 
 export const figureOf = (id: string) => FIGURES.find((f) => f.id === id);
+
+/** 只喺有魔法嘅劇本出現 */
+const MAGIC_FIGURES = ['fig_immortal', 'fig_vampire', 'fig_assassin', 'fig_slimelord'];
+export const figuresFor = (magic: boolean) => FIGURES.filter((f) => magic || !MAGIC_FIGURES.includes(f.id));
 
 /** 招請價：愈修練愈貴 */
 export const figurePrice = (f: FigureDef, growth: number, favored = false) => Math.round(f.price * (1 + growth * 0.08) * (favored ? FAVOR_DISCOUNT : 1));

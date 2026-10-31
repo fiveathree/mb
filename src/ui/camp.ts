@@ -1,6 +1,7 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, STABLES } from '../data/horses';
-import { FIGURES } from '../data/figures';
+import { figuresFor } from '../data/figures';
+import { currentScenario } from '../data/scenarios';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
@@ -292,10 +293,11 @@ export class Camp {
       const shops = Object.entries(STABLES).filter(([, l]) => l.includes(id)).map(([p]) => placeName(p));
       return shops.length ? `${shops.join('、')}馬房` : '各地鐵匠';
     };
-    const mounts = HORSES.filter((h) => !h.troopOnly).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
+    const magic = currentScenario().cultures.includes('magic');
+    const mounts = HORSES.filter((h) => !h.troopOnly && (!h.fantasy || magic)).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
       `<div class="codex-row ${hero.horses.includes(h.id) ? 'own' : ''}">${tag(HORSE_RANK[h.id])} ${h.name}<small>${source(h.id)}</small></div>`
     )).join('');
-    const figures = FIGURES.map((f) => {
+    const figures = figuresFor(magic).map((f) => {
       const n = w.npcs.find((x) => x.figure === f.id);
       const near = n && PLACES.reduce((b, p) => (Math.hypot(p.x - n.x, p.y - n.y) < Math.hypot(b.x - n.x, b.y - n.y) ? p : b));
       const where = n && near ? `${near.name}一帶：${n.job}` : '已入隊';
