@@ -32,8 +32,12 @@ export const PARTY = {
   /** 基本行軍速度（格／秒） */
   speed: 5.4,
   /** 每人減速比例，最多減 sizeMax */
-  sizePenalty: 0.006,
-  sizePenaltyMax: 0.4,
+  sizePenalty: 0.012,
+  sizePenaltyMax: 0.6,
+  /** 地圖上部隊圓點：半徑 = 基本 + 平方根(人數) × 比例 */
+  dotBase: 4,
+  dotPerRootMan: 1.3,
+  dotMax: 20,
   /** 全騎兵時加速比例 */
   cavalryBonus: 0.35,
   encounterDist: 1.8,
@@ -65,8 +69,14 @@ export const BANDIT = {
   chaseDist: 13,
   /** 遭遇後幾耐唔會再被截（秒） */
   graceSeconds: 8,
-  /** 比玩家弱過呢個比例就走 */
-  fleeRatio: 0.5,
+  /** 戰力低過對方呢個比例就走 */
+  fleeRatio: 0.7,
+  /** 人數低過對方呢個比例都會走 */
+  fleeSizeRatio: 0.8,
+  /** 幾遠見到大軍就開始避（格） */
+  fleeSight: 24,
+  /** 每人減速比例：賊愈多行愈慢 */
+  sizeSlow: 0.012,
   /** 人數同日數嘅關係 */
   baseSize: 5,
   sizePerDay: 0.16,

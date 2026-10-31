@@ -7,7 +7,7 @@ import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
 import { CAMPAIGN } from '../data/gacha';
 import {
-  armyPower, deployment, partyFood, partyWage, rarityOf, rosterPower, type Roster,
+  armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
 } from '../core/roster';
 import { WorldTerrain } from './terrain';
 
@@ -151,7 +151,8 @@ export class World {
   }
 
   partySpeed(): number {
-    const list = deployment(this.roster);
+    // 全軍都要行，連候補同傷兵都計
+    const list = this.roster.soldiers;
     const n = list.length || 1;
     const cav = list.filter((s) => UNITS[s.unit].horse).length / n;
     const size = Math.min(PARTY.sizePenaltyMax, n * PARTY.sizePenalty);
@@ -382,35 +383,67 @@ export class World {
         this.graceT = BANDIT.graceSeconds;
         return { type: 'bandit', bandit: b };
       }
-      const weak = armyPower(banditArmy(b), b.level) < mine * BANDIT.fleeRatio;
+      const weak = armyPower(banditArmy(b), b.level) < mine * BANDIT.fleeRatio
+        || b.size < this.roster.soldiers.length * BANDIT.fleeSizeRatio;
       let mx = b.tx - b.x;
       let my = b.ty - b.y;
       const prey = this.npcs.preyFor(b);
-      if (prey && dist >= BANDIT.chaseDist) {
+      const threat = this.nearestThreat(b, weak);
+      if (threat) {
+        // 細隊山賊避開大軍
+        mx = b.x - threat.x;
+        my = b.y - threat.y;
+      } else if (prey && dist >= BANDIT.chaseDist) {
         // 山賊會去劫商隊同農民，唔係亂行
         mx = prey.x - b.x;
         my = prey.y - b.y;
         if (Math.hypot(mx, my) < NPC_RULES.contactDist) this.npcs.robbed(prey);
       } else if (dist < BANDIT.chaseDist) {
-        const sign = weak ? -1 : 1;
-        mx = (w.x - b.x) * sign;
-        my = (w.y - b.y) * sign;
+        mx = w.x - b.x;
+        my = w.y - b.y;
       } else if (Math.hypot(mx, my) < 1) {
         b.tx = b.x + (Math.random() - 0.5) * 30;
         b.ty = b.y + (Math.random() - 0.5) * 30;
       }
-      const len = Math.hypot(mx, my) || 1;
-      const nx = b.x + (mx / len) * BANDIT.speed * dt;
-      const ny = b.y + (my / len) * BANDIT.speed * dt;
+      this.stepBandit(b, mx, my, dt);
+    }
+    return null;
+  }
+
+  /** 最近要避嘅大軍：玩家或者比佢大嘅巡邏隊 */
+  private nearestThreat(b: BanditParty, weakToPlayer: boolean): { x: number; y: number } | null {
+    const w = this.save;
+    let best: { x: number; y: number } | null = null;
+    let bestD: number = BANDIT.fleeSight;
+    const consider = (x: number, y: number) => {
+      const d = Math.hypot(x - b.x, y - b.y);
+      if (d < bestD) {
+        bestD = d;
+        best = { x, y };
+      }
+    };
+    if (weakToPlayer) consider(w.x, w.y);
+    for (const n of w.npcs) {
+      if ((n.kind === 'patrol' || n.kind === 'raider') && b.size < n.size * BANDIT.fleeSizeRatio) consider(n.x, n.y);
+    }
+    return best;
+  }
+
+  /** 行一步；撞牆就試下斜行，避免逃跑時卡住 */
+  private stepBandit(b: BanditParty, mx: number, my: number, dt: number) {
+    const speed = BANDIT.speed * Math.max(0.5, 1 - b.size * BANDIT.sizeSlow) * dt;
+    const base = Math.atan2(my, mx);
+    for (const turn of [0, 0.7, -0.7, 1.4, -1.4]) {
+      const nx = b.x + Math.cos(base + turn) * speed;
+      const ny = b.y + Math.sin(base + turn) * speed;
       if (this.terrain.passable(Math.round(nx), Math.round(ny))) {
         b.x = nx;
         b.y = ny;
-      } else {
-        b.tx = b.x;
-        b.ty = b.y;
+        return;
       }
     }
-    return null;
+    b.tx = b.x;
+    b.ty = b.y;
   }
 
   removeBandit(b: BanditParty) {

@@ -4,7 +4,7 @@ import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/
 import { ARTIFACTS, DUNGEON, PLAYABLE, START_REGIONS, factionOf } from './data/factions';
 import { showNewGame } from './ui/newgame';
 import {
-  applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
+  addSoldier, applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
 } from './core/roster';
 import { SLOT_COUNT, deleteSlot, readSlots, writeSlot, type GameSave } from './core/save';
 import type { ArmyEntry } from './data/battlefield';
@@ -331,9 +331,15 @@ async function showMenu() {
       }
       showNewGame(hud, (c) => {
         const r = newRoster();
-        r.hero = createHero({ race: c.race, background: c.background });
-        r.gold = c.background.gold;
+        const bg = c.background;
+        r.hero = createHero({ race: c.race, background: bg });
+        r.gold = bg.gold;
+        r.soldiers = [];
+        for (const e of bg.army) for (let i = 0; i < e.count; i++) addSoldier(r, e.unit);
+        r.tickets.human += bg.tickets ?? 0;
         const w = newWorld();
+        w.food = bg.food;
+        w.pol.renown = Math.max(0, bg.renown ?? 0);
         const start = START_REGIONS[c.region];
         const place = PLACES.find((p) => p.id === start.place)!;
         w.x = place.x + 3;

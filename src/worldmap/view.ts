@@ -1,4 +1,4 @@
-import { MAP, PLACES, PLACE_ICON, type PlaceDef } from '../data/world';
+import { MAP, PARTY, PLACES, PLACE_ICON, type PlaceDef } from '../data/world';
 import { NPC, NPC_RULES } from '../data/economy';
 import { factionOf } from '../data/factions';
 import { PLAYER } from '../politics/politics';
@@ -9,6 +9,8 @@ const PX = MAP.tilePx;
 const PAN_SPEED = 620;
 const TILE_FOG = 'rgba(10, 14, 24, 0.82)';
 const CLICK_RADIUS = 2.6;
+
+const dotRadius = (men: number) => Math.min(PARTY.dotMax, PARTY.dotBase + Math.sqrt(men) * PARTY.dotPerRootMan);
 
 /** 大地圖畫面：畫地圖、處理點擊同平移 */
 export class WorldView {
@@ -174,13 +176,14 @@ export class WorldView {
 
     for (const b of w.bandits) {
       if (Math.hypot(b.x - w.x, b.y - w.y) > this.world.vision) continue;
+      const radius = dotRadius(b.size);
       g.fillStyle = '#d6352a';
       g.beginPath();
-      g.arc(sx(b.x), sy(b.y), 6, 0, Math.PI * 2);
+      g.arc(sx(b.x), sy(b.y), radius, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = '#fff';
       g.font = '11px "Microsoft JhengHei", sans-serif';
-      g.fillText(`山賊 ${b.size}`, sx(b.x), sy(b.y) - 13);
+      g.fillText(`山賊 ${b.size} 人`, sx(b.x), sy(b.y) - radius - 7);
     }
 
     g.font = '11px "Microsoft JhengHei", sans-serif';
@@ -191,28 +194,39 @@ export class WorldView {
       g.fillStyle = def.color;
       g.strokeStyle = '#1b2433';
       g.lineWidth = 1.5;
+      const radius = dotRadius(n.size);
       g.beginPath();
-      if (n.size > 3) g.rect(sx(n.x) - 5, sy(n.y) - 5, 10, 10);
-      else g.arc(sx(n.x), sy(n.y), 4, 0, Math.PI * 2);
+      if (n.size > 3) g.rect(sx(n.x) - radius, sy(n.y) - radius, radius * 2, radius * 2);
+      else g.arc(sx(n.x), sy(n.y), radius, 0, Math.PI * 2);
       g.fill();
       g.stroke();
       if (dist < NPC_RULES.labelDist) {
-        const text = `${def.name}：${n.job}`;
+        const text = `${def.name} ${n.size} 人：${n.job}`;
         g.lineWidth = 3;
         g.strokeStyle = 'rgba(12,15,22,.85)';
-        g.strokeText(text, sx(n.x), sy(n.y) - 13);
+        g.strokeText(text, sx(n.x), sy(n.y) - radius - 7);
         g.fillStyle = '#fff4dc';
-        g.fillText(text, sx(n.x), sy(n.y) - 13);
+        g.fillText(text, sx(n.x), sy(n.y) - radius - 7);
       }
     }
 
+    // 自己部隊：人愈多粒點愈大
+    const men = this.world.roster.soldiers.length + 1;
+    const radius = dotRadius(men);
     g.fillStyle = '#f2c14e';
     g.strokeStyle = '#1b2433';
     g.lineWidth = 2;
     g.beginPath();
-    g.arc(sx(w.x), sy(w.y), 8, 0, Math.PI * 2);
+    g.arc(sx(w.x), sy(w.y), radius, 0, Math.PI * 2);
     g.fill();
     g.stroke();
+    const label = `你 ${men} 人`;
+    g.font = 'bold 13px "Microsoft JhengHei", sans-serif';
+    g.lineWidth = 3;
+    g.strokeStyle = 'rgba(12,15,22,.9)';
+    g.strokeText(label, sx(w.x), sy(w.y) - radius - 9);
+    g.fillStyle = '#ffe9a8';
+    g.fillText(label, sx(w.x), sy(w.y) - radius - 9);
   }
 
   private drawPlace(p: PlaceDef, x: number, y: number) {
@@ -248,7 +262,8 @@ export class WorldView {
       `金 ${r.infiniteGold ? '∞' : r.gold}`,
       `糧 ${Math.floor(w.food)}（−${partyFood(r).toFixed(1)}／日）`,
       `餉 ${partyWage(r)}／週`,
-      `兵 ${r.soldiers.length}${hurt ? `（傷 ${hurt}）` : ''}`,
+      `部隊 ${r.soldiers.length + 1} 人${hurt ? `（傷 ${hurt}）` : ''}`,
+      `行軍 ${this.world.partySpeed().toFixed(1)}`,
       `士氣 ${Math.round(w.morale)}`,
       `聲望 ${w.pol.renown}`,
     ];

@@ -3,6 +3,7 @@ import {
 } from '../data/economy';
 import { ARTIFACTS, PLAYABLE, type ArtifactDef, type PlayableRace, type StartOption } from '../data/factions';
 import { HORSES, type HorseDef } from '../data/horses';
+import { LOADOUT_SIZE } from '../data/weapons';
 import { PLAYER_UNIT, type UnitDef } from '../data/units';
 import type { Soldier } from './roster';
 
@@ -50,6 +51,17 @@ export function createHero(start: HeroStart): Hero {
   }
   if (start.race === 'human') h.skillPoints += 2;
   if (start.race === 'halfling') h.skills.trade += 2;
+  const bg = start.background;
+  for (const id of bg.weapons ?? []) {
+    if (h.weapons.includes(id)) continue;
+    h.weapons.push(id);
+    if (h.loadout.length < LOADOUT_SIZE) h.loadout.push(id);
+  }
+  for (const [k, v] of Object.entries(bg.skills ?? {})) h.skills[k as SkillId] += v;
+  if (bg.horse) {
+    h.horses.push(bg.horse);
+    h.horse = bg.horse;
+  }
   return h;
 }
 

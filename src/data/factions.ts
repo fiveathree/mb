@@ -1,4 +1,5 @@
 import type { ArmyEntry } from './battlefield';
+import type { SkillId } from './economy';
 
 export type Region = 'west' | 'center' | 'south' | 'north';
 export const REGION_NAME: Record<Region, string> = { west: '西境', center: '中原', south: '南域', north: '北荒魔域' };
@@ -128,7 +129,9 @@ export const ARTIFACTS: ArtifactDef[] = [
 ];
 
 /** 主角開局 */
-export type PlayableRace = 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon';
+export type PlayableRace =
+  | 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon'
+  | 'goblin' | 'lizard' | 'minotaur' | 'undead';
 
 export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>; spell?: string; friend?: string; foe?: string }> = {
   human: { name: '人類', desc: '平均，起步多 2 技能點', attrs: { cha: 1 } },
@@ -139,6 +142,10 @@ export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs:
   beastkin: { name: '獸人族', desc: '敏捷 +1、跳得高', attrs: { agi: 2 }, friend: 'wuyi' },
   halfling: { name: '半身人', desc: '敏捷 +1，交易 +2', attrs: { agi: 1 } },
   demon: { name: '魔族', desc: '智力 +2，起步火球', attrs: { int: 2 }, spell: 'fireball', friend: 'undead', foe: 'griffin' },
+  goblin: { name: '哥布林', desc: '細粒快腳，敏捷 +2、力量 −1', attrs: { agi: 2, str: -1 }, friend: 'orcs', foe: 'dwarves' },
+  lizard: { name: '蜥蜴人', desc: '力敏各 +1，沼澤戰士', attrs: { str: 1, agi: 1 } },
+  minotaur: { name: '牛頭人', desc: '力量 +3、敏捷 −1，又大隻又食得', attrs: { str: 3, agi: -1 }, foe: 'griffin' },
+  undead: { name: '亡靈', desc: '智力 +2、魅力 −1，唔使食飯', attrs: { int: 2, cha: -1 }, spell: 'lightning', friend: 'undead', foe: 'sylvan' },
 };
 
 export interface StartOption {
@@ -147,13 +154,38 @@ export interface StartOption {
   desc: string;
   gold: number;
   attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>;
+  /** 起步部隊 */
+  army: ArmyEntry[];
+  /** 起步糧食 */
+  food: number;
+  /** 額外武器 */
+  weapons?: string[];
+  /** 額外技能 */
+  skills?: Partial<Record<SkillId, number>>;
+  /** 起步招募令 */
+  tickets?: number;
+  /** 起步馬匹 */
+  horse?: string;
+  /** 額外聲望 */
+  renown?: number;
 }
 
+const footmen = (n: number): ArmyEntry => ({ unit: 'footman', count: n });
+const archers = (n: number): ArmyEntry => ({ unit: 'archer', count: n });
+
 export const BACKGROUNDS: StartOption[] = [
-  { id: 'farmer', name: '農夫', desc: '耐勞，少錢', gold: 700, attrs: { str: 2 } },
-  { id: 'noble', name: '貴族之後', desc: '魅力高，多錢', gold: 2200, attrs: { cha: 2 } },
-  { id: 'merc', name: '傭兵', desc: '身手好', gold: 1200, attrs: { agi: 1, str: 1 } },
-  { id: 'merchant', name: '商人', desc: '金錢最多', gold: 3000, attrs: { int: 2 } },
+  { id: 'farmer', name: '農家子弟', desc: '同鄉跟你出嚟，人多錢少', gold: 500, food: 100, attrs: { str: 2 }, army: [footmen(12), archers(2)] },
+  { id: 'noble', name: '落難貴族', desc: '有錢有戰馬，但得幾個親兵', gold: 2500, food: 60, attrs: { cha: 2 }, army: [{ unit: 'lancer', count: 3 }, footmen(3)], horse: 'warhorse', renown: 15, skills: { leadership: 1 } },
+  { id: 'merc', name: '傭兵老手', desc: '身手好，帶住老伙記', gold: 1200, food: 60, attrs: { agi: 1, str: 1 }, army: [footmen(6), { unit: 'axeman', count: 3 }, archers(3), { unit: 'horseman', count: 2 }] },
+  { id: 'merchant', name: '行商之子', desc: '錢最多，人最少', gold: 3600, food: 80, attrs: { int: 2 }, army: [footmen(3), archers(2)], horse: 'pack', skills: { trade: 3 } },
+  { id: 'slave', name: '逃亡奴隸', desc: '一無所有，靠狠勁', gold: 80, food: 15, attrs: { str: 2, agi: 2 }, army: [], skills: { ironskin: 2 } },
+  { id: 'gladiator', name: '角鬥士', desc: '雙手斧同一身傷疤', gold: 400, food: 25, attrs: { str: 3 }, army: [footmen(2)], weapons: ['axe'], skills: { ironskin: 1 }, renown: 8 },
+  { id: 'hunter', name: '山林獵戶', desc: '長弓在手，帶住獵友', gold: 500, food: 70, attrs: { agi: 2 }, army: [archers(8)], weapons: ['longbow'], skills: { archery: 3 } },
+  { id: 'bandit', name: '山賊頭目', desc: '帶住一班兄弟金盆洗手', gold: 900, food: 40, attrs: { str: 1, agi: 1 }, army: [footmen(8), archers(3), { unit: 'horseman', count: 3 }], renown: -5 },
+  { id: 'apprentice', name: '法師學徒', desc: '識火球同治療，唔識打', gold: 800, food: 40, attrs: { int: 3, str: -1 }, army: [footmen(3)], weapons: ['fireball', 'heal'], skills: { magic: 3 } },
+  { id: 'priest', name: '遊方醫者', desc: '識治傷，人人都想親近', gold: 700, food: 50, attrs: { cha: 1, int: 1 }, army: [footmen(4), archers(2)], weapons: ['heal'], skills: { medicine: 4 } },
+  { id: 'knight', name: '被逐騎士', desc: '騎槍同披甲戰馬係最後財產', gold: 300, food: 30, attrs: { str: 1, cha: 1 }, army: [footmen(2)], horse: 'warhorse', skills: { riding: 3 }, renown: 10 },
+  { id: 'heir', name: '部落遺孤', desc: '手持招募令，等待復興', gold: 700, food: 40, attrs: { cha: 2 }, army: [footmen(4)], tickets: 6 },
 ];
 
 export const START_REGIONS: Record<Region, { place: string; relation: string }> = {

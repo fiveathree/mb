@@ -71,6 +71,8 @@ html, body {
 #nametags .ally { color: var(--gold); }
 #nametags .foe { color: #ff8a78; }
 
+.detail { min-height: 19px; margin-bottom: 8px; font-size: 13px; color: var(--gold); text-align: left; }
+
 /* 大地圖 */
 #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #16202f; }
 #map[hidden] { display: none !important; }
