@@ -124,6 +124,8 @@ export class Battle implements CombatWorld {
   private rockT = 0;
   private traps: { x: number; z: number; cd: number }[] = [];
   private rockSide = 0;
+  private towers: { x: number; z: number; mesh: THREE.Group; done: boolean }[] = [];
+  private catapults: { x: number; z: number; team: number; mesh: THREE.Group; hold: number }[] = [];
   private defending = false;
   private fliers!: Fliers;
   /** 教學用：每幀回呼 */
@@ -218,6 +220,8 @@ export class Battle implements CombatWorld {
     this.siege = breaches > 0 || dungeon;
     this.dungeon = dungeon;
     this.traps = [];
+    this.towers = [];
+    this.catapults = [];
     this.obstacles = this.baseObstacles;
     if (!this.siege) return;
     const spots: { x: number; z: number }[] = [];
@@ -311,12 +315,17 @@ export class Battle implements CombatWorld {
       this.wall.add(mesh);
     };
     const { gaps, width } = this.walls[0];
-    const towers = gaps.map((g) => g + width / 2 + 3);
-    for (const x of towers) {
-      place(new THREE.BoxGeometry(4.4, 11, 4.4), x, Z - 3.6, 5.5);
-      place(new THREE.BoxGeometry(5, 0.5, 5), x, Z - 3.6, 11.2);
+    this.buildRampart(gaps, width);
+    this.towers = gaps.map((g) => this.buildTower(g + width / 2 + 6, wood));
+    this.catapults = [];
+    for (const x of SIEGE.catapultX) {
+      this.buildCatapult(x, Z + SIEGE.catapultBack, 1, wood);
+      if (this.defending) {
+        // 守城：我方喺牆後，敵方喺牆外
+        this.catapults[this.catapults.length - 1].team = 0;
+        this.buildCatapult(x, Z - SIEGE.catapultFront, 1, wood);
+      }
     }
-    this.obstacles = [...this.obstacles, ...towers.map((x) => ({ x, z: Z - 3.6, r: 2.8 }))];
     const ladders: number[] = [];
     for (let x = -W + ladderEvery / 2; x < W; x += ladderEvery) {
       if (gaps.some((g) => Math.abs(g - x) < width * 1.2)) continue;
@@ -327,14 +336,121 @@ export class Battle implements CombatWorld {
     this.walls[0].ladders = ladders;
   }
 
-  /** 爬雲梯時離地幾高 */
+  /** 牆後走道同斜坡：守軍企得上去，爬過牆嘅人行得落嚟 */
+  private buildRampart(gaps: number[], width: number) {
+    const { wallZ: Z, wallHalfWidth: W, wallTop, walkway, rampEnd } = SIEGE;
+    const xs: number[] = [];
+    for (let x = -W; x < W; x += 2) if (!gaps.some((g) => Math.abs(g - x) < width / 2 + 1)) xs.push(x);
+    const stone = new THREE.MeshLambertMaterial({ color: 0x77736a, flatShading: true });
+    const run = rampEnd - walkway;
+    const tilt = Math.atan2(wallTop, run);
+    const deck = new THREE.InstancedMesh(new THREE.BoxGeometry(2.05, wallTop + 1, walkway), stone, xs.length);
+    const ramp = new THREE.InstancedMesh(new THREE.BoxGeometry(2.05, 0.5, Math.hypot(run, wallTop)), stone, xs.length);
+    const d = new THREE.Object3D();
+    xs.forEach((x, i) => {
+      d.rotation.set(0, 0, 0);
+      d.position.set(x, heightAt(x, Z) + wallTop / 2 - 0.5, Z + walkway / 2 + 0.6);
+      d.updateMatrix();
+      deck.setMatrixAt(i, d.matrix);
+      d.rotation.x = tilt;
+      d.position.set(x, heightAt(x, Z) + wallTop / 2, Z + walkway + run / 2);
+      d.updateMatrix();
+      ramp.setMatrixAt(i, d.matrix);
+    });
+    this.wall.add(deck, ramp);
+  }
+
+  /** 攻城塔：由遠處推埋嚟，靠牆先入得城 */
+  private buildTower(x: number, wood: THREE.Material): { x: number; z: number; mesh: THREE.Group; done: boolean } {
+    const mesh = new THREE.Group();
+    for (const [a, b] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 0.4), wood);
+      post.position.set(a, 4.5, b);
+      mesh.add(post);
+    }
+    for (const y of [3, 6.5, 9]) {
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.3, 4.8), wood);
+      floor.position.y = y;
+      mesh.add(floor);
+    }
+    for (const a of [-2.4, 2.4]) {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8, 4.8), wood);
+      side.position.set(a, 4.6, 0);
+      mesh.add(side);
+    }
+    mesh.traverse((o) => { o.castShadow = true; });
+    this.wall.add(mesh);
+    return { x, z: SIEGE.wallZ - SIEGE.towerStart, mesh, done: false };
+  }
+
+  private buildCatapult(x: number, z: number, team: number, wood: THREE.Material) {
+    const mesh = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 4), wood);
+    base.position.y = 0.5;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 0.4), wood);
+    post.position.y = 1.7;
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 5), wood);
+    arm.position.set(0, 2.6, 0);
+    arm.rotation.x = team === 1 ? 0.6 : -0.6;
+    mesh.add(base, post, arm);
+    mesh.position.set(x, heightAt(x, z), z);
+    mesh.traverse((o) => { o.castShadow = true; });
+    this.wall.add(mesh);
+    this.catapults.push({ x, z, team, mesh, hold: 0 });
+  }
+
+  /** 弓手沿走道散開，避開缺口 */
+  private deployOnWall(g: Group) {
+    const { gaps, width } = this.walls[0];
+    const spots: number[] = [];
+    for (let x = 0; x < SIEGE.wallHalfWidth - 4; x += SIEGE.archerSpacing) {
+      for (const s of x ? [x, -x] : [0]) if (!gaps.some((v) => Math.abs(v - s) < width / 2 + 2)) spots.push(s);
+    }
+    g.fixedSlots = true;
+    g.members.forEach((c, i) => {
+      c.ai!.slotX = spots[i % spots.length];
+      c.ai!.slotZ = SIEGE.wallZ + SIEGE.archerZ;
+    });
+  }
+
+  /** 攻城塔推進、投石機被埋身就毀 */
+  private updateSiege(dt: number) {
+    for (const t of this.towers) {
+      if (t.done) continue;
+      t.z = Math.min(SIEGE.wallZ - SIEGE.towerStop, t.z + SIEGE.towerSpeed * dt);
+      t.mesh.position.set(t.x, heightAt(t.x, t.z), t.z);
+      if (t.z < SIEGE.wallZ - SIEGE.towerStop) continue;
+      t.done = true;
+      const half = SIEGE.ladderWidth / 2;
+      this.walls[0].ladders!.push(t.x);
+      this.obstacles = this.obstacles.filter((o) => o.z !== SIEGE.wallZ || Math.abs(o.x - t.x) >= half);
+      this.hud.announce('攻城塔靠上城牆！', 'guard');
+    }
+    for (const c of [...this.catapults]) {
+      const near = this.units.some((u) => u.team !== c.team && !u.dead && Math.hypot(u.pos.x - c.x, u.pos.z - c.z) < SIEGE.catapultRadius);
+      c.hold = near ? c.hold + dt : Math.max(0, c.hold - dt);
+      if (c.hold < SIEGE.catapultBreak) continue;
+      this.wall.remove(c.mesh);
+      this.catapults.splice(this.catapults.indexOf(c), 1);
+      this.fx.burst(new THREE.Vector3(c.x, heightAt(c.x, c.z) + 2, c.z), COLORS.dust, 30, 7);
+      this.hud.announce(c.team === 0 ? '我方投石機被毀！' : '敵方投石機被毀！', c.team === 0 ? 'hurt' : 'kill');
+    }
+  }
+
+  /** 爬雲梯、攻城塔同牆後走道時離地幾高 */
   private climbLift(x: number, z: number): number {
-    const ladders = this.walls[0]?.ladders;
-    if (!ladders) return 0;
-    const dz = Math.abs(z - SIEGE.wallZ);
-    if (dz >= SIEGE.ladderReach) return 0;
-    if (!ladders.some((l) => Math.abs(l - x) < SIEGE.ladderWidth / 2)) return 0;
-    return SIEGE.wallTop * (1 - dz / SIEGE.ladderReach);
+    const wall = this.walls[0];
+    if (!wall?.ladders) return 0;
+    const { wallZ, wallTop, walkway, rampEnd, ladderReach, ladderWidth } = SIEGE;
+    const dz = z - wallZ;
+    if (dz > 0) {
+      if (Math.abs(x) > SIEGE.wallHalfWidth || wall.gaps.some((g) => Math.abs(g - x) < wall.width / 2 + 1)) return 0;
+      if (dz <= walkway) return wallTop;
+      return dz < rampEnd ? wallTop * (1 - (dz - walkway) / (rampEnd - walkway)) : 0;
+    }
+    if (-dz >= ladderReach) return 0;
+    if (!wall.ladders.some((l) => Math.abs(l - x) < ladderWidth / 2)) return 0;
+    return wallTop * (1 + dz / ladderReach);
   }
 
   /** 投石：攻城時守軍掟石，守城時雙方互掟 */
@@ -343,9 +459,11 @@ export class Battle implements CombatWorld {
     const team = this.rockSide;
     const owners = this.units.filter((u) => u.team === team && !u.dead);
     const targets = this.units.filter((u) => u.team !== team && !u.dead);
-    if (!owners.length || !targets.length) return;
+    const cats = this.catapults.filter((c) => c.team === team);
+    if (!owners.length || !targets.length || !cats.length) return;
     const t = targets[Math.floor(Math.random() * targets.length)];
-    const from = new THREE.Vector3(t.pos.x + (Math.random() - 0.5) * 30, 14, SIEGE.wallZ + (team === 1 && !this.defending ? 8 : team === 1 ? -60 : 8));
+    const c = cats[Math.floor(Math.random() * cats.length)];
+    const from = new THREE.Vector3(c.x, heightAt(c.x, c.z) + 5, c.z);
     this.projectiles.lob(owners[0], WEAPONS.siege_rock, from, t.pos, SIEGE.rockFlight);
   }
 
@@ -506,6 +624,7 @@ export class Battle implements CombatWorld {
     this.fliers.set(setup.firstPerson ? [] : setup.sky ?? []);
     this.sfx.drums(true, () => this.running);
 
+    this.defending = !!setup.defend;
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
@@ -523,7 +642,6 @@ export class Battle implements CombatWorld {
     this.moraleT = this.thinkT = this.slotT = this.followT = 0;
     this.warcryT = 0;
     this.rockT = SIEGE.rockEvery;
-    this.defending = !!setup.defend;
     this.camYaw = this.viewYaw = setup.defend ? Math.PI : 0;
     this.camPitch = this.viewPitch = 0.16;
 
@@ -564,12 +682,15 @@ export class Battle implements CombatWorld {
         deployGroup(g);
         if (this.dungeon) this.deployDungeon(g, team);
         else if (setup.defend) {
-          const back = g.role === 'infantry' ? 0 : 6;
-          g.setAnchor(g.anchorX, team === 0 ? behindWall + back : -FORMATION.startZ, team === 0 ? Math.PI : 0);
+          const held = g.role === 'infantry' || g.role === 'cavalry' ? behindWall : SIEGE.wallZ + SIEGE.archerZ;
+          g.setAnchor(g.anchorX, team === 0 ? held : -FORMATION.startZ, team === 0 ? Math.PI : 0);
+          if (team === 0 && held !== behindWall) this.deployOnWall(g);
           if (team === 1) g.order = 'charge';
         } else if (this.siege && team === 1) {
           // 守軍喺牆後面
-          g.setAnchor(g.anchorX, SIEGE.wallZ + SIEGE.defenderOffset + (g.role === 'infantry' ? 0 : 6), Math.PI);
+          const ranged = g.role === 'archer' || g.role === 'mage';
+          g.setAnchor(g.anchorX, ranged ? SIEGE.wallZ + SIEGE.archerZ : SIEGE.wallZ + SIEGE.defenderOffset, Math.PI);
+          if (ranged) this.deployOnWall(g);
         }
         for (const c of g.members) {
           const ai = c.ai!;
@@ -748,6 +869,7 @@ export class Battle implements CombatWorld {
     this.warcryT = Math.max(0, this.warcryT - dt);
     if (this.dungeon) this.updateTraps(dt);
     if (this.siege && !this.dungeon) {
+      this.updateSiege(dt);
       this.rockT -= dt;
       if (this.rockT <= 0) {
         this.rockT = SIEGE.rockEvery;

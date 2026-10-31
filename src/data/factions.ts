@@ -126,6 +126,22 @@ export const SIEGE = {
   ladderWidth: 3,
   ladderReach: 4,
   wallTop: 6.5,
+  /** 牆後走道闊度、斜坡去到幾遠 */
+  walkway: 2.5,
+  rampEnd: 7,
+  /** 守軍弓手企喺走道 */
+  archerZ: 1.4,
+  archerSpacing: 3,
+  /** 攻城塔：起點離牆幾遠、每秒推幾遠、靠牆位 */
+  towerStart: 34,
+  towerSpeed: 0.9,
+  towerStop: 3.6,
+  /** 投石機：離牆幾遠、左右位置、敵人埋身幾耐就毀 */
+  catapultBack: 24,
+  catapultFront: 48,
+  catapultX: [-34, 34],
+  catapultRadius: 5,
+  catapultBreak: 4,
   /** 幾秒掟一嚿石、石飛幾耐 */
   rockEvery: 6,
   rockFlight: 2.2,
