@@ -115,9 +115,9 @@ export const POLITICS = {
   captureRenown: 12,
   /** 守軍減弱：被奪或者打完之後 */
   /** 稱王要幾多領地 */
-  kingFiefs: 1,
+  kingFiefs: 3,
   /** 統一大陸要幾多領地 */
-  victoryFiefs: 10,
+  victoryFiefs: 12,
 };
 
 export const SIEGE = {

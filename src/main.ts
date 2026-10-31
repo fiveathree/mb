@@ -15,12 +15,12 @@ import { STORY_HEROES, type StoryHero } from './data/honor';
 import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
-import type { ArmyEntry } from './data/battlefield';
+import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
 import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { CALAMITY, TOMB } from './data/tomb';
 import { CAMPAIGN, POOLS } from './data/gacha';
 import { RACES } from './data/races';
-import { MORALE_PARTY, PLACES, type BattleTheme, type PlaceDef } from './data/world';
+import { BIOMES, MORALE_PARTY, PLACES, type BattleTheme, type BiomeTile, type PlaceDef } from './data/world';
 import { Camp } from './ui/camp';
 import { Hud } from './ui/hud';
 import { PlaceScreens } from './ui/place';
@@ -32,6 +32,7 @@ import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type Wor
 const FORMATION_MIN_TROOPS = 4;
 /** 附近幾多格同類地形就用嗰種戰場 */
 const BIOME_TILES = 6;
+const BIOME_STYLE: Record<BiomeTile, TownStyleId> = { forest: 'forest', snow: 'snow', sand: 'sand', swamp: 'monster', ash: 'ash' };
 const TILE_THEME: Partial<Record<Tile, BattleTheme>> = { forest: 'forest', snow: 'snow', sand: 'desert', swamp: 'swamp', ash: 'ash' };
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -92,17 +93,26 @@ function useGame(r: Roster, w: WorldSave) {
   screens.bind(world, roster);
 }
 
+/** 城鎮外觀跟地域 */
+function townStyle(p: PlaceDef): TownStyleId {
+  if (p.monster) return 'monster';
+  const biome = BIOMES.find((b) => Math.hypot(p.x - b.x, p.y - b.y) < b.r);
+  return biome ? BIOME_STYLE[biome.tile] : 'plain';
+}
+
 /** 入城：同打仗用同一個 3D 場景，但冇敵人 */
 function walkTown(p: PlaceDef) {
   walking = p;
   screens.walking = false;
   view.stop();
   const h = roster.hero;
+  const style = townStyle(p);
   battle.sfx.unlock();
   hud.hideScreen();
   battle.start({
     playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers: [], enemy: [], enemyLevel: 1,
-    theme: isNight(world.save) ? 'night' : 'plains', moraleMult: 1, dismount: true, town: true,
+    theme: isNight(world.save) ? 'night' : TOWN_STYLES[style].theme, moraleMult: 1, dismount: true,
+    town: { shops: p.kind === 'village' ? TOWN.villageShops : TOWN.shops, style },
   });
   inBattle = true;
   void lockMouse();
@@ -246,7 +256,7 @@ function releaseMouse() {
 
 async function startBattle(
   enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
-  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean } = {},
+  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean; traps?: number } = {},
 ) {
   afterBattle = done;
   walking = null;
@@ -466,7 +476,7 @@ function fightTomb(p: PlaceDef) {
     if (!roster.hero.artifacts.includes(TOMB.artifact)) roster.hero.artifacts.push(TOMB.artifact);
     world.politics.s.renown += 40;
     return `骸骨魔導王倒下！${p.name}攻破，${gold + TOMB.clearGold} 金、神器 魔導王冠`;
-  }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true });
+  }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true, traps: DUNGEON.traps + floor });
 }
 
 /** 錦標賽：連戰四輪 */

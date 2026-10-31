@@ -50,6 +50,8 @@ export function raiderArmy(n: Npc): ArmyEntry[] {
 /** 大地圖 NPC：每隊都有工作，做完會影響世界 */
 export class NpcSystem {
   private paths = new Map<number, { x: number; y: number }[]>();
+  /** 災厄毀城，由世界交畀政治系統處理 */
+  onDoom: ((place: string) => void) | null = null;
 
   constructor(
     private save: WorldSave,
@@ -57,6 +59,19 @@ export class NpcSystem {
     private note: (t: string) => void,
     private day: () => number,
   ) {}
+
+  /** 遠征隊：由最近嘅城出發，喺大地圖見到 */
+  sendExpedition(men: number, x: number, y: number) {
+    const from = towns.reduce((b, t) => (Math.hypot(t.x - x, t.y - y) < Math.hypot(b.x - x, b.y - y) ? t : b));
+    const n = this.spawn('expedition', from);
+    n.x = x;
+    n.y = y;
+    n.size = men;
+  }
+
+  recallExpedition() {
+    this.save.npcs = this.save.npcs.filter((n) => n.kind !== 'expedition');
+  }
 
   private spawn(kind: NpcKind, at: PlaceDef): Npc {
     const def = NPC[kind];
@@ -155,6 +170,11 @@ export class NpcSystem {
         } else n.wait = 1;
         break;
       }
+      case 'expedition': {
+        const to = pick(PLACES.filter((p) => p.kind === 'lair' || p.kind === 'village'));
+        this.setTrip(n, to, `遠征去${to.name}`);
+        break;
+      }
       case 'raider':
       case 'dragon':
       case 'witch':
@@ -202,7 +222,10 @@ export class NpcSystem {
         if (place && (place.kind === 'village' || place.kind === 'town') && !n.done) {
           const doom = n.kind === 'witch' || n.kind === 'wyrm' ? CALAMITY[n.kind] : null;
           this.save.burnedUntil[place.id] = this.day() + NPC_RULES.burnedDays * (doom?.burnMult ?? 1);
-          if (doom) this.save.treasury[place.id] = 0;
+          if (doom) {
+            this.save.treasury[place.id] = 0;
+            this.onDoom?.(place.id);
+          }
           n.done = true;
           this.note(`${place.name}被${NPC[n.kind].name}${doom?.verb ?? '洗劫'}！`);
           n.wait = 3;
@@ -328,7 +351,7 @@ export class NpcSystem {
     let best: Npc | null = null;
     let bestD: number = NPC_RULES.banditPreySight;
     for (const n of this.save.npcs) {
-      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm'].includes(n.kind)) continue;
+      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition'].includes(n.kind)) continue;
       const d = Math.hypot(n.x - b.x, n.y - b.y);
       if (d < bestD) {
         bestD = d;

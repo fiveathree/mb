@@ -305,7 +305,7 @@ export class Camp {
       <div class="pick-title">近況：${news}</div>
       <div class="pick-title">身份：${s.outlaw ? '山賊・' : ''}${RANK_NAME[s.rank]}${s.liege ? `（${pol.nameOf(s.liege)}）` : ''}${s.kingdom ? `・${s.kingdom}` : ''}・聲望 ${s.renown}・領地 ${pol.fiefsOf(PLAYER).length}${s.won ? '・已統一大陸！' : ''}</div>
       <table class="report trade"><tr><th>勢力</th><th>領地</th><th>好感</th><th>關係</th><th></th></tr>${rows}</table>
-      <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。攻下第一塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
+      <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。有 ${POLITICS.kingFiefs} 塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
       <div class="pick-title">遠征：${this.world.save.expeditionUntil
         ? `隊伍第 ${this.world.save.expeditionUntil} 日返嚟`
         : `<button class="mini" id="expedition">英雄帶 ${EXPEDITION.size} 人出發（${EXPEDITION.days} 日，帶金幣同經驗返）</button>`}</div>

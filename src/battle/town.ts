@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TOWN } from '../data/battlefield';
+import { TOWN, TOWN_STYLES, type TownStyleId } from '../data/battlefield';
 import { heightAt, type Obstacle } from './terrain';
 
 export interface TownSpot {
@@ -27,9 +27,10 @@ function sign(text: string): THREE.Sprite {
 }
 
 /** 城鎮場景：中央廣場，七間舖頭圍住，外面一圈民居 */
-export function buildTown(parent: THREE.Object3D): { spots: TownSpot[]; obstacles: Obstacle[] } {
-  const wall = new THREE.MeshLambertMaterial({ color: 0xc8b89a, flatShading: true });
-  const roof = new THREE.MeshLambertMaterial({ color: TOWN.roof, flatShading: true });
+export function buildTown(parent: THREE.Object3D, setup: { shops: [string, string][]; style: TownStyleId }): { spots: TownSpot[]; obstacles: Obstacle[] } {
+  const style = TOWN_STYLES[setup.style];
+  const wall = new THREE.MeshLambertMaterial({ color: style.wall, flatShading: true });
+  const roof = new THREE.MeshLambertMaterial({ color: style.roof, flatShading: true });
   const stone = new THREE.MeshLambertMaterial({ color: 0x8a8678, flatShading: true });
   const obstacles: Obstacle[] = [];
   const house = (x: number, z: number, w: number, d: number, h: number, yaw: number) => {
@@ -37,16 +38,16 @@ export function buildTown(parent: THREE.Object3D): { spots: TownSpot[]; obstacle
     const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wall);
     body.position.set(x, y + h / 2, z);
     body.rotation.y = yaw;
-    const top = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(w, d) / 2 + 0.6, 3.4, 4), roof);
-    top.position.set(x, y + h + 1.7, z);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(w, d) / 2 + 0.6, style.roofH, 4), roof);
+    top.position.set(x, y + h + style.roofH / 2, z);
     top.rotation.y = yaw + Math.PI / 4;
     body.castShadow = top.castShadow = true;
     parent.add(body, top);
     obstacles.push({ x, z, r: Math.max(w, d) * 0.62 });
   };
 
-  const spots: TownSpot[] = TOWN.shops.map(([id, label], i) => {
-    const a = -Math.PI / 2 + ((i + 1) * Math.PI * 2) / (TOWN.shops.length + 1);
+  const spots: TownSpot[] = setup.shops.map(([id, label], i) => {
+    const a = -Math.PI / 2 + ((i + 1) * Math.PI * 2) / (setup.shops.length + 1);
     const yaw = -a + Math.PI / 2;
     house(Math.cos(a) * TOWN.shopRadius, Math.sin(a) * TOWN.shopRadius, 12, 10, 6, yaw);
     const x = Math.cos(a) * TOWN.doorRadius;

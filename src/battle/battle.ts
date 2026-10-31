@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
-import { BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, TOWN, type ArmyEntry } from '../data/battlefield';
+import {
+  BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId,
+} from '../data/battlefield';
 import { DUNGEON, SIEGE } from '../data/factions';
 import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
@@ -75,7 +77,9 @@ export interface BattleSetup {
   /** 天上飛嘅生物 */
   sky?: string[];
   /** 入城行街，唔係打仗 */
-  town?: boolean;
+  town?: { shops: [string, string][]; style: TownStyleId };
+  /** 地下城陷阱數，冇就用預設 */
+  traps?: number;
   /** 可用陣法，第一個係開局用嘅 */
   formations?: { def: FormationDef; efficiency: number }[];
   /** 敵軍用邊啲文化嘅陣法 */
@@ -123,6 +127,7 @@ export class Battle implements CombatWorld {
   private formationT = 0;
   private warcryT = 0;
   private forest = false;
+  private trapCount = 0;
   private peaceful = false;
   private townSpots: TownSpot[] = [];
   /** HUD 用：行近舖頭嘅提示 */
@@ -306,8 +311,8 @@ export class Battle implements CombatWorld {
 
   /** 地下城地板陷阱：稍微睇得出，唔留心就中 */
   private layTraps() {
-    const { traps, halfWidth, startZ, zMax } = DUNGEON;
-    this.traps = Array.from({ length: traps }, () => {
+    const { halfWidth, startZ, zMax } = DUNGEON;
+    this.traps = Array.from({ length: this.trapCount }, () => {
       const x = (Math.random() - 0.5) * halfWidth * 1.6;
       const z = startZ + 16 + Math.random() * (zMax - startZ - 24);
       const plate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 2.4), new THREE.MeshLambertMaterial({ color: 0x4a2a24 }));
@@ -652,6 +657,7 @@ export class Battle implements CombatWorld {
     this.sfx.drums(!setup.town, () => this.running);
 
     this.defending = !!setup.defend;
+    this.trapCount = setup.traps ?? DUNGEON.traps;
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
@@ -659,7 +665,7 @@ export class Battle implements CombatWorld {
     this.townHint = '';
     this.townSpots = [];
     if (setup.town) {
-      const town = buildTown(this.wall);
+      const town = buildTown(this.wall, setup.town);
       this.townSpots = town.spots;
       this.obstacles = [...this.obstacles, ...town.obstacles];
     }
@@ -706,7 +712,10 @@ export class Battle implements CombatWorld {
       group.members.push(c);
     };
     for (const s of soldiers) recruit(s.unit, 0, s.level, s);
-    if (setup.town) for (let i = 0; i < TOWN.folk; i++) recruit(`folk_${i % 4}`, 0, 1, null);
+    if (setup.town) {
+      const { folk } = TOWN_STYLES[setup.town.style];
+      for (let i = 0; i < TOWN.folk; i++) recruit(folk[i % folk.length], 0, 1, null);
+    }
     for (const entry of enemy) {
       for (let i = 0; i < entry.count; i++) {
         recruit(entry.unit, 1, Math.max(1, enemyLevel - Math.floor(Math.random() * 2)), null);

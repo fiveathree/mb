@@ -162,9 +162,14 @@ export class PlaceScreens {
 
   /** 行街時行入某間舖 */
   visit(p: PlaceDef, tab: string) {
-    this.townTab = tab as TownTab;
     this.walking = true;
-    this.town(p);
+    if (p.kind === 'village') {
+      this.villageTab = tab as VillageTab;
+      this.village(p);
+    } else {
+      this.townTab = tab as TownTab;
+      this.town(p);
+    }
   }
 
   private questTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
@@ -472,7 +477,8 @@ export class PlaceScreens {
       };
     }
     const tabs = `<div class="tabs center">${VILLAGE_TABS.map(([k, v]) => `<button class="tab ${k === this.villageTab ? 'on' : ''}" id="v_${k}">${v}</button>`).join('')}</div>`;
-    const footer = '<div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>';
+    handlers.walk = () => this.act.onWalk(p);
+    const footer = `<div class="row"><button class="alt" id="walk">${this.walking ? '返出村' : '入村走走'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`;
     const foodBtns = this.foodButtons(p.id, handlers, refresh);
     const body = this.villageTab === 'market' ? this.marketTab(p, handlers, refresh) : `
       <div class="row wrap">
@@ -771,7 +777,10 @@ export class PlaceScreens {
       case 'witch':
       case 'wyrm':
         h.fight = () => this.act.onRaider(n);
-        body = `<p class="sub">討伐巨龍可以得到龍骨刃同大量金幣。</p><button class="go" id="fight">討伐</button>`;
+        body = `<p class="sub">討伐${NPC[n.kind].name}可以得到神器同大量金幣。</p><button class="go" id="fight">討伐</button>`;
+        break;
+      case 'expedition':
+        body = '<p class="sub">你嘅遠征隊，揾緊金幣同經驗。</p>';
         break;
       case 'raider':
         h.fight = () => this.act.onRaider(n);

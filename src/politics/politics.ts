@@ -261,6 +261,27 @@ export class Politics {
   }
 
   /** 國王駕崩：鄰國趁亂奪城，停晒戰 */
+  /** 災厄毀城：領地落入敵國手，冇晒領地就亡國 */
+  doom(id: string, day: number) {
+    const place = PLACES.find((p) => p.id === id);
+    const owner = this.s.owners[id];
+    if (!place || !owner) return;
+    const rivals = FACTIONS.filter((f) => f.id !== owner && this.fiefsOf(f.id).length);
+    const taker = rivals.find((f) => this.atWar(owner, f.id)) ?? pick(rivals);
+    if (!taker) return;
+    if (owner === PLAYER) {
+      // 玩家有機會回防
+      if (!this.s.threats.some((t) => t.place === id)) this.s.threats.push({ place: id, by: taker.id, deadline: day + P.threatDays });
+      return;
+    }
+    this.s.owners[id] = taker.id;
+    this.note(`${this.nameOf(owner)}失去${place.name}，由${taker.name}接收`);
+    if (this.fiefsOf(owner).length) return;
+    this.s.wars = this.s.wars.filter((w) => !w.includes(owner));
+    if (this.s.liege === owner) this.s.liege = null;
+    this.note(`${this.nameOf(owner)}亡國！`);
+  }
+
   kingDies() {
     const ids = FACTIONS.map((f) => f.id).filter((id) => id !== this.s.liege && this.fiefsOf(id).length > 1);
     if (!ids.length) return;

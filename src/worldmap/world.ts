@@ -185,6 +185,7 @@ export class World {
     migrateWorld(save);
     this.politics = new Politics(save.pol, (t) => this.note(t));
     this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
+    this.npcs.onDoom = (id) => this.politics.doom(id, dayOf(this.save));
     this.npcs.refill();
   }
 
@@ -367,12 +368,14 @@ export class World {
     for (const s of team) s.post = EXPEDITION_POST;
     this.save.expeditionUntil = dayOf(this.save) + EXPEDITION.days;
     this.note(`${UNITS[leader.unit].name}帶 ${team.length} 人出發遠征`);
+    this.npcs.sendExpedition(team.length, this.save.x, this.save.y);
     return team.length;
   }
 
   private expeditionBack() {
     const r = this.roster;
     this.save.expeditionUntil = undefined;
+    this.npcs.recallExpedition();
     const team = r.soldiers.filter((s) => s.post === EXPEDITION_POST);
     const gold = team.length * EXPEDITION.goldPerMan;
     r.gold += gold;

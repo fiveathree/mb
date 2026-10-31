@@ -35,6 +35,8 @@ export const MUSIC = {
   decay: 1.6,
 };
 
+type BattleThemeId = 'plains' | 'snow' | 'desert' | 'forest' | 'swamp' | 'ash';
+
 /** 入城行街：舖頭圍住廣場 */
 export const TOWN = {
   shops: [
@@ -51,7 +53,19 @@ export const TOWN = {
   plaza: 22,
   /** 每秒有幾多比例嘅鎮民換位 */
   wander: 0.25,
-  roof: 0x8a4a34,
+  villageShops: [['affairs', '村務'], ['market', '市集']] as [string, string][],
+};
+
+export type TownStyleId = 'plain' | 'snow' | 'sand' | 'forest' | 'monster' | 'ash';
+
+/** 城鎮外觀跟地域：牆色、屋頂色、屋頂高度、戰場主題、街上嘅人 */
+export const TOWN_STYLES: Record<TownStyleId, { wall: number; roof: number; roofH: number; theme: BattleThemeId; folk: string[] }> = {
+  plain: { wall: 0xc8b89a, roof: 0x8a4a34, roofH: 3.4, theme: 'plains', folk: ['folk_0', 'folk_1', 'folk_2', 'folk_3'] },
+  snow: { wall: 0x8a7a68, roof: 0xe8eef6, roofH: 4.4, theme: 'snow', folk: ['folk_0', 'folk_3', 'huscarl'] },
+  sand: { wall: 0xe0c48a, roof: 0xc8a868, roofH: 0.6, theme: 'desert', folk: ['folk_0', 'folk_1', 'folk_3'] },
+  forest: { wall: 0x6a5a48, roof: 0x3f7a45, roofH: 4, theme: 'forest', folk: ['folk_1', 'folk_2', 'elf_scout'] },
+  monster: { wall: 0x4a4038, roof: 0xd8d0b8, roofH: 6.5, theme: 'swamp', folk: ['slime', 'goblin_spear', 'kobold', 'ogre_brute'] },
+  ash: { wall: 0x4a4448, roof: 0x2a2428, roofH: 4, theme: 'ash', folk: ['folk_2', 'skeleton'] },
 };
 
 /** 森林戰場：多樹，騎兵衝唔起 */
