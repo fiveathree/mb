@@ -2,7 +2,7 @@ import {
   ARENA, ARMORS, CAPTIVE, COMPANIONS, GOODS, GOOD_ORDER, LOCAL, LOOT, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
   type GoodId,
 } from '../data/economy';
-import { ARTIFACTS, POLITICS, SIEGE } from '../data/factions';
+import { ARTIFACTS, LORD_RULES, POLITICS, SIEGE, lordOf } from '../data/factions';
 import { HONOR, type StoryHero } from '../data/honor';
 import { TOMB } from '../data/tomb';
 import { currentScenario } from '../data/scenarios';
@@ -40,6 +40,7 @@ export interface PlaceActions {
   onTournament: (town: PlaceDef) => void;
   onTomb: (p: PlaceDef) => void;
   onWalk: (p: PlaceDef) => void;
+  onLordFight: (n: Npc) => void;
   onRaider: (n: Npc) => void;
   onSiege: (p: PlaceDef, breaches: number) => void;
   onDefend: (p: PlaceDef, by: string) => void;
@@ -782,6 +783,26 @@ export class PlaceScreens {
       case 'expedition':
         body = '<p class="sub">你嘅遠征隊，揾緊金幣同經驗。</p>';
         break;
+      case 'lord': {
+        const pol = this.world.politics;
+        const owner = pol.ownerOf(n.home);
+        if (!owner || owner === PLAYER) {
+          body = '<p class="sub">呢隊領主兵失去領地，四處流浪。</p>';
+          break;
+        }
+        h.visit = () => {
+          if (spend(r, LORD_RULES.visitCost)) {
+            pol.addRelation(owner, LORD_RULES.visitRelation);
+            this.notice = `同${lordOf(owner)}飲咗杯酒，好感 +${LORD_RULES.visitRelation}`;
+          } else this.notice = '金幣不足';
+          refresh();
+        };
+        h.fight = () => this.act.onLordFight(n);
+        body = `<p class="sub">${pol.nameOf(owner)}嘅${lordOf(owner)}，好感 ${pol.relation(owner)}。</p>
+          <button class="alt" id="visit">設宴拜會（${LORD_RULES.visitCost} 金）</button>
+          ${pol.hostile(owner) ? '<button class="go" id="fight">開戰，生擒領主</button>' : ''}`;
+        break;
+      }
       case 'raider':
         h.fight = () => this.act.onRaider(n);
         body = `<p class="sub">形勢：${strengthText(rosterPower(r), armyPower(raiderArmy(n), NPC_RULES.raiderLevel))}。截住佢哋可以保住村莊，獎金 ${NPC_RULES.raiderGold} 金。</p>

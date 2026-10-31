@@ -9,7 +9,7 @@ import {
   applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rarityOf, roleCounts,
   sortedSoldiers, wageOf, xpToNext, type DrawResult, type Roster, type Soldier,
 } from '../core/roster';
-import { FACTIONS, POLITICS } from '../data/factions';
+import { FACTIONS, POLITICS, lordOf } from '../data/factions';
 import { spend } from '../core/roster';
 import { JUSTICE_TIERS, LOYALTY_TIERS } from '../data/honor';
 import { PLAYER, RANK_NAME } from '../politics/politics';
@@ -309,7 +309,7 @@ export class Camp {
       <div class="pick-title">遠征：${this.world.save.expeditionUntil
         ? `隊伍第 ${this.world.save.expeditionUntil} 日返嚟`
         : `<button class="mini" id="expedition">英雄帶 ${EXPEDITION.size} 人出發（${EXPEDITION.days} 日，帶金幣同經驗返）</button>`}</div>
-      ${s.lords.length ? `<div class="pick-title">領主俘虜 ${s.lords.length} 人（${pol.nameOf(s.lords[0])}）：
+      ${s.lords.length ? `<div class="pick-title">領主俘虜 ${s.lords.length} 人（${lordOf(s.lords[0])}）：
         <button class="mini" id="ransom">收贖金 ${POLITICS.ransomGold}</button>
         <button class="mini" id="freeLord">無條件放人</button></div>` : ''}
       ${crown}`;

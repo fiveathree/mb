@@ -93,7 +93,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['footman', 10], ['archer', 6], ['elf_mage', 3], ['griffin_guard', 3]), army(['kobold', 14], ['orc_warrior', 8], ['lizard_warrior', 6])],
   },
   {
-    id: 'awakened', sky: ['bird', 'griffin', 'harpy', 'dragon'], name: '覺醒者與巨龍', desc: '巨龍奪走你嘅心，覺醒者帶住隨從踏上討龍之旅', cultures: ['west', 'magic'], levy: 'awakened', mercs: ['awakened', 'archer', 'elf_mage', 'griffin_guard'],
+    id: 'awakened', sky: ['bird', 'griffin', 'harpy', 'dragon'], name: '覺醒者與巨龍', desc: '巨龍奪走你嘅心，覺醒者帶住隨從踏上討龍之旅', cultures: ['west', 'magic'], levy: 'awakened', mercs: ['awakened', 'archer', 'elf_mage', 'griffin_guard', 'griffin_rider'],
     realms: [
       ['王都', '葛蘭城'], ['邊境村落', '黎明村'], ['山賊同盟', '斷崖寨'], ['古代遺民', '遺跡都'], ['騎士團', '白騎堡'], ['巫女殿', '神木殿'],
       ['妖魔群', '獸人谷'], ['獅鷲巢', '風鳴岩'], ['不死者', '亡者礦坑'], ['魔像遺跡', '石巨人原'], ['邪教', '救贖教堂'], ['龍之僕從', '焦土之地'],
@@ -110,7 +110,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['huscarl', 14], ['archer', 8], ['axeman', 5]), army(['skeleton', 12], ['grave_knight', 4], ['necromancer', 3])],
   },
   {
-    id: 'sorcery', sky: ['griffin', 'phoenix', 'pegasus', 'dragon'], name: '魔法世界', desc: '法師學院統治大陸，魔法決定一切', cultures: ['magic'], levy: 'elf_mage', mercs: ['elf_mage', 'necromancer', 'footman', 'griffin_guard'],
+    id: 'sorcery', sky: ['griffin', 'phoenix', 'pegasus', 'dragon'], name: '魔法世界', desc: '法師學院統治大陸，魔法決定一切', cultures: ['magic'], levy: 'elf_mage', mercs: ['elf_mage', 'necromancer', 'footman', 'griffin_guard', 'pegasus_knight', 'griffin_rider'],
     realms: [
       ['星辰學院', '星辰塔'], ['烈焰學院', '熔爐城'], ['寒霜學院', '冰晶宮'], ['雷霆學院', '雷鳴峰'], ['大地學院', '石心城'], ['幻影學院', '鏡之都'],
       ['死靈學院', '蒼白塔'], ['自然學院', '綠環'], ['煉金公會', '水銀城'], ['符文公會', '刻石鎮'], ['魔獸聯盟', '獸王谷'], ['禁咒教團', '禁忌島'],

@@ -65,6 +65,8 @@ export interface AiState {
 }
 
 export class Combatant {
+  /** 爬緊雲梯或者攻城塔 */
+  climbing = false;
   pos = new Vector3();
   vel = new Vector3();
   vy = 0;

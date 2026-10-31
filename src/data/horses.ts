@@ -56,6 +56,9 @@ export const FLIGHT = {
   clearance: 8,
   /** 爬升每秒耗體力 */
   staminaDrain: 14,
+  /** 部隊：離目標幾遠先升空，幾高就滑翔 */
+  aiRange: 16,
+  aiAltitude: 11,
 };
 
 /** 新坐騎：速度、耐打、跳躍、撞擊係主要分別 */

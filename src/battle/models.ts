@@ -581,6 +581,15 @@ export function syncHuman(c: Combatant, dt: number) {
   r.armL.rotation.y = shieldUp ? -0.75 : bowUp ? 0 : -0.35;
 
   r.shield.visible = c.hasActiveShield;
+  if (c.climbing && !c.dead) {
+    // 爬梯：身向前傾，雙手交替
+    const s = Math.sin(c.pos.y * 3);
+    r.root.rotation.x = 0.35;
+    r.armR.rotation.set(-2.5 + s * 0.5, 0, 0);
+    r.armL.rotation.set(-2.5 - s * 0.5, 0, 0);
+    r.legL.rotation.set(-0.6 + s * 0.5, 0, 0);
+    r.legR.rotation.set(-0.6 - s * 0.5, 0, 0);
+  }
   r.marker.visible = !c.dead && !c.def.civilian;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
   flushParts(r.root, r.parts);

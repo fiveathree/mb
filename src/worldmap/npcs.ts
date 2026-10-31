@@ -92,6 +92,7 @@ export class NpcSystem {
     while (count('hunter') < NPC.hunter.max) this.spawn('hunter', pick(villages));
     while (count('messenger') < NPC.messenger.max) this.spawn('messenger', pick(towns));
     while (count('patrol') < NPC.patrol.max) this.spawn('patrol', towns[count('patrol') % towns.length]);
+    while (count('lord') < NPC.lord.max) this.spawn('lord', pick(PLACES.filter((p) => p.kind === 'town' || p.kind === 'castle')));
     if (this.day() >= this.save.nextRaid && count('raider') < NPC.raider.max) {
       this.spawn('raider', placeOf('blackfang'));
       this.save.nextRaid = this.day() + NPC_RULES.raidEveryDays;
@@ -159,14 +160,16 @@ export class NpcSystem {
         }
         break;
       }
-      case 'patrol': {
+      case 'patrol':
+      case 'lord': {
         const a = Math.random() * Math.PI * 2;
-        const x = Math.round(home.x + Math.cos(a) * 16);
-        const y = Math.round(home.y + Math.sin(a) * 12);
-        const route = this.terrain.path(n.x, n.y, x, y);
+        const far = n.kind === 'lord' ? 2 : 1;
+        const x = Math.round(home.x + Math.cos(a) * 16 * far);
+        const y = Math.round(home.y + Math.sin(a) * 12 * far);
+        const route = this.terrain.inside(x, y) ? this.terrain.path(n.x, n.y, x, y) : null;
         if (route) {
           this.paths.set(n.id, route);
-          n.job = `巡邏${home.name}一帶`;
+          n.job = n.kind === 'lord' ? `巡視${home.name}領地` : `巡邏${home.name}一帶`;
         } else n.wait = 1;
         break;
       }
@@ -351,7 +354,7 @@ export class NpcSystem {
     let best: Npc | null = null;
     let bestD: number = NPC_RULES.banditPreySight;
     for (const n of this.save.npcs) {
-      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition'].includes(n.kind)) continue;
+      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition', 'lord'].includes(n.kind)) continue;
       const d = Math.hypot(n.x - b.x, n.y - b.y);
       if (d < bestD) {
         bestD = d;

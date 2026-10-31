@@ -1,4 +1,4 @@
-import { FACTIONS, FIEF_OWNERS, POLITICS as P, WORLD_EVENTS, factionOf } from '../data/factions';
+import { FACTIONS, FIEF_OWNERS, POLITICS as P, WORLD_EVENTS, factionOf, lordOf } from '../data/factions';
 import { DEEDS, HONOR, type DeedId } from '../data/honor';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
@@ -215,9 +215,9 @@ export class Politics {
     this.s.threats = this.s.threats.filter((t) => t.place !== place.id);
     if (this.s.liege) this.addRelation(this.s.liege, 10);
     this.note(`你攻陷${place.name}（原屬${this.nameOf(old)}）`);
-    if (old && old !== PLAYER && Math.random() < P.lordCaptureChance) {
+    if (old && old !== PLAYER && Math.random() < P.lordCaptureChance && !this.s.lords.includes(old)) {
       this.s.lords.push(old);
-      this.note(`俘虜咗${this.nameOf(old)}嘅領主`);
+      this.note(`俘虜咗${lordOf(old)}`);
     }
     if (this.fiefsOf(PLAYER).length >= P.victoryFiefs && this.s.rank === 'king') this.s.won = true;
   }

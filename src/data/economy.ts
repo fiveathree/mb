@@ -303,7 +303,7 @@ export const ARENA = {
 };
 
 // ── 大地圖 NPC ──
-export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon' | 'witch' | 'wyrm' | 'expedition';
+export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon' | 'witch' | 'wyrm' | 'expedition' | 'lord';
 
 export const NPC: Record<NpcKind, { name: string; max: number; size: [number, number]; speed: number; color: string }> = {
   caravan: { name: '商隊', max: 4, size: [5, 9], speed: 3, color: '#e8b84a' },
@@ -315,6 +315,7 @@ export const NPC: Record<NpcKind, { name: string; max: number; size: [number, nu
   dragon: { name: '巨龍', max: 1, size: [1, 1], speed: 7, color: '#ff4020' },
   witch: { name: '滅國魔女', max: 1, size: [1, 1], speed: 5, color: '#c040e0' },
   wyrm: { name: '滅世飛龍', max: 1, size: [1, 1], speed: 8, color: '#7a4ae0' },
+  lord: { name: '領主部隊', max: 5, size: [18, 28], speed: 3.6, color: '#d8c8f0' },
   expedition: { name: '你嘅遠征隊', max: 1, size: [1, 1], speed: 4.5, color: '#f2c14e' },
 };
 

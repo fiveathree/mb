@@ -52,14 +52,9 @@ export class WorldView {
 
   constructor(private canvas: HTMLCanvasElement, private world: World) {
     this.g = canvas.getContext('2d')!;
-    this.base = world.terrain.render(PX);
-    this.drawCoast();
+    this.base = document.createElement('canvas');
     this.flipped = document.createElement('canvas');
-    this.flipped.width = this.base.width;
-    this.flipped.height = this.base.height;
-    const flip = this.flipped.getContext('2d')!;
-    flip.scale(-1, 1);
-    flip.drawImage(this.base, -this.base.width, 0);
+    this.renderBase();
     this.bar = document.getElementById('mapbar')!;
     this.questBar = document.getElementById('questbar')!;
     this.questBar.addEventListener('click', (e) => {
@@ -72,6 +67,17 @@ export class WorldView {
     canvas.addEventListener('mousedown', (e) => this.click(e));
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.resize();
+  }
+
+  private renderBase() {
+    this.base = this.world.terrain.render(PX);
+    this.drawCoast();
+    this.flipped = document.createElement('canvas');
+    this.flipped.width = this.base.width;
+    this.flipped.height = this.base.height;
+    const flip = this.flipped.getContext('2d')!;
+    flip.scale(-1, 1);
+    flip.drawImage(this.base, -this.base.width, 0);
   }
 
   /** 地圖四邊畫成彎曲海岸，唔係死直線 */
@@ -94,7 +100,9 @@ export class WorldView {
   }
 
   setWorld(world: World) {
+    const redraw = world.terrain !== this.world.terrain;
     this.world = world;
+    if (redraw) this.renderBase();
     this.follow = true;
   }
 

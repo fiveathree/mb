@@ -8,6 +8,7 @@ import { expireQuests, type Quest } from '../quests/quests';
 import { HONOR } from '../data/honor';
 import { Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
+import { SCENARIOS } from '../data/scenarios';
 import { UNITS } from '../data/units';
 import { CALAMITY } from '../data/tomb';
 import { CAMPAIGN } from '../data/gacha';
@@ -165,9 +166,18 @@ export function isNight(w: WorldSave): boolean {
   return h >= TIME.nightFrom || h < TIME.nightTo;
 }
 
+const terrains = new Map<number, WorldTerrain>();
+
+/** 每個劇本一張地形，算好就留低 */
+function terrainFor(scenario: string): WorldTerrain {
+  const variant = Math.max(0, SCENARIOS.findIndex((s) => s.id === scenario));
+  if (!terrains.has(variant)) terrains.set(variant, new WorldTerrain(variant));
+  return terrains.get(variant)!;
+}
+
 /** 大地圖模擬：行軍、時間、糧餉、山賊 */
 export class World {
-  readonly terrain = new WorldTerrain();
+  readonly terrain: WorldTerrain;
   path: { x: number; y: number }[] = [];
   destination: PlaceDef | null = null;
   paused = false;
@@ -183,6 +193,7 @@ export class World {
 
   constructor(public save: WorldSave, public roster: Roster) {
     migrateWorld(save);
+    this.terrain = terrainFor(save.scenario);
     this.politics = new Politics(save.pol, (t) => this.note(t));
     this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
     this.npcs.onDoom = (id) => this.politics.doom(id, dayOf(this.save));

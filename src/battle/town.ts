@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TOWN, TOWN_STYLES, type TownStyleId } from '../data/battlefield';
-import { heightAt, type Obstacle } from './terrain';
+import { heightAt, makeRng, type Obstacle } from './terrain';
 
 export interface TownSpot {
   id: string;
@@ -27,7 +27,8 @@ function sign(text: string): THREE.Sprite {
 }
 
 /** 城鎮場景：中央廣場，七間舖頭圍住，外面一圈民居 */
-export function buildTown(parent: THREE.Object3D, setup: { shops: [string, string][]; style: TownStyleId }): { spots: TownSpot[]; obstacles: Obstacle[] } {
+export function buildTown(parent: THREE.Object3D, setup: { shops: [string, string][]; style: TownStyleId; seed: number }): { spots: TownSpot[]; obstacles: Obstacle[] } {
+  const rng = makeRng(setup.seed);
   const style = TOWN_STYLES[setup.style];
   const wall = new THREE.MeshLambertMaterial({ color: style.wall, flatShading: true });
   const roof = new THREE.MeshLambertMaterial({ color: style.roof, flatShading: true });
@@ -46,8 +47,10 @@ export function buildTown(parent: THREE.Object3D, setup: { shops: [string, strin
     obstacles.push({ x, z, r: Math.max(w, d) * 0.62 });
   };
 
-  const spots: TownSpot[] = setup.shops.map(([id, label], i) => {
-    const a = -Math.PI / 2 + ((i + 1) * Math.PI * 2) / (setup.shops.length + 1);
+  // 每個城舖頭位置唔同
+  const shops = setup.shops.map((s) => ({ s, k: rng() })).sort((a, b) => a.k - b.k).map((x) => x.s);
+  const spots: TownSpot[] = shops.map(([id, label], i) => {
+    const a = -Math.PI / 2 + ((i + 1) * Math.PI * 2) / (shops.length + 1);
     const yaw = -a + Math.PI / 2;
     house(Math.cos(a) * TOWN.shopRadius, Math.sin(a) * TOWN.shopRadius, 12, 10, 6, yaw);
     const x = Math.cos(a) * TOWN.doorRadius;
@@ -64,8 +67,24 @@ export function buildTown(parent: THREE.Object3D, setup: { shops: [string, strin
   // 民居：城門方向留路
   for (let i = 0; i < TOWN.houses; i++) {
     const a = (i / TOWN.houses) * Math.PI * 2;
-    if (Math.abs(Math.sin(a) + 1) < 0.08) continue;
-    house(Math.cos(a) * TOWN.houseRadius, Math.sin(a) * TOWN.houseRadius, 9, 8, 4.5, -a);
+    if (Math.abs(Math.sin(a) + 1) < 0.08 || rng() < 0.15) continue;
+    const r = TOWN.houseRadius + (rng() - 0.5) * 14;
+    house(Math.cos(a) * r, Math.sin(a) * r, 7 + rng() * 4, 6 + rng() * 4, 3.5 + rng() * 2.5, -a + (rng() - 0.5) * 0.6);
+  }
+
+  // 廣場小攤
+  const stall = new THREE.MeshLambertMaterial({ color: style.roof, flatShading: true });
+  for (let i = 0; i < TOWN.stalls; i++) {
+    const a = rng() * Math.PI * 2;
+    const r = 10 + rng() * 8;
+    const x = Math.cos(a) * r;
+    const z = Math.sin(a) * r;
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 2.2), stall);
+    cloth.position.set(x, heightAt(x, z) + 2.4, z);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1, 1.6), wall);
+    table.position.set(x, heightAt(x, z) + 0.5, z);
+    parent.add(cloth, table);
+    obstacles.push({ x, z, r: 1.5 });
   }
 
   const fountain = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 3, 1, 8), stone);

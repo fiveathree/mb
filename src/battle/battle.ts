@@ -77,9 +77,11 @@ export interface BattleSetup {
   /** 天上飛嘅生物 */
   sky?: string[];
   /** 入城行街，唔係打仗 */
-  town?: { shops: [string, string][]; style: TownStyleId };
+  town?: { shops: [string, string][]; style: TownStyleId; seed: number };
   /** 地下城陷阱數，冇就用預設 */
   traps?: number;
+  /** 地下城隔牆數，冇就用預設 */
+  rooms?: number;
   /** 可用陣法，第一個係開局用嘅 */
   formations?: { def: FormationDef; efficiency: number }[];
   /** 敵軍用邊啲文化嘅陣法 */
@@ -128,6 +130,7 @@ export class Battle implements CombatWorld {
   private warcryT = 0;
   private forest = false;
   private trapCount = 0;
+  private roomWalls = DUNGEON.walls;
   private peaceful = false;
   private townSpots: TownSpot[] = [];
   /** HUD 用：行近舖頭嘅提示 */
@@ -239,7 +242,8 @@ export class Battle implements CombatWorld {
     if (!this.siege) return;
     const spots: { x: number; z: number }[] = [];
     if (dungeon) {
-      const { walls, halfWidth, doorWidth, zMin, zMax } = DUNGEON;
+      const { halfWidth, doorWidth, zMin, zMax } = DUNGEON;
+      const walls = this.roomWalls;
       // 門左右交錯，要行之字
       const start = Math.random() < 0.5 ? 1 : -1;
       walls.forEach((z, i) => {
@@ -507,11 +511,12 @@ export class Battle implements CombatWorld {
       return;
     }
     g.fixedSlots = true;
-    const rooms = DUNGEON.walls.length;
+    const walls = this.roomWalls;
+    const rooms = walls.length;
     g.members.forEach((c, i) => {
       const ai = c.ai!;
       const room = c.def.boss ? rooms : Math.min(rooms - 1, 1 + (i % (rooms - 1)));
-      const z = room >= rooms ? DUNGEON.zMax - 12 : (DUNGEON.walls[room - 1] + DUNGEON.walls[room]) / 2;
+      const z = room >= rooms ? DUNGEON.zMax - 12 : (walls[room - 1] + walls[room]) / 2;
       ai.slotX = ((i % 5) - 2) * 4;
       ai.slotZ = z + (i % 3);
     });
@@ -658,6 +663,9 @@ export class Battle implements CombatWorld {
 
     this.defending = !!setup.defend;
     this.trapCount = setup.traps ?? DUNGEON.traps;
+    this.roomWalls = setup.rooms
+      ? Array.from({ length: setup.rooms }, (_, i) => DUNGEON.zMin + ((i + 1) * (DUNGEON.zMax - DUNGEON.zMin)) / (setup.rooms! + 1))
+      : DUNGEON.walls;
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
@@ -1148,7 +1156,9 @@ export class Battle implements CombatWorld {
       if (u.fled) continue;
       if (u.dead) u.deadT += dt;
       if (u.horse) continue;
-      const ground = heightAt(u.pos.x, u.pos.z) + (this.dungeon ? 0 : this.climbLift(u.pos.x, u.pos.z));
+      const lift = this.dungeon ? 0 : this.climbLift(u.pos.x, u.pos.z);
+      u.climbing = lift > 0.3 && u.pos.z < SIEGE.wallZ;
+      const ground = heightAt(u.pos.x, u.pos.z) + lift;
       if (!u.grounded) {
         u.vy -= COMBAT.gravity * dt;
         u.pos.y += u.vy * dt;

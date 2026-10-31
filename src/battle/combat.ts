@@ -358,6 +358,14 @@ function kill(world: CombatWorld, t: Combatant, att: Combatant) {
     h.rider = null;
     h.ctl = { throttle: 0, turn: 0, sprint: false, jump: false };
     t.horse = null;
+    // 半人馬人馬一體，一齊倒
+    if (t.def.race === 'centaur') {
+      h.hp = 0;
+      h.dead = true;
+      h.deadT = 0;
+      h.speed = 0;
+      h.vel.set(0, 0, 0);
+    }
   }
   world.onUnitDown(t, att);
 }
@@ -373,6 +381,10 @@ export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Comba
   h.deadT = 0;
   h.speed = 0;
   h.vel.set(0, 0, 0);
+  if (rider?.def.race === 'centaur') {
+    kill(world, rider, by);
+    return;
+  }
   if (rider) {
     h.rider = null;
     rider.horse = null;

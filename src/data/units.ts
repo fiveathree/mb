@@ -458,6 +458,9 @@ for (const u of [
   troop('templar', '聖殿騎士', 'cavalry', 5, 150, 17, ['elite_lance', 'cavalry_sword'], 0xf0ece0, { horse: 'warhorse', plumeColor: 0xc0302a, desc: '騎兵頂點，人馬俱甲' }),
   // 異族
   ...[0xa86a3a, 0x5a7a4a, 0x7a5a8a, 0xb0a070].map((color, i) => troop(`folk_${i}`, '鎮民', 'infantry', 1, 40, 0, ['short_sword'], color, { civilian: true, walkSpeed: 1.4, runSpeed: 1.8 })),
+  troop('griffin_rider', '獅鷲騎士', 'cavalry', 5, 130, 11, ['elite_lance', 'cavalry_sword'], 0xb08a4a, { pool: 'fair', horse: 'griffin_mount', plumeColor: 0xd9b24a, desc: '由天上撲落嚟' }),
+  troop('pegasus_knight', '天馬騎士', 'cavalry', 4, 100, 7, ['cavalry_sword'], 0xe8ecf4, { pool: 'fair', horse: 'pegasus', plumeColor: 0x8fc8ff, desc: '快得留唔低影' }),
+  troop('lord_knight', '領主', 'cavalry', 6, 240, 16, ['elite_lance', 'hero_blade'], 0xd9b24a, { horse: 'warhorse', hero: true, aura: 3, plumeColor: 0xf2c14e, morale: 130 }),
   troop('huscarl', '北地親衛', 'infantry', 3, 110, 9, ['infantry_axe'], 0x9ab8d0, { race: 'nord', desc: '雪原上嘅重斧戰士' }),
   troop('darkelf_blade', '影刃', 'infantry', 3, 85, 6, ['elite_sword'], 0x4a3a6a, { race: 'darkelf', pool: 'fair', runSpeed: 5.2, desc: '由樹影入面出手' }),
   troop('slime', '史萊姆', 'infantry', 1, 55, 1, ['short_sword'], 0x4fb8e8, { race: 'slime', pool: 'beast', desc: '軟綿綿，斬極都仲喺度' }),

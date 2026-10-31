@@ -51,6 +51,7 @@ export const TOWN = {
   visitDist: 5,
   folk: 16,
   plaza: 22,
+  stalls: 6,
   /** 每秒有幾多比例嘅鎮民換位 */
   wander: 0.25,
   villageShops: [['affairs', '村務'], ['market', '市集']] as [string, string][],

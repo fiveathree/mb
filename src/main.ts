@@ -1,7 +1,7 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
 import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
-import { ARTIFACTS, DUNGEON, PLAYABLE, SIEGE, START_REGIONS, factionOf } from './data/factions';
+import { ARTIFACTS, DUNGEON, LORD_RULES, PLAYABLE, SIEGE, START_REGIONS, factionOf, lordOf } from './data/factions';
 import { showNewGame } from './ui/newgame';
 import { showFormationPick } from './ui/formation';
 import { formationsFor, type FormationCheck } from './core/formation';
@@ -68,6 +68,7 @@ const screens = new PlaceScreens(hud, world, roster, {
   onArena: (town, bet) => fightArena(town, bet),
   onTournament: (town) => fightTournament(town),
   onTomb: (p) => fightTomb(p),
+  onLordFight: (n) => fightLord(n),
   onRaider: (n) => fightRaider(n),
   onSiege: (p, breaches) => assaultFief(p, breaches),
   onDefend: (p, by) => defendFief(p, by),
@@ -112,7 +113,7 @@ function walkTown(p: PlaceDef) {
   battle.start({
     playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers: [], enemy: [], enemyLevel: 1,
     theme: isNight(world.save) ? 'night' : TOWN_STYLES[style].theme, moraleMult: 1, dismount: true,
-    town: { shops: p.kind === 'village' ? TOWN.villageShops : TOWN.shops, style },
+    town: { shops: p.kind === 'village' ? TOWN.villageShops : TOWN.shops, style, seed: p.x * 257 + p.y },
   });
   inBattle = true;
   void lockMouse();
@@ -256,7 +257,7 @@ function releaseMouse() {
 
 async function startBattle(
   enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
-  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean; traps?: number } = {},
+  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean; traps?: number; rooms?: number } = {},
 ) {
   afterBattle = done;
   walking = null;
@@ -365,10 +366,25 @@ function fightHunter(n: Npc) {
   });
 }
 
+/** 同領主部隊開戰：打贏就生擒 */
+function fightLord(n: Npc) {
+  const pol = world.politics;
+  const owner = pol.ownerOf(n.home)!;
+  const f = factionOf(owner)!;
+  const army = f.garrison.map((e) => ({ unit: e.unit, count: Math.ceil(e.count * LORD_RULES.partyShare) }));
+  void startBattle([...army, { unit: 'lord_knight', count: 1 }], LORD_RULES.level, fieldTheme(), (win) => {
+    if (!win) return '';
+    world.npcs.remove(n);
+    pol.s.renown += LORD_RULES.renown;
+    if (!pol.s.lords.includes(owner)) pol.s.lords.push(owner);
+    return `生擒${lordOf(owner)}`;
+  });
+}
+
 function assaultFief(p: PlaceDef, breaches: number) {
   const pol = world.politics;
   const g = pol.garrisonOf(p)!;
-  void startBattle(g.army, g.level, p.theme ?? 'fort', (win) => {
+  void startBattle([...g.army, { unit: 'lord_knight', count: 1 }], g.level, p.theme ?? 'fort', (win) => {
     if (!win) return '';
     pol.capture(p);
     const reward = placeReward(p);
@@ -383,7 +399,7 @@ function defendFief(p: PlaceDef, by: string) {
     if (!win) return '';
     pol.s.threats = pol.s.threats.filter((t) => t.place !== p.id);
     return `成功保衛${p.name}`;
-  }, deployment(roster), { breaches: SIEGE.defendBreaches, dismount: true, defend: true });
+  }, [...deployment(roster), ...roster.soldiers.filter((s) => s.post === p.id)], { breaches: SIEGE.defendBreaches, dismount: true, defend: true });
 }
 
 function fightBandit(b: BanditParty, auto: boolean) {
@@ -476,7 +492,7 @@ function fightTomb(p: PlaceDef) {
     if (!roster.hero.artifacts.includes(TOMB.artifact)) roster.hero.artifacts.push(TOMB.artifact);
     world.politics.s.renown += 40;
     return `骸骨魔導王倒下！${p.name}攻破，${gold + TOMB.clearGold} 金、神器 魔導王冠`;
-  }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true, traps: DUNGEON.traps + floor });
+  }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true, traps: DUNGEON.traps + floor, rooms: 3 + (floor % 3) });
 }
 
 /** 錦標賽：連戰四輪 */

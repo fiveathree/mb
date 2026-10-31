@@ -82,9 +82,10 @@ class MinHeap {
 export class WorldTerrain {
   tiles: Tile[] = new Array(W * H);
 
-  constructor() {
-    const big = smoothNoise(MAP.seed, 16);
-    const mid = smoothNoise(MAP.seed + 1, 7);
+  /** variant：劇本編號，唔同劇本山林分佈唔同 */
+  constructor(variant = 0) {
+    const big = smoothNoise(MAP.seed + variant * 97, 16);
+    const mid = smoothNoise(MAP.seed + 1 + variant * 97, 7);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const n = big(x, y) * 0.68 + mid(x, y) * 0.32;

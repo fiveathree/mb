@@ -1,12 +1,13 @@
 import { AI, ARCHER_AI, CAVALRY_AI, MORALE } from '../data/units';
 import { BATTLEFIELD } from '../data/battlefield';
 import { COMBAT, type AttackDir } from '../data/combat';
-import { HORSE_RADIUS } from '../data/horses';
+import { FLIGHT, HORSE_RADIUS } from '../data/horses';
 import {
   angleDiff, bearing, clamp, flatDist, moveToward, randRange, type AiState, type Combatant,
 } from './entities';
 import { mirrorDir, startBlock, startCharge, type CombatWorld } from './combat';
 import type { Group } from './orders';
+import { heightAt } from './terrain';
 
 const DIRS: AttackDir[] = ['up', 'down', 'left', 'right'];
 const randomDir = () => DIRS[Math.floor(Math.random() * 4)];
@@ -69,6 +70,7 @@ export function updateAi(c: Combatant, dt: number, world: CombatWorld) {
   }
   if (c.horse) {
     updateCavalry(c, ai, dt);
+    if (c.horse?.def.flight) flyCavalry(c, ai);
     return;
   }
   if (c.phase === 'stagger' || !c.grounded) return;
@@ -112,6 +114,14 @@ function steer(c: Combatant, yaw: number, sprint: boolean) {
   h.ctl.throttle = 1;
   h.ctl.sprint = sprint && Math.abs(diff) < CAVALRY_AI.turnFirstAngle;
   h.ctl.jump = false;
+}
+
+/** 飛行騎兵：遠處升空，近目標就撲落去 */
+function flyCavalry(c: Combatant, ai: AiState) {
+  const h = c.horse!;
+  const far = !!ai.target && flatDist(c.pos, ai.target.pos) > FLIGHT.aiRange;
+  h.ctl.jump = far && h.grounded;
+  h.ctl.climb = far && h.pos.y - heightAt(h.pos.x, h.pos.z) < FLIGHT.aiAltitude;
 }
 
 function updateCavalry(c: Combatant, ai: AiState, dt: number) {
