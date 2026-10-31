@@ -474,3 +474,12 @@ kbd { background: linear-gradient(180deg, #4a3a2a, #2a2018); border: 1px solid r
 .sc-list .wp { font-size: 11px; padding-left: 0; padding-right: 0; white-space: nowrap; }
 .crown-list { grid-template-columns: repeat(9, 1fr); gap: 2px; }
 .crown-list .wp { font-size: 11px; padding-left: 0; padding-right: 0; white-space: nowrap; overflow: hidden; }
+
+/* 秘景圖 */
+.vista-big { display: block; width: min(460px, 100%); margin: 0 auto 8px; border: 1px solid rgba(214, 176, 104, 0.6); }
+.vistas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.vista { display: grid; gap: 1px; text-align: center; }
+.vista img { display: block; width: 100%; aspect-ratio: 16 / 9; border: 1px solid rgba(214, 176, 104, 0.45); }
+.vista small { font-size: 11px; color: var(--dim); }
+.vista.lock i { display: grid; place-items: center; aspect-ratio: 16 / 9; font-style: normal; color: var(--dim); background: #120d0a; border: 1px solid rgba(214, 176, 104, 0.2); }
+.ng-picks select { max-width: 150px; }

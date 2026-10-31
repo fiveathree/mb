@@ -1,5 +1,6 @@
+import { NPC } from '../data/economy';
 import type { ArmyEntry } from '../data/battlefield';
-import { BANDIT, MAP, MAP_SCALE, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
+import { BANDIT, MAP, MAP_SCALE, MORALE_PARTY, PARTY, PLACES, SHIP, SHOP, TIME, type PlaceDef } from '../data/world';
 import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, type Difficulty, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
@@ -11,7 +12,8 @@ import { NpcSystem, type Npc } from './npcs';
 import { SCENARIOS } from '../data/scenarios';
 import { UNITS } from '../data/units';
 import { CALAMITY } from '../data/tomb';
-import { DOOM, SCAR_DAYS, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
+import { VISTA_RANGE, VISTA_REWARD } from '../data/vistas';
+import { DOOM, SCAR_DAYS, SUMMON_CODES, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
 import { crownOf } from '../data/crowns';
 import { CAMPAIGN } from '../data/gacha';
 import {
@@ -87,6 +89,8 @@ export interface WorldSave {
   /** 大地圖上嘅焦土 */
   scars: Scar[];
   nextTitan: number;
+  /** 見過嘅秘景 */
+  vistas: string[];
   /** 滅世魔法第幾日先用得 */
   doomAt?: number;
   nextRaid: number;
@@ -157,6 +161,7 @@ export function migrateWorld(w: WorldSave): WorldSave {
   }
   w.burnedUntil ??= {};
   w.ruins ??= {};
+  w.vistas ??= [];
   w.scars ??= [];
   w.nextTitan ??= CALAMITY.titan.firstDay;
   w.nextRaid ??= 4;
@@ -290,7 +295,7 @@ export class World {
         if (!t.inside(x, y)) continue;
         const tile = t.at(x, y);
         if (tile === 'forest') out.add('forest');
-        if (tile === 'water') out.add('water');
+        if (tile === 'water' || tile === 'sea' || tile === 'lake' || tile === 'stream') out.add('water');
         if (tile === 'mountain') out.add('mine');
       }
     }
@@ -388,6 +393,64 @@ export class World {
     this.note('你嘅部隊被波及！');
   }
 
+  /** 行近秘景就收集 */
+  private checkVista() {
+    const w = this.save;
+    for (const v of this.terrain.vistas) {
+      if (w.vistas.includes(v.def.id) || Math.hypot(v.x - w.x, v.y - w.y) > VISTA_RANGE) continue;
+      w.vistas.push(v.def.id);
+      this.roster.gold += VISTA_REWARD.gold;
+      w.pol.renown += VISTA_REWARD.renown;
+      const all = w.vistas.length >= this.terrain.vistas.length;
+      if (all) {
+        this.roster.gold += VISTA_REWARD.allGold;
+        w.pol.renown += VISTA_REWARD.allRenown;
+      }
+      const tail = all ? `集齊全部秘景圖！額外 ${VISTA_REWARD.allGold} 金。` : `（${w.vistas.length}／${this.terrain.vistas.length}）`;
+      (w.storyQueue ??= []).push({ id: `vista_${v.def.id}`, title: `秘景：${v.def.name}`, text: `${v.def.desc}${tail}`, vista: v.def.id, choices: [{ label: '繼續', effect: 'none' }] });
+    }
+  }
+
+  /** 搭船去另一個港 */
+  sail(to: PlaceDef): string {
+    const w = this.save;
+    const dist = Math.hypot(to.x - w.x, to.y - w.y);
+    const cost = this.sailCost(to);
+    if (this.roster.gold < cost && !this.roster.infiniteGold) return '金幣不足';
+    if (!this.roster.infiniteGold) this.roster.gold -= cost;
+    this.advanceTime((dist / SHIP.tilesPerDay) * TIME.secondsPerDay);
+    w.x = to.x;
+    w.y = to.y;
+    this.path = [];
+    this.destination = null;
+    return '';
+  }
+
+  sailCost(to: PlaceDef): number {
+    return Math.round(Math.max(SHIP.minCost, Math.hypot(to.x - this.save.x, to.y - this.save.y) * SHIP.perTile));
+  }
+
+  /** 港口打魚 */
+  fish(): string {
+    this.advanceTime((SHIP.fishHours / 24) * TIME.secondsPerDay);
+    this.save.food += SHIP.fishFood;
+    this.roster.gold += SHIP.fishGold;
+    return `出海打魚：${SHIP.fishFood} 糧、${SHIP.fishGold} 金`;
+  }
+
+  /** 試玩密令：災厄即刻喺附近出現 */
+  summon(code: string): string | null {
+    const kind = SUMMON_CODES[code.trim().toLowerCase()];
+    if (!kind) return null;
+    if (kind === 'strike') {
+      const near = PLACES.filter((p) => !p.gone && (p.kind === 'town' || p.kind === 'village')).reduce((b, p) => (Math.hypot(p.x - this.save.x, p.y - this.save.y) < Math.hypot(b.x - this.save.x, b.y - this.save.y) ? p : b));
+      this.strike('titan', near);
+      return `${near.name}即刻受到滅世攻擊，關埋呢頁睇地圖`;
+    }
+    this.npcs.summon(kind, this.save.x, this.save.y);
+    return `${NPC[kind].name}喺附近現身，關埋呢頁睇地圖`;
+  }
+
   /** 魔王陣營先有 */
   get canDoom() {
     return !!crownOf(this.roster.hero.crown)?.doom;
@@ -445,6 +508,7 @@ export class World {
     if (this.paused) return null;
     this.advanceTime(dt);
     this.npcs.update(dt, this.save.bandits);
+    this.checkVista();
     const event = this.save.storyQueue?.shift() ?? this.pendingStory;
     if (event) {
       if (event === this.pendingStory) this.pendingStory = null;

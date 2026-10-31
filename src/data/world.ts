@@ -84,7 +84,22 @@ export const BIOMES: { tile: BiomeTile; x: number; y: number; r: number }[] = [
   { tile: 'ash', x: 206, y: 24, r: 30 }, // 亡靈焦土
 ];
 
-export const TERRAIN_COST = { plain: 1, forest: 1.8, hill: 1.4, bridge: 1, snow: 1.3, sand: 1.2, swamp: 1.6, ash: 1.1 };
+export const TERRAIN_COST = { plain: 1, forest: 1.8, hill: 1.4, bridge: 1, snow: 1.3, sand: 1.2, swamp: 1.6, ash: 1.1, farm: 1, stream: 2.2 };
+
+/** 水系同農田：x 跟劇本鏡像 */
+export const LANDS = {
+  /** 湖 */
+  lakes: [{ x: 200, y: 60, r: 11 }, { x: 40, y: 130, r: 9 }, { x: 165, y: 112, r: 8 }],
+  /** 河：由山區流入大江，joinY 係匯入位 */
+  tribs: [{ x: 62, y: 6, joinY: 38 }, { x: 195, y: 8, joinY: 74 }, { x: 234, y: 100, joinY: 124 }, { x: 24, y: 104, joinY: 104 }],
+  /** 川：細水，行得過但慢 */
+  streams: [{ x: 18, y: 66, joinY: 84 }, { x: 88, y: 92, joinY: 110 }, { x: 170, y: 36, joinY: 48 }, { x: 150, y: 96, joinY: 104 }, { x: 100, y: 142, joinY: 146 }],
+  /** 千里農田 */
+  farms: [{ x: 84, y: 100, r: 22, gold: false }, { x: 30, y: 84, r: 15, gold: true }, { x: 176, y: 92, r: 20, gold: true }, { x: 150, y: 28, r: 14, gold: false }, { x: 66, y: 44, r: 12, gold: true }],
+};
+
+/** 港口：搭船同打魚 */
+export const SHIP = { perTile: 1.1, minCost: 30, tilesPerDay: 45, portRange: 16, always: ['linjiang', 'iceharbor', 'southpond'], fishHours: 8, fishFood: 14, fishGold: 30 };
 
 export const TIME = {
   /** 現實幾多秒一日（行軍時） */

@@ -1,4 +1,4 @@
-import { MAP, PLACES } from '../data/world';
+import { LANDS, MAP, PLACES } from '../data/world';
 import { makeRng } from '../battle/terrain';
 import type { Tile, WorldTerrain } from './terrain';
 
@@ -6,6 +6,7 @@ import type { Tile, WorldTerrain } from './terrain';
 const BASE: Record<Tile, [number, number, number]> = {
   plain: [132, 164, 84], forest: [78, 118, 66], hill: [156, 148, 98], mountain: [120, 112, 104], water: [46, 104, 150], bridge: [132, 164, 84],
   snow: [226, 234, 240], sand: [220, 194, 132], swamp: [92, 112, 76], ash: [92, 84, 90],
+  sea: [34, 84, 128], lake: [58, 124, 168], stream: [132, 164, 84], farm: [200, 178, 88],
 };
 
 const SIZE = 256;
@@ -39,7 +40,13 @@ function paintBase(t: WorldTerrain, width: number, height: number, scale: number
   const d = img.data;
   const W = MAP.width;
   const H = MAP.height;
-  const tile = (x: number, y: number) => BASE[t.at(Math.max(0, Math.min(W - 1, x)), Math.max(0, Math.min(H - 1, y)))];
+  const tile = (x: number, y: number) => {
+    const cx = Math.max(0, Math.min(W - 1, x));
+    const cy = Math.max(0, Math.min(H - 1, y));
+    const k = t.at(cx, cy);
+    // 河同橋另外畫，底色用原本地面
+    return BASE[k === 'water' || k === 'stream' || k === 'bridge' ? t.under[cx + cy * W] : k];
+  };
   let i = 0;
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
@@ -131,42 +138,117 @@ function peak(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   g.fill();
 }
 
-/** 河道：沿住河心線畫，有河岸同水光 */
-function paintRiver(g: CanvasRenderingContext2D, px: number) {
-  const line = () => {
-    g.beginPath();
-    for (let y = 0; y <= MAP.height; y += 1) {
-      const x = MAP.riderX + Math.sin(y * 0.11) * 7 + Math.sin(y * 0.031) * 5;
-      if (y) g.lineTo((x + 0.5) * px, y * px);
-      else g.moveTo((x + 0.5) * px, 0);
+/** 河道：川、河、江闊度同顏色唔同，大江愈近出海愈闊 */
+function paintRiver(g: CanvasRenderingContext2D, t: WorldTerrain, px: number) {
+  const style = { jiang: '#2c6a98', he: '#3a82ae', chuan: '#6ab2d2' };
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  const pass = (bank: boolean) => {
+    for (const r of t.rivers) {
+      g.strokeStyle = bank ? '#a89a6c' : style[r.kind];
+      for (let i = 1; i < r.pts.length; i++) {
+        const [p, q] = [r.pts[i - 1], r.pts[i]];
+        g.lineWidth = (q.w * 2 + (bank ? 1 : 0.2)) * px;
+        g.beginPath();
+        g.moveTo((p.x + 0.5) * px, (p.y + 0.5) * px);
+        g.lineTo((q.x + 0.5) * px, (q.y + 0.5) * px);
+        g.stroke();
+      }
     }
   };
-  g.lineJoin = 'round';
-  g.strokeStyle = '#b8a878';
-  g.lineWidth = px * 4.2;
-  line();
-  g.stroke();
-  g.strokeStyle = '#2f6f9e';
-  g.lineWidth = px * 3.2;
-  line();
-  g.stroke();
-  g.strokeStyle = 'rgba(190,226,240,.35)';
-  g.lineWidth = px * 0.5;
-  g.setLineDash([px * 2, px * 3]);
-  line();
-  g.stroke();
+  pass(true);
+  pass(false);
+  // 水面反光順住河道
+  g.strokeStyle = 'rgba(200,232,244,.3)';
+  g.lineWidth = px * 0.3;
+  g.setLineDash([px * 2, px * 4]);
+  for (const r of t.rivers) {
+    if (r.kind === 'chuan') continue;
+    g.beginPath();
+    r.pts.forEach((p, i) => (i ? g.lineTo((p.x + 0.5) * px, (p.y + 0.5) * px) : g.moveTo((p.x + 0.5) * px, (p.y + 0.5) * px)));
+    g.stroke();
+  }
   g.setLineDash([]);
-  for (const b of MAP.bridges) {
-    const x = (MAP.riderX + Math.sin(b * 0.11) * 7 + Math.sin(b * 0.031) * 5 + 0.5) * px;
-    const y = (b + 0.5) * px;
+  for (const s of t.spans) {
+    g.save();
+    g.translate((s.x + 0.5) * px, (s.y + 0.5) * px);
+    g.rotate(s.a);
     g.fillStyle = 'rgba(10,14,20,.3)';
-    g.fillRect(x - px * 3, y - px * 1.1, px * 6, px * 3);
+    g.fillRect(-px * 2.8, -px * 0.7, px * 5.6, px * 1.8);
     g.fillStyle = '#8a6a44';
-    g.fillRect(x - px * 3, y - px * 1.4, px * 6, px * 2.8);
+    g.fillRect(-px * 2.8, -px * 0.9, px * 5.6, px * 1.8);
     g.fillStyle = '#6a4e30';
-    for (let k = 0; k < 7; k++) g.fillRect(x - px * 3 + k * px, y - px * 1.4, 2, px * 2.8);
-    g.fillRect(x - px * 3, y - px * 1.5, px * 6, 3);
-    g.fillRect(x - px * 3, y + px * 1.3, px * 6, 3);
+    for (let k = 0; k < 6; k++) g.fillRect(-px * 2.8 + k * px, -px * 0.9, 2, px * 1.8);
+    g.restore();
+  }
+}
+
+const GOLD_FIELDS = ['#dcbc4a', '#cfae3e', '#e6cb62', '#c0a43e'];
+const GREEN_FIELDS = ['#7fb44e', '#669e44', '#96c45e', '#70ac4e'];
+
+/** 千里農田：一格格田畦，金色或者綠色連成一片 */
+function paintFarms(g: CanvasRenderingContext2D, t: WorldTerrain, px: number) {
+  const size = 5;
+  for (let y = 0; y < MAP.height; y++) {
+    for (let x = 0; x < MAP.width; x++) {
+      if (t.at(x, y) !== 'farm') continue;
+      const bx = Math.floor(x / size);
+      const by = Math.floor(y / size);
+      const n = noiseTable[(bx * 7 + by * 13) & (SIZE * SIZE - 1)];
+      const zone = LANDS.farms.reduce((b, f) => (Math.hypot(f.x - x, f.y - y) < Math.hypot(b.x - x, b.y - y) ? f : b));
+      const list = zone.gold ? GOLD_FIELDS : GREEN_FIELDS;
+      g.fillStyle = list[Math.floor(n * list.length)];
+      g.fillRect(x * px, y * px, px + 1, px + 1);
+      // 田壟方向每塊唔同
+      g.strokeStyle = 'rgba(70,60,20,.2)';
+      g.lineWidth = 1;
+      g.beginPath();
+      for (let k = 2; k < px; k += 4) {
+        if (n > 0.5) {
+          g.moveTo(x * px, y * px + k);
+          g.lineTo((x + 1) * px, y * px + k);
+        } else {
+          g.moveTo(x * px + k, y * px);
+          g.lineTo(x * px + k, (y + 1) * px);
+        }
+      }
+      g.stroke();
+      if (x % size === 0 || y % size === 0) {
+        g.fillStyle = 'rgba(90,76,40,.5)';
+        g.fillRect(x * px, y * px, x % size === 0 ? 2 : px, y % size === 0 ? 2 : px);
+      }
+    }
+  }
+}
+
+/** 海同湖：浪紋同漁船 */
+function paintWaves(g: CanvasRenderingContext2D, t: WorldTerrain, px: number, rng: () => number) {
+  for (let y = 0; y < MAP.height; y++) {
+    for (let x = 0; x < MAP.width; x++) {
+      const k = t.at(x, y);
+      if (k !== 'sea' && k !== 'lake') continue;
+      const cx = (x + rng()) * px;
+      const cy = (y + rng()) * px;
+      if (rng() < 0.2) {
+        g.strokeStyle = 'rgba(214,236,244,.3)';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.arc(cx, cy + 9, 11, -2.1, -1.1);
+        g.stroke();
+      }
+      if (rng() < 0.012) {
+        g.fillStyle = 'rgba(10,20,30,.3)';
+        g.fillRect(cx - 7, cy + 3, 15, 3);
+        g.fillStyle = '#5a3a24';
+        g.fillRect(cx - 7, cy, 14, 3);
+        g.fillStyle = '#f0e8d8';
+        g.beginPath();
+        g.moveTo(cx, cy);
+        g.lineTo(cx, cy - 13);
+        g.lineTo(cx + 8, cy - 2);
+        g.fill();
+      }
+    }
   }
 }
 
@@ -239,8 +321,10 @@ export function paintMap(t: WorldTerrain, px: number): HTMLCanvasElement {
       }
     }
   }
+  paintFarms(g, t, px);
+  paintWaves(g, t, px, rng);
   paintRoads(g, t, px);
-  paintRiver(g, px);
+  paintRiver(g, t, px);
 
   // 景物由上畫到下，近嘅遮住遠嘅
   for (let y = 0; y < MAP.height; y++) {

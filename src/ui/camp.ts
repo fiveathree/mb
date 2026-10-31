@@ -7,6 +7,8 @@ import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
 import { figureOf } from '../data/figures';
+import { VISTAS } from '../data/vistas';
+import { vistaArt } from './vistaArt';
 import { ROLE_LABEL, UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
 import { cleanName, armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
@@ -224,7 +226,7 @@ export class Camp {
     this.$$('#cheat', (el) => {
       el.onclick = () => {
         const input = document.querySelector<HTMLInputElement>('#screen #code');
-        this.notice = applyCheat(this.roster, input?.value ?? '') ?? '密令唔啱';
+        this.notice = this.world.summon(input?.value ?? '') ?? applyCheat(this.roster, input?.value ?? '') ?? '密令唔啱';
         this.render();
       };
     });
@@ -433,7 +435,14 @@ export class Camp {
     const tabs = `<div class="row codex-tabs">
       <button class="mini codex-tab ${this.codexPage === 0 ? 'on' : ''}" data-p="0">坐騎同成就</button>
       <button class="mini codex-tab ${this.codexPage === 1 ? 'on' : ''}" data-p="1">人物（要行近先見到）</button>
+      <button class="mini codex-tab ${this.codexPage === 2 ? 'on' : ''}" data-p="2">秘景圖（${w.vistas.length}／${VISTAS.length}）</button>
     </div>`;
+    if (this.codexPage === 2) {
+      const cells = VISTAS.map((v) => (w.vistas.includes(v.id)
+        ? `<div class="vista"><img src="${vistaArt(v)}" alt="${v.name}" /><small>${v.name}</small></div>`
+        : '<div class="vista lock"><i>？</i><small>未發現</small></div>')).join('');
+      return `${tabs}<div class="vistas">${cells}</div>`;
+    }
     // 人物多嘅劇本一頁放唔晒，分開兩頁
     if (this.codexPage === 1) return `${tabs}<div class="codex wide-list">${figures}</div>`;
     return `${tabs}<div class="codex">

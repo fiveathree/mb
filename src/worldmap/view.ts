@@ -8,7 +8,7 @@ import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { partyFood, partyWage } from '../core/roster';
-import { calamityIcon, placeIcon, partyIcon, ruinIcon } from './icons';
+import { calamityIcon, placeIcon, partyIcon, portIcon, ruinIcon, vistaIcon } from './icons';
 import { STRIKES } from '../data/colossus';
 import { Sky, type Projected } from './sky';
 import { dayOf, hourOf, isNight, isOpen, type Blast, type World, type WorldEvent } from './world';
@@ -57,6 +57,8 @@ export class WorldView {
   private picker: HTMLElement | null = null;
   private pickerClose: (() => void) | null = null;
   private follow = true;
+  private tip = '';
+  private tipUntil = 0;
   /** 瞄緊滅世魔法 */
   private aiming = false;
   private keys = new Set<string>();
@@ -245,7 +247,7 @@ export class WorldView {
       return;
     }
     if (options.length) options[0].run();
-    else this.world.goTo(m.x, m.y, null);
+    else if (!this.world.goTo(m.x, m.y, null)) this.say('行唔到：深水要去港口搭船過');
   }
 
   /** 任務去邊：有目的地就去目的地，清賊任務就去最近一夥賊 */
@@ -299,7 +301,7 @@ export class WorldView {
   private visit(p: PlaceDef) {
     const w = this.world.save;
     if (Math.hypot(p.x - w.x, p.y - w.y) < 1.5) this.onEvent?.({ type: 'place', place: p });
-    else this.world.goTo(p.x, p.y, p);
+    else if (!this.world.goTo(p.x, p.y, p)) this.say('行唔到：大江要去港口搭船過');
   }
 
   /** 附近目標太多：彈窗揀，時間暫停 */
@@ -488,6 +490,7 @@ export class WorldView {
       .filter((o): o is { p: PlaceDef; q: Projected } => !!o.q && o.q.y > horizon && o.q.y < height + 40)
       .sort((a, b) => a.q.s - b.q.s);
     for (const { p, q } of places) this.drawPlace(p, q);
+    this.drawVistas(at);
     for (const b of this.world.blasts) this.drawBlast(b, at);
 
     // 夜晚同視野：地面上嘅橢圓
@@ -551,6 +554,14 @@ export class WorldView {
     }
 
     this.sky.drawFlyers(g, this.project, horizon);
+    if (performance.now() < this.tipUntil) {
+      g.font = `900 20px ${FONT}`;
+      g.lineWidth = 6;
+      g.strokeStyle = OUTLINE;
+      g.strokeText(this.tip, width / 2, height * 0.3);
+      g.fillStyle = '#ffd08a';
+      g.fillText(this.tip, width / 2, height * 0.3);
+    }
 
     // 自己部隊：人愈多粒點愈大
     if (!me) return;
@@ -570,6 +581,26 @@ export class WorldView {
     g.strokeText(label, me.x, me.y - radius * 3.7);
     g.fillStyle = '#ffe9a8';
     g.fillText(label, me.x, me.y - radius * 3.7);
+  }
+
+  /** 秘景記號：行近先見到，收集咗變金星 */
+  private drawVistas(at: (x: number, y: number) => Projected | null) {
+    const g = this.g;
+    const w = this.world.save;
+    for (const v of this.world.terrain.vistas) {
+      const found = w.vistas.includes(v.def.id);
+      if (!found && Math.hypot(v.x - w.x, v.y - w.y) > this.world.vision) continue;
+      const q = at(v.x, v.y);
+      if (!q) continue;
+      const d = (found ? 18 : 26) * Math.max(0.6, q.s) * (1 + Math.sin(performance.now() / 400) * 0.08);
+      g.drawImage(vistaIcon(found), q.x - d / 2, q.y - d, d, d);
+    }
+  }
+
+  /** 過唔到嘅時候提示 */
+  private say(text: string) {
+    this.tip = text;
+    this.tipUntil = performance.now() + 3000;
   }
 
   /** 焦土：貼住地面，近大遠細 */
@@ -694,7 +725,7 @@ export class WorldView {
     const owner = pol.ownerOf(p.id);
     const color = owner === PLAYER ? '#f2c14e' : factionOf(owner ?? '')?.color;
     const size = Math.max(0.7, Math.min(1.5, q.s * 1.3));
-    const r = (p.kind === 'town' ? 34 : 26) * size;
+    const r = (p.kind === 'town' ? 50 : 26) * size;
     const y = q.y;
     g.fillStyle = 'rgba(8,10,16,.35)';
     g.beginPath();
@@ -733,6 +764,7 @@ export class WorldView {
       }
     }
     g.globalAlpha = 1;
+    if (this.world.terrain.ports.includes(p.id)) g.drawImage(portIcon(), q.x + r * 0.5, y - r * 0.5, r * 0.9, r * 0.9);
     if (q.s < LABEL_MIN_SCALE) return;
     g.font = `700 15px ${FONT}`;
     g.lineWidth = 5;

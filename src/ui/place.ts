@@ -15,7 +15,9 @@ import { HORSES, HORSE_RANK, MARKET_RANKS, MOVE_NAME, STABLES, moveOf } from '..
 import { FAVORS, FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, SCIFI_ARSENAL, WEAPONS } from '../data/weapons';
-import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
+import { PLACES, SHIP, SHOP, BANDIT, type PlaceDef } from '../data/world';
+import { VISTAS } from '../data/vistas';
+import { vistaArt } from './vistaArt';
 import { freeArmor, horsePrice, skillOf, weaponPrice } from '../core/hero';
 import {
   addSoldier, armyPower, armySize, canAfford, isElite, rankTag, rosterPower, sortedSoldiers, spend, wageOf, type Roster,
@@ -68,6 +70,7 @@ export interface PlaceActions {
   onSiege: (p: PlaceDef, breaches: number) => void;
   onDefend: (p: PlaceDef, by: string) => void;
   onHunter: (n: Npc) => void;
+  onSailed: (p: PlaceDef) => void;
 }
 
 function strengthText(mine: number, theirs: number): string {
@@ -169,6 +172,8 @@ export class PlaceScreens {
       };
     }
     const fief = this.fiefActions(p, handlers);
+    handlers.dock = () => this.dock(p);
+    const dock = this.world.terrain.ports.includes(p.id) ? '<button class="alt" id="dock">碼頭</button>' : '';
     const body = {
       market: () => this.marketTab(p, handlers, refresh),
       supply: () => this.supplyTab(p, handlers, refresh),
@@ -181,7 +186,30 @@ export class PlaceScreens {
     this.show(p.name, p.desc ?? '', `
       <div class="tabs center">${TOWN_TABS.map(([k, v]) => `<button class="tab ${k === this.townTab ? 'on' : ''}" id="t_${k}">${v}</button>`).join('')}</div>
       ${fief}${body}
-      <div class="row"><button class="alt" id="walk">${this.walking ? '返出街' : '入城行街'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
+      <div class="row">${dock}<button class="alt" id="walk">${this.walking ? '返出街' : '入城行街'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
+  }
+
+  /** 碼頭：搭船過江過海，或者出海打魚 */
+  private dock(p: PlaceDef) {
+    const w = this.world;
+    const back = () => (p.kind === 'village' ? this.village(p) : this.town(p));
+    const h: Record<string, () => void> = { back, fish: () => { this.notice = w.fish(); this.dock(p); } };
+    const list = w.terrain.ports.filter((id) => id !== p.id).map((id) => PLACES.find((x) => x.id === id)!);
+    const rows = list.map((to) => {
+      const cost = w.sailCost(to);
+      const days = Math.max(1, Math.ceil(Math.hypot(to.x - p.x, to.y - p.y) / SHIP.tilesPerDay));
+      h[`sail_${to.id}`] = () => {
+        const err = w.sail(to);
+        if (err) {
+          this.notice = err;
+          this.dock(p);
+        } else this.act.onSailed(to);
+      };
+      return `<button class="alt" id="sail_${to.id}">去 ${to.name}（${cost} 金，${days} 日）</button>`;
+    }).join('');
+    this.show(`${p.name}碼頭`, '大江冇橋，過江過海都要搭船。', `
+      <div class="row wrap">${rows}</div>
+      <div class="row"><button class="alt" id="fish">出海打魚（${SHIP.fishHours} 個鐘）</button><button class="go" id="back">返回</button></div>`, h);
   }
 
   /** 行街時行入某間舖 */
@@ -527,7 +555,9 @@ export class PlaceScreens {
     }
     const tabs = `<div class="tabs center">${VILLAGE_TABS.map(([k, v]) => `<button class="tab ${k === this.villageTab ? 'on' : ''}" id="v_${k}">${v}</button>`).join('')}</div>`;
     handlers.walk = () => this.act.onWalk(p);
-    const footer = `<div class="row"><button class="alt" id="walk">${this.walking ? '返出村' : '入村走走'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`;
+    handlers.dock = () => this.dock(p);
+    const dock = this.world.terrain.ports.includes(p.id) ? '<button class="alt" id="dock">碼頭</button>' : '';
+    const footer = `<div class="row">${dock}<button class="alt" id="walk">${this.walking ? '返出村' : '入村走走'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`;
     const foodBtns = this.foodButtons(p.id, handlers, refresh);
     const body = this.villageTab === 'market' ? this.marketTab(p, handlers, refresh) : `
       <div class="row wrap">
@@ -747,7 +777,9 @@ export class PlaceScreens {
       };
       return `<button class="alt" id="c${i}">${c.label}</button>`;
     }).join('');
-    this.show(e.title, e.text, `<div class="row wrap">${btns}</div>`, h);
+    const def = VISTAS.find((v) => v.id === e.vista);
+    const art = def ? `<img class="vista-big" src="${vistaArt(def)}" alt="${def.name}" />` : '';
+    this.show(e.title, e.text, `${art}<div class="row wrap">${btns}</div>`, h);
   }
 
   /** 同 NPC 傾偈：每種都有唔同用處 */

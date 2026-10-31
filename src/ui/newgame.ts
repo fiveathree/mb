@@ -1,7 +1,8 @@
 import {
-  BACKGROUNDS, PLAYABLE, REGION_NAME, START_REGIONS, type PlayableRace, type Region, type StartOption,
+  BACKGROUNDS, PLAYABLE, type PlayableRace, type StartOption,
 } from '../data/factions';
-import { SCENARIOS, type Scenario } from '../data/scenarios';
+import { SCENARIOS, applyScenario, type Scenario } from '../data/scenarios';
+import { PLACES, type PlaceKind } from '../data/world';
 import { BACKGROUND_JOB, JOBS, jobOf } from '../data/jobs';
 import { ATTR_NAME, DIFFICULTY, SKILLS, type Difficulty } from '../data/economy';
 import { UNITS } from '../data/units';
@@ -18,7 +19,8 @@ export interface NewGameChoice {
   crown?: CrownDef;
   scenario: Scenario;
   race: PlayableRace;
-  region: Region;
+  /** 出生地：邊座城或者村 */
+  birth: string;
   background: StartOption;
   difficulty: Difficulty;
   /** 空字串就跟身世 */
@@ -26,13 +28,15 @@ export interface NewGameChoice {
 }
 
 const RACE_KEYS = Object.keys(PLAYABLE) as PlayableRace[];
-const REGION_KEYS = Object.keys(START_REGIONS) as Region[];
 const pick = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 
 function armyText(b: StartOption): string {
   if (!b.army.length) return '孤身一人';
   return b.army.map((e) => `${UNITS[e.unit].name} ${e.count}`).join('、');
 }
+
+const KIND_NAME: Partial<Record<PlaceKind, string>> = { town: '城', castle: '堡', village: '村' };
+const birthPlaces = () => PLACES.filter((p) => !p.gone && KIND_NAME[p.kind] && !p.hidden);
 
 const ATTR_MAX = 20;
 
@@ -62,12 +66,16 @@ function crownPanel(k: CrownDef): string {
 
 /** 開局：揀種族、地域、身世 */
 export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack: () => void) {
-  const c: NewGameChoice = { name: '', scenario: SCENARIOS[0], race: 'human', region: 'west', background: BACKGROUNDS[0], difficulty: 'normal', job: '' };
+  const c: NewGameChoice = { name: '', scenario: SCENARIOS[0], race: 'human', birth: 'griffon', background: BACKGROUNDS[0], difficulty: 'normal', job: '' };
   let crownMode = false;
   const racesOf = () => c.scenario.races ?? RACE_KEYS;
   const render = () => {
     if (!racesOf().includes(c.race)) c.race = 'human';
     const crowns = crownsIn(c.scenario.id);
+    // 套用劇本先攞到當地城名
+    applyScenario(c.scenario.id);
+    const births = birthPlaces();
+    if (!births.some((p) => p.id === c.birth)) c.birth = births[0].id;
     c.crown = crownMode ? (crowns.includes(c.crown!) ? c.crown : crowns[0]) : undefined;
     const chip = (attr: string, id: string, label: string, on: boolean) => `<button class="wp ${on ? 'on' : ''}" data-${attr}="${id}">${label}</button>`;
     const b = c.background;
@@ -82,11 +90,10 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
         <div class="pick-title">出身</div>
         <div class="weapons">${BACKGROUNDS.map((x) => chip('bg', x.id, x.name, x.id === b.id)).join('')}</div>
         <p class="detail">${b.desc}。職業 ${jobOf(BACKGROUND_JOB[b.id] ?? 'warrior').name}，起步 ${b.gold} 金、${b.food} 糧；部隊：${armyText(b)}</p>
-        <div class="pick-title ng-picks">出生地
+        <div class="pick-title ng-picks">出生地 <select id="ngBirth">${births.map((p) => `<option value="${p.id}" ${p.id === c.birth ? 'selected' : ''}>${KIND_NAME[p.kind]}・${p.name}</option>`).join('')}</select>
           ${diff}
           職業 <select id="ngJob"><option value="">跟身世</option>${JOBS.map((j) => `<option value="${j.id}" ${j.id === c.job ? 'selected' : ''}>${j.name}</option>`).join('')}</select>
-        </div>
-        <div class="horses">${REGION_KEYS.map((k) => chip('region', k, REGION_NAME[k], k === c.region)).join('')}</div>`;
+        </div>`;
     hud.showScreen(`
       <div class="card camp newgame">
         <div class="ng-head">
@@ -108,20 +115,21 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
     const all = (sel: string, fn: (el: HTMLElement) => void) => document.querySelectorAll<HTMLElement>(`#screen ${sel}`).forEach(fn);
     all('[data-sc]', (el) => { el.onclick = () => { c.scenario = SCENARIOS.find((s) => s.id === el.dataset.sc)!; render(); }; });
     all('[data-race]', (el) => { el.onclick = () => { c.race = el.dataset.race as PlayableRace; render(); }; });
-    all('[data-region]', (el) => { el.onclick = () => { c.region = el.dataset.region as Region; render(); }; });
     all('[data-bg]', (el) => { el.onclick = () => { c.background = BACKGROUNDS.find((x) => x.id === el.dataset.bg)!; render(); }; });
     all('[data-mode]', (el) => { el.onclick = () => { crownMode = !!el.dataset.mode; render(); }; });
     all('[data-crown]', (el) => { el.onclick = () => { c.crown = crowns.find((k) => k.id === el.dataset.crown); render(); }; });
     document.getElementById('dice')!.onclick = () => {
       c.scenario = pick(SCENARIOS);
       c.race = pick(racesOf());
-      c.region = pick(REGION_KEYS);
+      c.birth = pick(birthPlaces()).id;
       c.background = pick(BACKGROUNDS);
       c.crown = pick(crownsIn(c.scenario.id));
       render();
     };
     (document.getElementById('ngName') as HTMLInputElement).oninput = (e) => { c.name = (e.target as HTMLInputElement).value; };
     (document.getElementById('ngDiff') as HTMLSelectElement).onchange = (e) => { c.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
+    const birth = document.getElementById('ngBirth') as HTMLSelectElement | null;
+    if (birth) birth.onchange = () => { c.birth = birth.value; };
     const job = document.getElementById('ngJob') as HTMLSelectElement | null;
     if (job) job.onchange = () => { c.job = job.value; };
     document.getElementById('start')!.onclick = () => onDone(c);

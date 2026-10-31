@@ -62,6 +62,11 @@ export const STRIKES = {
 };
 export type StrikeKind = keyof typeof STRIKES;
 
+/** 試玩密令：喺部隊頁輸入 */
+export const SUMMON_CODES: Record<string, 'titan' | 'wyrm' | 'witch' | 'dragon' | 'strike'> = {
+  巨神: 'titan', titan: 'titan', 飛龍: 'wyrm', wyrm: 'wyrm', 魔女: 'witch', witch: 'witch', 巨龍: 'dragon', dragon: 'dragon', 滅世: 'strike', doom: 'strike',
+};
+
 /** 魔王陣營親手放滅世魔法 */
 export const DOOM = { cooldown: 25, justice: -20, renown: 12, relation: -30 };
 

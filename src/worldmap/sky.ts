@@ -80,14 +80,13 @@ export class Sky {
       g.beginPath();
       g.arc(width * (0.1 + k * 0.8), horizon * (0.92 - Math.sin(k * Math.PI) * 0.72), 18, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = p === 'dusk' ? 'rgba(255,190,150,.65)' : 'rgba(255,255,255,.75)';
-      for (const c of CLOUDS) {
-        const x = (((c.x * width + this.t * 6 - fx * 0.1) % (width + 240)) + width + 240) % (width + 240) - 120;
-        g.beginPath();
-        g.ellipse(x, c.y * horizon, c.w, 9, 0, 0, Math.PI * 2);
-        g.ellipse(x + c.w * 0.3, c.y * horizon - 6, c.w * 0.5, 8, 0, 0, Math.PI * 2);
-        g.fill();
-      }
+      const tone = p === 'dusk' ? '255,196,160' : '255,255,255';
+      CLOUDS.forEach((c, i) => {
+        const x = (((c.x * width + this.t * 6 - fx * 0.1) % (width + 340)) + width + 340) % (width + 340) - 170;
+        const w = c.w * 2.2;
+        const h = Math.min(horizon * 0.6, w * 0.35);
+        g.drawImage(cloudSprite(tone, i % 3), x - w / 2, c.y * horizon - h / 2, w, h);
+      });
     }
 
     // 遠山，隨鏡頭輕微移動
@@ -119,34 +118,163 @@ export class Sky {
       .filter((o): o is { f: Flyer; p: Projected } => !!o.p)
       .sort((a, b) => a.p.s - b.p.s);
     for (const { f, p } of list) {
-      const size = Math.max(3, f.def.wing * p.s * 1.3);
-      // 地面影，近先見
+      const size = Math.max(4, f.def.wing * p.s * 1.5);
+      // 地面影，翼形
       if (p.y > horizon + 8 && p.s > 0.3) {
-        g.fillStyle = 'rgba(8,10,16,.22)';
+        g.fillStyle = 'rgba(8,10,16,.2)';
         g.beginPath();
-        g.ellipse(p.x, p.y, size * 0.55, size * 0.16, 0, 0, Math.PI * 2);
+        g.ellipse(p.x, p.y, size * 0.5, size * 0.12, 0, 0, Math.PI * 2);
         g.fill();
       }
-      const x = p.x;
       const y = p.y - f.alt * p.s * 1.8;
       const dir = Math.sign(f.vx) || 1;
-      const beat = f.def.flap ? Math.sin(this.t * f.def.flap + f.phase) * size * 0.34 : -size * 0.08;
-      g.fillStyle = f.def.color;
-      g.beginPath();
-      // 雙翼
-      g.moveTo(x - size * 0.1, y);
-      g.lineTo(x - size * 0.5, y - beat);
-      g.lineTo(x - size * 0.16, y + size * 0.08);
-      g.lineTo(x + size * 0.16, y + size * 0.08);
-      g.lineTo(x + size * 0.5, y - beat);
-      g.lineTo(x + size * 0.1, y);
-      g.closePath();
-      g.fill();
-      // 身同頭
-      g.beginPath();
-      g.ellipse(x, y + size * 0.03, size * 0.26, size * 0.07, 0, 0, Math.PI * 2);
-      g.arc(x + dir * size * 0.28, y, size * 0.06, 0, Math.PI * 2);
-      g.fill();
+      const beat = f.def.flap ? Math.sin(this.t * f.def.flap + f.phase) : 0.15;
+      g.save();
+      g.translate(p.x, y);
+      g.scale(dir, 1);
+      drawCreature(g, f.def, size, beat);
+      g.restore();
     }
   }
+}
+
+const shade = (c: string, k: number) => {
+  const n = parseInt(c.slice(1), 16);
+  const f = (v: number) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+};
+
+/** 翼：羽翼尖、蝠翼有膜骨；beat 由 -1 到 1 */
+function wing(g: CanvasRenderingContext2D, s: number, beat: number, color: string, bat: boolean, back: boolean) {
+  const lift = beat * s * 0.42;
+  const ox = back ? 0.06 * s : -0.02 * s;
+  const tipX = ox - s * 0.34;
+  const tipY = -lift - s * 0.06;
+  g.fillStyle = color;
+  g.beginPath();
+  g.moveTo(ox + s * 0.1, -s * 0.03);
+  g.quadraticCurveTo(ox - s * 0.04, -lift * 0.9 - s * 0.14, tipX, tipY);
+  if (bat) {
+    // 膜邊一段段向內彎
+    const mid = [[0.26, 0.5], [0.16, 0.8], [0.04, 1]];
+    let px = tipX;
+    let py = tipY;
+    for (const [m, k] of mid) {
+      const nx = ox - s * m + s * 0.04;
+      const ny = -lift * (1 - k) + s * 0.04;
+      g.quadraticCurveTo((px + nx) / 2 + s * 0.03, (py + ny) / 2 - s * 0.03, nx, ny);
+      px = nx;
+      py = ny;
+    }
+  } else {
+    // 羽毛尖
+    for (let i = 1; i <= 4; i++) {
+      const k = i / 4;
+      g.lineTo(tipX + (s * 0.42 * k), tipY * (1 - k) + s * 0.05 + (i % 2 ? s * 0.03 : -s * 0.01));
+    }
+  }
+  g.closePath();
+  g.fill();
+}
+
+function drawCreature(g: CanvasRenderingContext2D, def: SkyFauna, s: number, beat: number) {
+  const c = def.color;
+  const dark = shade(c, 0.62);
+  const light = shade(c, 1.25);
+  if (def.name === '運輸艦') {
+    g.fillStyle = dark;
+    g.beginPath();
+    g.moveTo(s * 0.5, 0);
+    g.lineTo(s * 0.2, -s * 0.1);
+    g.lineTo(-s * 0.5, -s * 0.08);
+    g.lineTo(-s * 0.44, s * 0.08);
+    g.lineTo(s * 0.26, s * 0.08);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#8fe0ff';
+    g.fillRect(-s * 0.52, -s * 0.04, s * 0.05, s * 0.08);
+    return;
+  }
+  if (def.name === '御劍修士') {
+    g.fillStyle = '#c8e8f0';
+    g.fillRect(-s * 0.4, 0, s * 0.8, s * 0.03);
+    g.fillStyle = c;
+    g.beginPath();
+    g.ellipse(0, -s * 0.16, s * 0.08, s * 0.17, 0.2, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#e0b48c';
+    g.beginPath();
+    g.arc(s * 0.04, -s * 0.36, s * 0.05, 0, Math.PI * 2);
+    g.fill();
+    return;
+  }
+  const bat = ['魔蝠', '雙足飛龍', '巨龍', '哈比', '飛蟲'].includes(def.name);
+  const beast = ['獅鷲', '天馬'].includes(def.name);
+  const long = bat && def.wing > 50;
+  wing(g, s, beat, dark, bat, true);
+  // 尾
+  g.fillStyle = dark;
+  g.beginPath();
+  g.moveTo(-s * 0.12, -s * 0.02);
+  g.quadraticCurveTo(-s * (long ? 0.5 : 0.3), s * 0.02 - beat * s * 0.04, -s * (long ? 0.62 : 0.34), long ? s * 0.08 : 0);
+  g.lineTo(-s * 0.12, s * 0.05);
+  g.fill();
+  // 身
+  g.fillStyle = c;
+  g.beginPath();
+  g.ellipse(0, 0, s * (beast ? 0.24 : 0.17), s * (beast ? 0.09 : 0.055), -0.08, 0, Math.PI * 2);
+  g.fill();
+  // 頸同頭
+  const neck = long || def.name === '仙鶴' ? 0.36 : 0.22;
+  g.strokeStyle = c;
+  g.lineWidth = Math.max(1, s * 0.05);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(s * 0.12, -s * 0.01);
+  g.quadraticCurveTo(s * (neck - 0.04), -s * 0.03, s * neck, -s * (long ? 0.08 : 0.03));
+  g.stroke();
+  g.fillStyle = c;
+  g.beginPath();
+  g.ellipse(s * neck, -s * (long ? 0.09 : 0.04), s * 0.055, s * 0.033, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = long ? '#e8d8a0' : '#d8a040';
+  g.beginPath();
+  g.moveTo(s * (neck + 0.04), -s * (long ? 0.1 : 0.05));
+  g.lineTo(s * (neck + 0.12), -s * (long ? 0.08 : 0.03));
+  g.lineTo(s * (neck + 0.04), -s * (long ? 0.07 : 0.02));
+  g.fill();
+  wing(g, s, beat, light, bat, false);
+  if (def.name === '火鳳凰') {
+    const glow = g.createRadialGradient(0, 0, 1, 0, 0, s * 0.5);
+    glow.addColorStop(0, 'rgba(255,200,90,.5)');
+    glow.addColorStop(1, 'rgba(255,120,40,0)');
+    g.fillStyle = glow;
+    g.fillRect(-s * 0.6, -s * 0.6, s * 1.2, s * 1.2);
+  }
+}
+
+/** 雲：預先畫一團團，每幀貼上去 */
+const cloudSprites = new Map<string, HTMLCanvasElement>();
+function cloudSprite(tone: string, seed: number): HTMLCanvasElement {
+  const key = `${tone}${seed}`;
+  let c = cloudSprites.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = 260;
+  c.height = 90;
+  const g = c.getContext('2d')!;
+  for (let i = 0; i < 26; i++) {
+    const k = ((i * 37 + seed * 71) % 100) / 100;
+    const j = ((i * 53 + seed * 19) % 100) / 100;
+    const x = 30 + k * 200;
+    const r = 16 + j * 26 * (1 - Math.abs(k - 0.5));
+    const y = 62 - j * 26;
+    const b = g.createRadialGradient(x, y - r * 0.2, 2, x, y, r);
+    b.addColorStop(0, `rgba(${tone},.95)`);
+    b.addColorStop(1, `rgba(${tone},0)`);
+    g.fillStyle = b;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  cloudSprites.set(key, c);
+  return c;
 }

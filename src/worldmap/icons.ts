@@ -98,22 +98,73 @@ function hut(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: nu
   g.fillRect(x + w * 0.38, y + h * 0.4, w * 0.24, h * 0.6);
 }
 
+/** 圓形城市：一圈圈城牆，放射街道，中央王城 */
+function circleCity(g: CanvasRenderingContext2D, color: string) {
+  const cx = 48;
+  const cy = 62;
+  const ring = (rx: number, ry: number, fill: string, stroke: string, width: number) => {
+    g.fillStyle = fill;
+    g.strokeStyle = stroke;
+    g.lineWidth = width;
+    g.beginPath();
+    g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  };
+  // 城牆厚度
+  g.fillStyle = STONE_DARK;
+  g.beginPath();
+  g.ellipse(cx, cy + 5, 45, 26, 0, 0, Math.PI * 2);
+  g.fill();
+  ring(45, 26, '#8a8272', STONE, 3);
+  ring(39, 22, '#7a8a58', STONE_DARK, 1);
+  // 放射街道
+  g.strokeStyle = 'rgba(222,206,160,.9)';
+  g.lineWidth = 1.5;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + 0.2;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * 10, cy + Math.sin(a) * 6);
+    g.lineTo(cx + Math.cos(a) * 40, cy + Math.sin(a) * 23);
+    g.stroke();
+  }
+  // 一圈圈屋
+  for (const [rx, ry, n] of [[33, 18.5, 22], [24, 13.5, 16]] as const) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const x = cx + Math.cos(a) * rx;
+      const y = cy + Math.sin(a) * ry;
+      g.fillStyle = '#d8c8a4';
+      g.fillRect(x - 2, y - 1, 4, 3);
+      g.fillStyle = i % 3 ? '#a8603c' : color;
+      g.beginPath();
+      g.moveTo(x - 3, y - 1);
+      g.lineTo(x, y - 4);
+      g.lineTo(x + 3, y - 1);
+      g.fill();
+    }
+  }
+  ring(15, 8.5, '#b8b0a2', STONE_DARK, 2);
+  // 城牆塔
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const x = cx + Math.cos(a) * 45;
+    const y = cy + Math.sin(a) * 26;
+    wall(g, x - 3, y - 7, 6, 9);
+  }
+  // 中央王城
+  tower(g, 34, 42, 9, 22, color);
+  tower(g, 53, 42, 9, 22, color);
+  tower(g, 42, 26, 12, 38, color);
+  flag(g, 48, 12, color, 0.7);
+}
+
 /** 城鎮、城堡等：color 係擁有者顏色 */
 export function placeIcon(kind: PlaceKind | 'monster', color: string): HTMLCanvasElement {
   return sprite(`${kind}:${color}`, (g) => {
     switch (kind) {
       case 'town':
-        wall(g, 14, 56, 68, 28);
-        merlons(g, 14, 56, 68, 7);
-        tower(g, 8, 44, 18, 40, color);
-        tower(g, 70, 44, 18, 40, color);
-        tower(g, 36, 30, 24, 54, color);
-        g.fillStyle = '#3a2618';
-        g.beginPath();
-        g.arc(48, 74, 7, Math.PI, 0);
-        g.fillRect(41, 74, 14, 10);
-        g.fill();
-        flag(g, 48, 16, color);
+        circleCity(g, color);
         break;
       case 'castle':
         wall(g, 22, 40, 52, 44);
@@ -418,5 +469,64 @@ export function calamityIcon(kind: string): HTMLCanvasElement {
     g.fillStyle = '#ffb03a';
     g.fillRect(45, 18, 2, 2);
     g.fillRect(49, 18, 2, 2);
+  });
+}
+
+/** 秘景記號：未見係問號星 */
+export function vistaIcon(found: boolean): HTMLCanvasElement {
+  return sprite(`vista:${found}`, (g) => {
+    g.fillStyle = found ? '#f2c14e' : '#fff4dc';
+    g.strokeStyle = INK;
+    g.lineWidth = 3;
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 16 : 36;
+      const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      g.lineTo(48 + Math.cos(a) * r, 48 + Math.sin(a) * r);
+    }
+    g.closePath();
+    g.fill();
+    g.stroke();
+    if (found) return;
+    g.fillStyle = INK;
+    g.font = '900 34px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('?', 48, 50);
+  });
+}
+
+/** 港口：泊住一隻帆船 */
+export function portIcon(): HTMLCanvasElement {
+  return sprite('port', (g) => {
+    g.fillStyle = '#6a4e30';
+    g.fillRect(6, 66, 60, 7);
+    g.fillRect(14, 66, 5, 20);
+    g.fillRect(50, 66, 5, 20);
+    g.fillStyle = '#4a3020';
+    g.beginPath();
+    g.moveTo(26, 60);
+    g.lineTo(84, 60);
+    g.lineTo(74, 76);
+    g.lineTo(34, 76);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#f4ecd8';
+    g.strokeStyle = INK;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(54, 12);
+    g.lineTo(54, 56);
+    g.lineTo(82, 54);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(50, 22);
+    g.lineTo(50, 56);
+    g.lineTo(32, 54);
+    g.closePath();
+    g.fill();
+    g.stroke();
   });
 }

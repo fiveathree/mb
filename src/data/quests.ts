@@ -26,6 +26,8 @@ export interface StoryEvent {
   title: string;
   text: string;
   choices: EventChoice[];
+  /** 秘景圖 id */
+  vista?: string;
   /** 要有同伴先會出現 */
   needMen?: number;
   /** 只喺魔法劇本出現 */

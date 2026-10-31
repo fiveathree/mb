@@ -139,8 +139,19 @@ export class NpcSystem {
     }
   }
 
+  /** 試玩用：喺玩家附近放一隻災厄 */
+  summon(kind: 'titan' | 'wyrm' | 'witch' | 'dragon', x: number, y: number) {
+    if (kind === 'titan' && !currentScenario().titan) CALAMITY.titan.unit = 'boss_demongod';
+    const home = PLACES.reduce((b, p) => (Math.hypot(p.x - x, p.y - y) < Math.hypot(b.x - x, b.y - y) ? p : b));
+    const n = this.spawn(kind, home);
+    n.x = x + 16;
+    n.y = y - 8;
+  }
+
   private setTrip(n: Npc, dest: PlaceDef, job: string) {
-    const path = this.terrain.path(n.x, n.y, dest.x, dest.y);
+    // 災厄飛過去，山同江都擋唔住
+    const doom = n.kind === 'dragon' || n.kind === 'witch' || n.kind === 'wyrm' || n.kind === 'titan';
+    const path = this.terrain.path(n.x, n.y, dest.x, dest.y, doom ? 'fly' : 'land');
     if (!path) {
       n.wait = 3;
       return;

@@ -150,6 +150,23 @@ export function buildTown(parent: THREE.Object3D, setup: { shops: [string, strin
   add(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.5, 0.3, 14), stone)).position.set(0, fy + 2.9, 0);
   obstacles.push({ x: 0, z: 0, r: 3.2 });
 
+  // 圓形城牆：包住成個城，城門位留空
+  const ringR = TOWN.houseRadius + 20;
+  const segs = 44;
+  const gateA = Math.atan2(-TOWN.gateZ, 0);
+  const seg = new THREE.BoxGeometry((ringR * Math.PI * 2) / segs + 0.4, 8, 2.4);
+  for (let i = 0; i < segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    const off = Math.abs(Math.atan2(Math.sin(a - gateA), Math.cos(a - gateA)));
+    if (off < 0.12) continue;
+    const x = Math.cos(a) * ringR;
+    const z = Math.sin(a) * ringR;
+    const piece = add(new THREE.Mesh(seg, stone));
+    piece.position.set(x, heightAt(x, z) + 4, z);
+    piece.rotation.y = -a + Math.PI / 2;
+    if (i % 6 === 0) add(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 12, 10), stone)).position.set(x, heightAt(x, z) + 6, z);
+  }
+
   // 城門：兩座塔加拱樑
   const gz = -TOWN.gateZ;
   for (const s of [-1, 1]) {

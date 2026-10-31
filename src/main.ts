@@ -1,7 +1,7 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
 import { cleanName, createCrownHero, createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
-import { ARTIFACTS, DUNGEON, LORD_RULES, PLAYABLE, SIEGE, START_REGIONS, factionOf, lordOf } from './data/factions';
+import { ARTIFACTS, DUNGEON, FIEF_OWNERS, LORD_RULES, PLAYABLE, SIEGE, factionOf, lordOf } from './data/factions';
 import { showNewGame, type NewGameChoice } from './ui/newgame';
 import { CROWN_RENOWN } from './data/economy';
 import type { CrownDef } from './data/crowns';
@@ -70,6 +70,7 @@ let walking: PlaceDef | null = null;
 const screens = new PlaceScreens(hud, world, roster, {
   onLeave: () => (screens.walking ? void backToStreet() : backToMap()),
   onWalk: (p) => (screens.walking ? void backToStreet() : walkTown(p)),
+  onSailed: (p) => openPlace(p),
   onParty: () => camp.show(() => reopenPlace()),
   onAttack: (p) => attackPlace(p),
   onBandit: (b, auto) => fightBandit(b, auto),
@@ -844,11 +845,10 @@ async function showMenu() {
         w.scenario = c.scenario.id;
         w.food = bg.food;
         w.pol.renown = Math.max(0, bg.renown ?? 0);
-        const start = START_REGIONS[c.region];
-        const place = PLACES.find((p) => p.id === start.place)!;
+        const place = PLACES.find((p) => p.id === c.birth)!;
         w.x = place.x + 3;
         w.y = place.y + 2;
-        w.pol.relations[start.relation] = 15;
+        if (FIEF_OWNERS[place.id]) w.pol.relations[FIEF_OWNERS[place.id]] = 15;
         const race = PLAYABLE[c.race];
         if (race.friend) w.pol.relations[race.friend] += 20;
         if (race.foe) w.pol.relations[race.foe] -= 20;

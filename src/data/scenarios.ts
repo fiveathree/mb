@@ -8,7 +8,7 @@ import type { PlayableRace } from './factions';
 import { GRAND_CROWNS, crownOf, shortName, type CrownDef } from './crowns';
 import { FIEF_OWNERS } from './factions';
 import { figuresFor } from './figures';
-import { BIOMES, MAP, PLACES } from './world';
+import { BIOMES, LANDS, MAP, PLACES } from './world';
 
 export interface Scenario {
   id: string;
@@ -448,6 +448,7 @@ const MAGIC_PLACES = ['tomb', 'witch_tower', 'abyss', 'bonecrypt', 'bullmaze'];
 const baseFactions = FACTIONS.map((f) => ({ name: f.name, garrison: f.garrison }));
 const basePlaces = PLACES.map((p) => ({ name: p.name, desc: p.desc, garrison: p.garrison, x: p.x, monster: p.monster, mercs: p.mercs }));
 const baseBiomes = BIOMES.map((b) => b.x);
+const baseLands = [...LANDS.lakes, ...LANDS.tribs, ...LANDS.streams, ...LANDS.farms].map((l) => ({ l, x: l.x }));
 const baseRiver = MAP.riderX;
 
 let current: Scenario = SCENARIOS[0];
@@ -473,7 +474,9 @@ export function applyScenario(id: string, crownId?: string) {
     for (const p of PLACES) p.x = MAP.width - 1 - p.x;
     BIOMES.forEach((b, i) => { b.x = MAP.width - 1 - baseBiomes[i]; });
     MAP.riderX = MAP.width - 1 - baseRiver;
+    for (const { l, x } of baseLands) l.x = MAP.width - 1 - x;
   } else {
+    for (const { l, x } of baseLands) l.x = x;
     BIOMES.forEach((b, i) => { b.x = baseBiomes[i]; });
     MAP.riderX = baseRiver;
   }

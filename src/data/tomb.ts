@@ -37,5 +37,5 @@ export const CALAMITY = {
   witch: { unit: 'boss_witch', level: 7, gold: 6000, artifact: 'witch_ring', home: 'witch_tower', firstDay: 45, everyDays: 40, burnMult: 3, verb: '詛咒' },
   wyrm: { unit: 'boss_wyrm', level: 8, gold: 12000, artifact: 'wyrm_heart', home: 'dragonlair', firstDay: 120, everyDays: 60, burnMult: 5, verb: '焚毀' },
   // 神魔劇本先有，unit 跟劇本
-  titan: { unit: 'boss_demongod', level: 8, gold: 15000, artifact: 'wyrm_heart', home: 'dragonlair', firstDay: 30, everyDays: 45, burnMult: 5, verb: '踏平' },
+  titan: { unit: 'boss_demongod', level: 8, gold: 15000, artifact: 'wyrm_heart', home: 'dragonlair', firstDay: 10, everyDays: 30, burnMult: 5, verb: '踏平' },
 };
