@@ -51,6 +51,7 @@ function buildGround(): THREE.Mesh {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  mesh.name = 'ground';
   mesh.receiveShadow = true;
   return mesh;
 }

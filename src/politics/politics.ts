@@ -1,4 +1,4 @@
-import { FACTIONS, FIEF_OWNERS, POLITICS as P, factionOf } from '../data/factions';
+import { FACTIONS, FIEF_OWNERS, POLITICS as P, WORLD_EVENTS, factionOf } from '../data/factions';
 import { DEEDS, HONOR, type DeedId } from '../data/honor';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
@@ -226,6 +226,22 @@ export class Politics {
         const place = PLACES.find((x) => x.id === t.place);
         this.note(`${place?.name}失守，落入${this.nameOf(t.by)}手中`);
       }
+    }
+  }
+
+  /** 國王駕崩：鄰國趁亂奪城，停晒戰 */
+  kingDies() {
+    const ids = FACTIONS.map((f) => f.id).filter((id) => id !== this.s.liege && this.fiefsOf(id).length > 1);
+    if (!ids.length) return;
+    const f = pick(ids);
+    this.note(`${this.nameOf(f)}國王駕崩，諸子爭位！`);
+    this.s.wars = this.s.wars.filter((w) => !w.includes(f) || w.includes(PLAYER));
+    if (Math.random() < WORLD_EVENTS.successionLoss) {
+      const others = FACTIONS.map((x) => x.id).filter((id) => id !== f);
+      const taker = pick(others);
+      const p = pick(this.fiefsOf(f));
+      this.s.owners[p.id] = taker;
+      this.note(`${this.nameOf(taker)}趁亂奪取${p.name}`);
     }
   }
 

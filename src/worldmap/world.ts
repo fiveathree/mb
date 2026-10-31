@@ -1,7 +1,7 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
 import { CAPTIVE, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
-import { POLITICS } from '../data/factions';
+import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
 import { expireQuests, type Quest } from '../quests/quests';
@@ -287,6 +287,7 @@ export class World {
     if (day % NPC_RULES.refillEvery === 0) this.npcs.refill();
     this.politics.daily(day);
     if (day % POLITICS.thinkEvery === 0) this.politics.think(day);
+    if (day % WORLD_EVENTS.everyDays === 0) this.worldEvent();
     expireQuests(this, day);
     this.pendingStory ??= rollEvent(this, day);
     r.gold += this.politics.dailyPay();
@@ -323,6 +324,21 @@ export class World {
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
     else if (w.pol.loyalty < HONOR.desertLoyalty && Math.random() < HONOR.desertChance) this.desert();
+  }
+
+  private worldEvent() {
+    if (Math.random() < WORLD_EVENTS.kingDeathChance) this.politics.kingDies();
+    if (Math.random() < WORLD_EVENTS.warlordChance) {
+      const w = this.save;
+      const before = w.bandits.length;
+      this.spawnBandit();
+      const b = w.bandits[before];
+      if (b) {
+        b.size = WORLD_EVENTS.warlordSize;
+        b.level = WORLD_EVENTS.warlordLevel;
+        this.note('大型山賊軍團出現，各地告急！');
+      }
+    }
   }
 
   private driftMarkets() {

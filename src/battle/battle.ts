@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
-import { SIEGE } from '../data/factions';
+import { DUNGEON, SIEGE } from '../data/factions';
 import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
 } from '../data/formations';
@@ -101,8 +101,9 @@ export class Battle implements CombatWorld {
   private baseObstacles: Obstacle[];
   private batches: Batches;
   private wall = new THREE.Group();
-  /** 城牆缺口 X 位置，空陣列代表唔係圍城 */
-  private gaps: number[] = [];
+  /** 牆同門位 */
+  private walls: { z: number; gaps: number[]; width: number }[] = [];
+  private dungeon = false;
   private firstPerson = false;
   private siege = false;
   /** 陣法：index 0 係用緊嘅 */
@@ -195,26 +196,60 @@ export class Battle implements CombatWorld {
     this.camera.updateProjectionMatrix();
   }
 
-  /** 起城牆：石牆段之間留缺口 */
-  private buildWall(breaches: number) {
+  /** 起牆：圍城一幅，地下城幾幅加兩邊牆；牆段用一個 InstancedMesh */
+  private buildWalls(breaches: number, dungeon: boolean) {
     this.wall.clear();
-    this.gaps = [];
-    this.siege = breaches > 0;
+    this.walls = [];
+    this.siege = breaches > 0 || dungeon;
+    this.dungeon = dungeon;
     this.obstacles = this.baseObstacles;
     if (!this.siege) return;
-    const { wallZ: Z, wallHalfWidth: W, breachWidth } = SIEGE;
-    for (let i = 0; i < breaches; i++) this.gaps.push(-W * 0.7 + ((i + 0.5) / breaches) * W * 1.4);
-    const stone = new THREE.MeshLambertMaterial({ color: 0x8a8678, flatShading: true });
-    const extra: Obstacle[] = [];
-    for (let x = -W; x < W; x += 2) {
-      if (this.gaps.some((g) => Math.abs(g - x) < breachWidth / 2)) continue;
-      const seg = new THREE.Mesh(new THREE.BoxGeometry(2.05, 7, 2.4), stone);
-      seg.position.set(x, heightAt(x, Z) + 3, Z);
-      seg.castShadow = true;
-      this.wall.add(seg);
-      extra.push({ x, z: Z, r: 1.3 });
+    const spots: { x: number; z: number }[] = [];
+    if (dungeon) {
+      const { walls, halfWidth, doorWidth, zMin, zMax } = DUNGEON;
+      // 門左右交錯，要行之字
+      walls.forEach((z, i) => this.walls.push({ z, gaps: [(i % 2 ? 1 : -1) * halfWidth * 0.5], width: doorWidth }));
+      for (const z of [zMin, zMax]) this.walls.push({ z, gaps: [], width: 0 });
+      for (let z = zMin; z <= zMax; z += 2) {
+        spots.push({ x: -halfWidth, z }, { x: halfWidth, z });
+      }
+    } else {
+      const { wallZ: Z, wallHalfWidth: W, breachWidth } = SIEGE;
+      const gaps = Array.from({ length: breaches }, (_, i) => -W * 0.7 + ((i + 0.5) / breaches) * W * 1.4);
+      this.walls.push({ z: Z, gaps, width: breachWidth });
     }
-    this.obstacles = [...this.baseObstacles, ...extra];
+    const half = dungeon ? DUNGEON.halfWidth : SIEGE.wallHalfWidth;
+    for (const w of this.walls) {
+      for (let x = -half; x < half; x += 2) {
+        if (!w.gaps.some((g) => Math.abs(g - x) < w.width / 2)) spots.push({ x, z: w.z });
+      }
+    }
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(2.05, 7, 2.4), new THREE.MeshLambertMaterial({ color: 0x8a8678, flatShading: true }), spots.length,
+    );
+    const m = new THREE.Matrix4();
+    spots.forEach((s, i) => mesh.setMatrixAt(i, m.makeTranslation(s.x, heightAt(s.x, s.z) + 3, s.z)));
+    mesh.castShadow = true;
+    this.wall.add(mesh);
+    this.obstacles = [...this.baseObstacles, ...spots.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 地下城佈置：部下跟主角；敵人分房守住，Boss 喺最後一間 */
+  private deployDungeon(g: Group, team: number) {
+    if (team === 0) {
+      g.order = 'follow';
+      g.setAnchor(0, DUNGEON.startZ - FORMATION.followBehind, 0);
+      return;
+    }
+    g.fixedSlots = true;
+    const rooms = DUNGEON.walls.length;
+    g.members.forEach((c, i) => {
+      const ai = c.ai!;
+      const room = c.def.boss ? rooms : Math.min(rooms - 1, 1 + (i % (rooms - 1)));
+      const z = room >= rooms ? DUNGEON.zMax - 12 : (DUNGEON.walls[room - 1] + DUNGEON.walls[room]) / 2;
+      ai.slotX = ((i % 5) - 2) * 4;
+      ai.slotZ = z + (i % 3);
+    });
   }
 
   formationBonus(team: number, key: keyof FormationBonus): number {
@@ -275,12 +310,15 @@ export class Battle implements CombatWorld {
 
   routeGoal(c: Combatant, gx: number, gz: number): [number, number] {
     if (!this.siege) return [gx, gz];
-    const Z = SIEGE.wallZ;
-    const inside = c.pos.z > Z;
-    if (inside === (gz > Z)) return [gx, gz];
-    const gap = this.gaps.reduce((b, g) => (Math.abs(g - c.pos.x) < Math.abs(b - c.pos.x) ? g : b), this.gaps[0]);
-    const through = Math.abs(c.pos.x - gap) < SIEGE.breachWidth / 2 - 1;
-    return [gap, through ? Z + (inside ? -8 : 8) : Z + (inside ? 5 : -5)];
+    const dir = gz > c.pos.z ? 1 : -1;
+    // 搵去目標路上最近嗰幅有門嘅牆
+    const ahead = this.walls
+      .filter((w) => w.gaps.length && (w.z - c.pos.z) * dir > -3 && (gz - w.z) * dir > 0)
+      .sort((a, b) => (a.z - b.z) * dir)[0];
+    if (!ahead) return [gx, gz];
+    const gap = ahead.gaps.reduce((b, g) => (Math.abs(g - c.pos.x) < Math.abs(b - c.pos.x) ? g : b), ahead.gaps[0]);
+    const through = Math.abs(c.pos.x - gap) < ahead.width / 2 - 1;
+    return [gap, through ? ahead.z + dir * 8 : ahead.z - dir * 5];
   }
 
   private createUnit(def: UnitDef, team: number, weaponIds: string[]): Combatant {
@@ -309,10 +347,12 @@ export class Battle implements CombatWorld {
     fog.color.set(theme.fog);
     fog.near = theme.near;
     fog.far = theme.far;
+    const ground = this.scene.getObjectByName('ground') as THREE.Mesh;
+    (ground.material as THREE.MeshLambertMaterial).color.set(theme.ground);
     this.hemi.intensity = 1.5 * theme.light;
     this.sun.intensity = 2.3 * theme.light;
 
-    this.buildWall(setup.breaches ?? 0);
+    this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.firstPerson = !!setup.firstPerson;
     this.batches.reset();
     this.projectiles.reset();
@@ -328,7 +368,7 @@ export class Battle implements CombatWorld {
     this.camYaw = this.viewYaw = 0;
     this.camPitch = this.viewPitch = 0.16;
 
-    const pz = -FORMATION.startZ + FORMATION.holdAhead * 2;
+    const pz = this.dungeon ? DUNGEON.startZ : -FORMATION.startZ + FORMATION.holdAhead * 2;
     const player = this.createUnit(setup.playerDef, 0, loadout);
     player.pos.set(0, heightAt(0, pz), pz);
     this.player = player;
@@ -361,7 +401,8 @@ export class Battle implements CombatWorld {
     [0, 1].forEach((team) => {
       for (const g of this.groups[team]) {
         deployGroup(g);
-        if (this.siege && team === 1) {
+        if (this.dungeon) this.deployDungeon(g, team);
+        else if (this.siege && team === 1) {
           // 守軍喺牆後面
           g.setAnchor(g.anchorX, SIEGE.wallZ + SIEGE.defenderOffset + (g.role === 'infantry' ? 0 : 6), Math.PI);
         }

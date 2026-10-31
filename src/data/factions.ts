@@ -108,6 +108,25 @@ export const SIEGE = {
 /** 地下城：只帶幾個精兵 */
 export const DUNGEON = {
   partySize: 5,
+  /** 房間之間嘅牆（Z），門左右交錯 */
+  walls: [-38, -4, 30],
+  halfWidth: 24,
+  doorWidth: 8,
+  zMin: -72,
+  zMax: 66,
+  startZ: -62,
+};
+
+/** 世界大事：每隔幾日擲一次 */
+export const WORLD_EVENTS = {
+  everyDays: 12,
+  kingDeathChance: 0.3,
+  warlordChance: 0.35,
+  /** 大型山賊軍團人數 */
+  warlordSize: 24,
+  warlordLevel: 3,
+  /** 爭位期間每場領地易手機率 */
+  successionLoss: 0.5,
 };
 
 export interface ArtifactDef {

@@ -50,6 +50,8 @@ export class Group {
   loose = false;
   holdFire = false;
   shape: FormationShape = 'block';
+  /** 地下城守衛固定喺自己房 */
+  fixedSlots = false;
   anchorX = 0;
   anchorZ = 0;
   facing = 0;
@@ -75,6 +77,7 @@ export class Group {
 
   /** 排成多行陣形，將每人個位寫入 AI 狀態 */
   assignSlots() {
+    if (this.fixedSlots) return;
     const list = this.alive;
     const spacing = this.loose ? FORMATION.looseSpacing : FORMATION.tightSpacing;
     const size = spacing * (this.role === 'cavalry' ? 1.8 : 1);
