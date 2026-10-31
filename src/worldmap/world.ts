@@ -258,7 +258,7 @@ export class World {
   }
 
   /** 做一份工：過時間、攞收成、加職業經驗，回傳結果 */
-  doWork(work: WorkDef): string {
+  doWork(work: WorkDef, skill = 1): string {
     const w = this.save;
     const h = this.roster.hero;
     if (!this.workPlaces().has(work.where)) return `要去${WORK_PLACE[work.where]}先做到`;
@@ -272,7 +272,7 @@ export class World {
       this.roster.gold = Math.max(0, this.roster.gold - work.risk.gold);
       return `失手被捉！罰 ${work.risk.gold} 金，正義 ${work.risk.justice}`;
     }
-    const mult = 1 + (h.jobLevel - 1) * JOB_RULES.yieldPerLevel;
+    const mult = (1 + (h.jobLevel - 1) * JOB_RULES.yieldPerLevel) * skill;
     const got: string[] = [];
     if (work.gold) {
       const n = Math.round(work.gold * mult * JOB_RULES.goldScale);

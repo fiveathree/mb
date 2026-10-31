@@ -1,7 +1,8 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
-import { JOBS, JOB_RULES, JOB_TITLES, WORK_PLACE, jobOf, jobTitle } from '../data/jobs';
+import { CAREER_ENDING, JOBS, JOB_RULES, JOB_TITLES, WORK_GAME, WORK_PLACE, jobOf, jobTitle, type WorkDef } from '../data/jobs';
+import { dayOf } from '../worldmap/world';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
@@ -79,10 +80,7 @@ export class Camp {
     if (this.tab === 'gear') this.gear.bind();
     this.$$('#back', (el) => { el.onclick = this.onBack; });
     this.$$('[data-work]', (el) => {
-      el.onclick = () => {
-        this.notice = this.world.doWork(jobOf(hero.job).work[Number(el.dataset.work)]);
-        this.render();
-      };
+      el.onclick = () => this.playWork(jobOf(hero.job).work[Number(el.dataset.work)]);
     });
     this.$$('[data-job]', (el) => {
       el.onclick = () => {
@@ -297,6 +295,76 @@ export class Camp {
         <span>${this.page + 1}／${pages}</span>
         <button class="alt pager" data-step="1" ${this.page < pages - 1 ? '' : 'disabled'}>下一頁</button>
       </div>`;
+  }
+
+  /** 做工小遊戲：用時間計指針位置，唔靠畫面幀數 */
+  private playWork(work: WorkDef) {
+    if (document.querySelector('.work-game')) return;
+    const hero = this.roster.hero;
+    const { period, zone, zonePerLevel, bullseye, perfect, good, miss } = WORK_GAME;
+    const wide = zone + hero.jobLevel * zonePerLevel;
+    const center = wide / 2 + Math.random() * (1 - wide);
+    const start = performance.now();
+    const pos = () => {
+      const t = ((performance.now() - start) / period) % 2;
+      return t < 1 ? t : 2 - t;
+    };
+    const box = document.createElement('div');
+    box.className = 'work-game';
+    box.innerHTML = `
+      <div class="pick-title">${work.label}：撳中綠區收成加碼，紅心最多</div>
+      <div class="work-bar">
+        <i class="zone" style="left:${(center - wide / 2) * 100}%;width:${wide * 100}%"></i>
+        <i class="heart" style="left:${(center - bullseye) * 100}%;width:${bullseye * 200}%"></i>
+        <i class="needle"></i>
+      </div>
+      <button class="go" id="workStop">撳！</button>`;
+    document.querySelector('#screen .card')!.append(box);
+    const needle = box.querySelector<HTMLElement>('.needle')!;
+    let raf = 0;
+    const draw = () => {
+      needle.style.left = `${pos() * 100}%`;
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', onKey);
+      const off = Math.abs(pos() - center);
+      const skill = off <= bullseye ? perfect : off <= wide / 2 ? good : miss;
+      const grade = off <= bullseye ? '完美' : off <= wide / 2 ? '做得好' : '手震';
+      const before = hero.careers.length;
+      const text = this.world.doWork(work, skill);
+      this.notice = `${grade}！${text}`;
+      if (hero.careers.length > before) this.showCareerEnding();
+      else this.render();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        stop();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    box.querySelector<HTMLElement>('#workStop')!.onclick = stop;
+  }
+
+  /** 登頂結局 */
+  private showCareerEnding() {
+    const h = this.roster.hero;
+    const title = JOB_TITLES[h.job][2];
+    this.hud.showScreen(`
+      <div class="card">
+        <h1>${title}</h1>
+        <p class="sub">${CAREER_ENDING.replace('{job}', jobOf(h.job).name).replace('{title}', title)}</p>
+        <div class="stats">
+          <div><small>用時</small><b>${dayOf(this.world.save)} 日</b></div>
+          <div><small>登頂行業</small><b>${h.careers.length}</b></div>
+          <div><small>身家</small><b>${this.roster.gold} 金</b></div>
+        </div>
+        <div class="row"><button class="go" id="next">繼續人生</button></div>
+      </div>`);
+    document.getElementById('next')!.onclick = () => this.render();
   }
 
   /** 職業：做工同轉職 */
