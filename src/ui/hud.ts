@@ -37,6 +37,7 @@ const CONTROLS: [string, string][] = [
   ['F4 F5 F6', '散開／密集／停射'],
   ['G', '變陣'],
   ['Tab', '戰況表'],
+  ['C', '叫出滑鼠游標，撳畫面返回'],
   ['Esc', '暫停／撤退'],
 ];
 
@@ -64,6 +65,7 @@ export class Hud {
         <div id="toasts"></div>
         <div id="reticle">
           <i class="dot"></i>
+          <svg class="ptr" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1 L1 18 L5.5 14 L8.5 21 L11.5 20 L8.5 13 L14.5 13 Z" /></svg>
           <i class="spread"></i>
           ${DIRS.map((d) => `<i class="dir ${d}" data-dir="${d}"></i>`).join('')}
           <div class="charge"><i></i></div>
@@ -90,6 +92,11 @@ export class Hud {
   showScreen(html: string) {
     this.screen.innerHTML = html;
     this.screen.classList.add('open');
+  }
+
+  /** 游標模式就收起畫面中間嘅箭嘴 */
+  setFreeCursor(on: boolean) {
+    this.hudEl.classList.toggle('free-cursor', on);
   }
 
   hideHud() {

@@ -235,6 +235,8 @@ function moraleMult(): number {
 
 /** Esc 之後瀏覽器要隔約一秒先再鎖得滑鼠，失敗就留喺暫停畫面 */
 async function lockMouse(): Promise<boolean> {
+  battle.input.free = false;
+  hud.setFreeCursor(false);
   type Lock = (o?: { unadjustedMovement: boolean }) => Promise<void>;
   const lock = canvas.requestPointerLock.bind(canvas) as unknown as Lock;
   try {
@@ -277,7 +279,7 @@ async function startBattle(
     });
     inBattle = true;
     await lockMouse();
-    hud.announce('滑鼠鎖定用嚟轉鏡頭，Esc 叫返游標', 'guard');
+    hud.announce('中間箭嘴就係滑鼠，撳 C 叫出游標', 'guard');
   };
   // 一個人或者地下城唔使佈陣
   if (soldiers.length < FORMATION_MIN_TROOPS || extra.firstPerson) {
@@ -575,6 +577,21 @@ document.addEventListener('pointerlockchange', () => {
 });
 
 battle.onPauseKey = () => pause();
+// C：叫出真游標，遊戲照行；撳畫面返回控制
+battle.onCursorKey = () => {
+  if (!document.pointerLockElement) return;
+  releaseMouse();
+  battle.input.free = true;
+  hud.setFreeCursor(true);
+  hud.announce('游標模式：撳畫面返回控制', 'guard');
+};
+canvas.addEventListener('mousedown', () => {
+  if (!battle.input.free) return;
+  battle.input.lmb = false;
+  battle.input.attackBuffer = 0;
+  void lockMouse();
+});
+void document.fonts?.load('700 15px "Noto Sans HK"', '鐵騎風雲');
 battle.onEnd = (result: BattleResult) => {
   inBattle = false;
   battle.active = false;

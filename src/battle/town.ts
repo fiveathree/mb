@@ -17,7 +17,7 @@ function sign(text: string): THREE.Sprite {
   g.fillStyle = 'rgba(24,18,12,.85)';
   g.fillRect(0, 0, 256, 64);
   g.fillStyle = '#ffe9a8';
-  g.font = 'bold 36px "Microsoft JhengHei", sans-serif';
+  g.font = '700 36px "Noto Sans HK", sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, 128, 34);

@@ -189,6 +189,7 @@ export class Battle implements CombatWorld {
   fps = 0;
   onEnd: ((r: BattleResult) => void) | null = null;
   onPauseKey: (() => void) | null = null;
+  onCursorKey: (() => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement, private hud: Hud) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -1049,6 +1050,7 @@ export class Battle implements CombatWorld {
     const i = this.input;
     if (i.pressed('Escape')) this.onPauseKey?.();
     if (i.pressed('KeyM')) this.sfx.muted = !this.sfx.muted;
+    if (i.pressed('KeyC')) this.onCursorKey?.();
 
     this.camYaw -= i.mouseDx * CAMERA.mouseSensitivity;
     this.camPitch = clamp(this.camPitch + i.mouseDy * CAMERA.mouseSensitivity, CAMERA.minPitch, CAMERA.maxPitch);

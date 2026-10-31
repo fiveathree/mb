@@ -13,6 +13,9 @@ const PX = MAP.tilePx;
 const PAN_SPEED = 620;
 const TILE_FOG = 'rgba(10, 14, 24, 0.82)';
 const CLICK_PX = 24;
+const MAX_DPR = 2;
+const FONT = '"Noto Sans HK", sans-serif';
+const OUTLINE = 'rgba(8,10,16,.92)';
 const NPC_CLICK_PX = 18;
 /** 太遠就唔寫字 */
 const LABEL_MIN_SCALE = 0.34;
@@ -29,6 +32,9 @@ export class WorldView {
   /** 左右鏡像，鋪地圖外嘅遠方陸地 */
   private flipped: HTMLCanvasElement;
   /** 鏡頭焦點（地圖像素） */
+  private W = 0;
+  private H = 0;
+  private dpr = 1;
   private focusX = 0;
   private focusY = 0;
   private sky = new Sky();
@@ -108,8 +114,12 @@ export class WorldView {
   }
 
   private resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    // 跟螢幕解像度畫，字先唔會朦
+    this.dpr = Math.min(MAX_DPR, window.devicePixelRatio || 1);
+    this.W = window.innerWidth;
+    this.H = window.innerHeight;
+    this.canvas.width = Math.round(this.W * this.dpr);
+    this.canvas.height = Math.round(this.H * this.dpr);
   }
 
   private onWheel(e: WheelEvent) {
@@ -144,9 +154,9 @@ export class WorldView {
 
   /** 鏡頭參數：地平線、焦點行、鏡頭距離 */
   private lens() {
-    const h = this.canvas.height;
+    const h = this.H;
     const horizon = h * MAP_VIEW.horizon;
-    return { horizon, reach: h * MAP_VIEW.focus - horizon, depth: h * MAP_VIEW.depth, cx: this.canvas.width / 2 };
+    return { horizon, reach: h * MAP_VIEW.focus - horizon, depth: h * MAP_VIEW.depth, cx: this.W / 2 };
   }
 
   /** 地圖像素投影到畫面，s 係呢點嘅縮放；喺鏡頭後面就回傳 null */
@@ -361,7 +371,8 @@ export class WorldView {
   /** 逐行畫透視地面 */
   private drawGround() {
     const g = this.g;
-    const { width, height } = this.canvas;
+    const width = this.W;
+    const height = this.H;
     const { horizon, reach, depth, cx } = this.lens();
     const { rowStep } = MAP_VIEW;
     const { zoom } = this;
@@ -391,8 +402,10 @@ export class WorldView {
 
   private draw() {
     const g = this.g;
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const w = this.world.save;
-    const { width, height } = this.canvas;
+    const width = this.W;
+    const height = this.H;
     const { horizon } = this.lens();
     const hour = hourOf(w);
     g.fillStyle = MAP_VIEW.sea;
@@ -422,7 +435,8 @@ export class WorldView {
     // 任務路線預覽
     if (this.preview && me) {
       g.strokeStyle = '#f2c14e';
-      g.lineWidth = 3;
+      g.lineWidth = 5;
+        g.lineJoin = 'round';
       g.beginPath();
       g.moveTo(me.x, me.y);
       for (const p of this.preview.path) {
@@ -473,12 +487,18 @@ export class WorldView {
       g.beginPath();
       g.arc(q.x, q.y, radius, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = '#fff';
-      g.font = '11px "Microsoft JhengHei", sans-serif';
-      if (q.s > LABEL_MIN_SCALE) g.fillText(`山賊 ${b.size} 人`, q.x, q.y - radius - 7);
+      g.font = `700 14px ${FONT}`;
+      if (q.s > LABEL_MIN_SCALE) {
+        const text = `山賊 ${b.size} 人`;
+        g.lineWidth = 5;
+        g.strokeStyle = OUTLINE;
+        g.strokeText(text, q.x, q.y - radius - 9);
+        g.fillStyle = '#ffd0c8';
+        g.fillText(text, q.x, q.y - radius - 9);
+      }
     }
 
-    g.font = '11px "Microsoft JhengHei", sans-serif';
+    g.font = `700 14px ${FONT}`;
     for (const n of w.npcs) {
       const dist = Math.hypot(n.x - w.x, n.y - w.y);
       if (dist > this.world.vision) continue;
@@ -496,8 +516,9 @@ export class WorldView {
       g.stroke();
       if (dist < NPC_RULES.labelDist && q.s > LABEL_MIN_SCALE) {
         const text = n.figure ? `${figureOf(n.figure)!.name}：${n.job}` : `${def.name} ${n.size} 人：${n.job}`;
-        g.lineWidth = 3;
-        g.strokeStyle = 'rgba(12,15,22,.85)';
+        g.lineWidth = 5;
+        g.lineJoin = 'round';
+        g.strokeStyle = OUTLINE;
         g.strokeText(text, q.x, q.y - radius - 7);
         g.fillStyle = '#fff4dc';
         g.fillText(text, q.x, q.y - radius - 7);
@@ -518,9 +539,10 @@ export class WorldView {
     g.fill();
     g.stroke();
     const label = `你 ${men} 人`;
-    g.font = 'bold 13px "Microsoft JhengHei", sans-serif';
-    g.lineWidth = 3;
-    g.strokeStyle = 'rgba(12,15,22,.9)';
+    g.font = `900 16px ${FONT}`;
+    g.lineWidth = 5;
+        g.lineJoin = 'round';
+    g.strokeStyle = OUTLINE;
     g.strokeText(label, me.x, me.y - radius - 9);
     g.fillStyle = '#ffe9a8';
     g.fillText(label, me.x, me.y - radius - 9);
@@ -553,9 +575,10 @@ export class WorldView {
     g.fill();
     g.stroke();
     if (q.s < LABEL_MIN_SCALE) return;
-    g.font = '12px "Microsoft JhengHei", sans-serif';
-    g.lineWidth = 3;
-    g.strokeStyle = 'rgba(12,15,22,.8)';
+    g.font = `700 15px ${FONT}`;
+    g.lineWidth = 5;
+        g.lineJoin = 'round';
+    g.strokeStyle = OUTLINE;
     g.strokeText(p.name, q.x, y + r + 9);
     g.fillText(p.name, q.x, y + r + 9);
   }

@@ -12,6 +12,8 @@ const GAME_KEYS = new Set(['Tab', 'Space', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6']);
 export class Input {
   private keys = new Set<string>();
   private pressedKeys = new Set<string>();
+  /** 游標模式：滑鼠唔轉鏡頭 */
+  free = false;
   mouseDx = 0;
   mouseDy = 0;
   lmb = false;
@@ -33,7 +35,9 @@ export class Input {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.clear());
-    window.addEventListener('mousemove', (e) => this.addMouse(e.movementX, e.movementY));
+    window.addEventListener('mousemove', (e) => {
+      if (!this.free) this.addMouse(e.movementX, e.movementY);
+    });
     el.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
         this.lmb = true;
