@@ -1,4 +1,4 @@
-import { ATTR_DESC, ATTR_NAME, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
+import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES } from '../data/horses';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
@@ -165,6 +165,12 @@ export class Camp {
     act('.gift', (f) => {
       if (spend(this.roster, POLITICS.giftCost)) pol.addRelation(f, POLITICS.giftRelation);
     });
+    this.$$('#expedition', (el) => {
+      el.onclick = () => {
+        this.world.startExpedition();
+        this.render();
+      };
+    });
     this.$$('#ransom', (el) => {
       el.onclick = () => {
         pol.releaseLord(true);
@@ -246,7 +252,7 @@ export class Camp {
     const rarity = RARITY[rarityOf(def)];
     const need = xpToNext(s.level);
     const pct = s.level >= LEVEL.max ? 100 : Math.round((s.xp / need) * 100);
-    const state = s.post ? '・駐守' : s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
+    const state = s.post === EXPEDITION_POST ? '・遠征' : s.post ? '・駐守' : s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
     const promos = promotions(s).map((p) => `<span class="promo" data-id="${s.id}" data-to="${p.to.id}">升 ${p.to.name} ${p.cost}</span>`).join('');
     return `<button class="sold ${s.benched || s.post || s.hurtDays > 0 ? 'bench' : ''}" data-id="${s.id}" style="--r:${rarity.color}">
       <b>${def.name}</b>
@@ -300,6 +306,9 @@ export class Camp {
       <div class="pick-title">身份：${s.outlaw ? '山賊・' : ''}${RANK_NAME[s.rank]}${s.liege ? `（${pol.nameOf(s.liege)}）` : ''}${s.kingdom ? `・${s.kingdom}` : ''}・聲望 ${s.renown}・領地 ${pol.fiefsOf(PLAYER).length}${s.won ? '・已統一大陸！' : ''}</div>
       <table class="report trade"><tr><th>勢力</th><th>領地</th><th>好感</th><th>關係</th><th></th></tr>${rows}</table>
       <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。攻下第一塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
+      <div class="pick-title">遠征：${this.world.save.expeditionUntil
+        ? `隊伍第 ${this.world.save.expeditionUntil} 日返嚟`
+        : `<button class="mini" id="expedition">英雄帶 ${EXPEDITION.size} 人出發（${EXPEDITION.days} 日，帶金幣同經驗返）</button>`}</div>
       ${s.lords.length ? `<div class="pick-title">領主俘虜 ${s.lords.length} 人（${pol.nameOf(s.lords[0])}）：
         <button class="mini" id="ransom">收贖金 ${POLITICS.ransomGold}</button>
         <button class="mini" id="freeLord">無條件放人</button></div>` : ''}

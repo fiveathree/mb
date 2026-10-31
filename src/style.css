@@ -295,3 +295,7 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 .card.newgame .detail { margin: 2px 0; }
 .card.newgame .weapons { gap: 3px; }
 .card.newgame .wp { padding-top: 2px; padding-bottom: 2px; }
+
+/* 大地圖揀目標 */
+.map-pick { position: fixed; z-index: 30; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.map-pick .mini { white-space: nowrap; text-align: left; }

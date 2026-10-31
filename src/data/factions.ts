@@ -120,8 +120,12 @@ export const SIEGE = {
   defenderOffset: 10,
   /** 守城時敵軍攻破幾多個缺口 */
   defendBreaches: 2,
-  /** 城牆每隔幾遠搭一把雲梯（裝飾） */
+  /** 城牆每隔幾遠搭一把雲梯 */
   ladderEvery: 34,
+  /** 雲梯闊度、由牆邊幾遠開始爬、爬到幾高 */
+  ladderWidth: 3,
+  ladderReach: 4,
+  wallTop: 6.5,
   /** 幾秒掟一嚿石、石飛幾耐 */
   rockEvery: 6,
   rockFlight: 2.2,

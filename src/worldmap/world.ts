@@ -1,6 +1,6 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
-import { CAPTIVE, COMPANION_FEUD, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
@@ -12,6 +12,7 @@ import { UNITS } from '../data/units';
 import { CAMPAIGN } from '../data/gacha';
 import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
+  addXp, sortedSoldiers,
 } from '../core/roster';
 import { WorldTerrain } from './terrain';
 
@@ -64,6 +65,8 @@ export interface WorldSave {
   arenaWins: number;
   /** 第幾日先有下一屆錦標賽 */
   tournamentUntil?: number;
+  /** 遠征隊幾時返 */
+  expeditionUntil?: number;
   pol: PoliticsSave;
   nextDragon: number;
   scenario: string;
@@ -324,8 +327,9 @@ export class World {
     }
 
     this.companionFeud();
+    if (w.expeditionUntil && day >= w.expeditionUntil) this.expeditionBack();
     for (const s of r.soldiers) {
-      if (s.post && !w.pol.governors[s.post]) {
+      if (s.post && s.post !== EXPEDITION_POST && !w.pol.governors[s.post]) {
         s.post = undefined;
         s.hurtDays = POLITICS.governorHurtDays;
         this.note(`${UNITS[s.unit].name}失守領地，帶傷歸隊`);
@@ -334,6 +338,39 @@ export class World {
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
     else if (w.pol.loyalty < HONOR.desertLoyalty && Math.random() < HONOR.desertChance) this.desert();
+  }
+
+  /** 英雄帶隊出發，回傳出發人數 */
+  startExpedition(): number {
+    const r = this.roster;
+    const free = sortedSoldiers(r).filter((s) => !s.post && !s.benched && s.hurtDays <= 0);
+    const leader = free.find((s) => ['special', 'hero'].includes(rarityOf(UNITS[s.unit])));
+    if (!leader || this.save.expeditionUntil) return 0;
+    const team = [leader, ...free.filter((s) => s !== leader).reverse()].slice(0, EXPEDITION.size);
+    for (const s of team) s.post = EXPEDITION_POST;
+    this.save.expeditionUntil = dayOf(this.save) + EXPEDITION.days;
+    this.note(`${UNITS[leader.unit].name}帶 ${team.length} 人出發遠征`);
+    return team.length;
+  }
+
+  private expeditionBack() {
+    const r = this.roster;
+    this.save.expeditionUntil = undefined;
+    const team = r.soldiers.filter((s) => s.post === EXPEDITION_POST);
+    const gold = team.length * EXPEDITION.goldPerMan;
+    r.gold += gold;
+    let lost = 0;
+    for (const s of team) {
+      s.post = undefined;
+      addXp(s, EXPEDITION.xpEach);
+      if (rarityOf(UNITS[s.unit]) === 'common' && Math.random() < EXPEDITION.loseChance) {
+        r.soldiers.splice(r.soldiers.indexOf(s), 1);
+        lost++;
+      } else if (Math.random() < EXPEDITION.hurtChance) {
+        s.hurtDays = EXPEDITION.hurtDays;
+      }
+    }
+    this.note(`遠征隊返嚟，帶回 ${gold} 金${lost ? `，折咗 ${lost} 人` : ''}`);
   }
 
   /** 唔夾嘅同伴嗌交 */

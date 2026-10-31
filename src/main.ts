@@ -512,6 +512,15 @@ function showImport(target: number) {
     await showMenu();
   };
 }
+// 瀏覽器要用戶撳過先出得聲
+window.addEventListener('pointerdown', () => {
+  battle.sfx.unlock();
+  battle.sfx.music(() => !inBattle && !document.hidden, () => currentScenario().cultures.includes('east'));
+}, { once: true });
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM' && !inBattle) battle.sfx.muted = !battle.sfx.muted;
+});
+
 view.onParty = () => {
   view.stop();
   camp.show(() => reopenPlace());

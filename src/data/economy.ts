@@ -266,6 +266,18 @@ export const COMPANION_FEUD = {
   leaveChance: 0.2,
 };
 
+/** 英雄帶隊遠征：離隊幾日，帶金幣同經驗返嚟 */
+export const EXPEDITION = {
+  size: 8,
+  days: 6,
+  goldPerMan: 60,
+  xpEach: 90,
+  hurtChance: 0.25,
+  hurtDays: 3,
+  /** 普通兵有機會陣亡 */
+  loseChance: 0.05,
+};
+
 // ── 競技場 ──
 export const ARENA = {
   /** 每勝一場升一級難度 */
@@ -334,3 +346,6 @@ export const NPC_RULES = {
   /** 護送商隊獎金 */
   labelDist: 16,
 };
+
+/** 士兵 post 值：出緊遠征 */
+export const EXPEDITION_POST = 'expedition';

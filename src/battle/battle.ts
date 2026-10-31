@@ -108,7 +108,7 @@ export class Battle implements CombatWorld {
   private batches: Batches;
   private wall = new THREE.Group();
   /** 牆同門位 */
-  private walls: { z: number; gaps: number[]; width: number }[] = [];
+  private walls: { z: number; gaps: number[]; width: number; ladders?: number[] }[] = [];
   private dungeon = false;
   private firstPerson = false;
   private siege = false;
@@ -239,9 +239,13 @@ export class Battle implements CombatWorld {
     }
     if (!dungeon) this.buildSiegeGear();
     const half = dungeon ? DUNGEON.halfWidth : SIEGE.wallHalfWidth;
+    // 雲梯位：牆照畫，但冇碰撞，士兵爬得過
+    const solid: { x: number; z: number }[] = spots.slice();
     for (const w of this.walls) {
       for (let x = -half; x < half; x += 2) {
-        if (!w.gaps.some((g) => Math.abs(g - x) < w.width / 2)) spots.push({ x, z: w.z });
+        if (w.gaps.some((g) => Math.abs(g - x) < w.width / 2)) continue;
+        spots.push({ x, z: w.z });
+        if (!w.ladders?.some((l) => Math.abs(l - x) < SIEGE.ladderWidth / 2)) solid.push({ x, z: w.z });
       }
     }
     const mesh = new THREE.InstancedMesh(
@@ -251,7 +255,7 @@ export class Battle implements CombatWorld {
     spots.forEach((s, i) => mesh.setMatrixAt(i, m.makeTranslation(s.x, heightAt(s.x, s.z) + 3, s.z)));
     mesh.castShadow = true;
     this.wall.add(mesh);
-    this.obstacles = [...this.obstacles, ...spots.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+    this.obstacles = [...this.obstacles, ...solid.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
   }
 
   /** 地下城地板陷阱：稍微睇得出，唔留心就中 */
@@ -298,11 +302,24 @@ export class Battle implements CombatWorld {
       place(new THREE.BoxGeometry(5, 0.5, 5), x, Z - 3.6, 11.2);
     }
     this.obstacles = [...this.obstacles, ...towers.map((x) => ({ x, z: Z - 3.6, r: 2.8 }))];
+    const ladders: number[] = [];
     for (let x = -W + ladderEvery / 2; x < W; x += ladderEvery) {
-      if (gaps.some((g) => Math.abs(g - x) < width)) continue;
+      if (gaps.some((g) => Math.abs(g - x) < width * 1.2)) continue;
+      ladders.push(x);
       for (const side of [-0.45, 0.45]) place(new THREE.BoxGeometry(0.14, 7.6, 0.14), x + side, Z - 2.6, 3.4, 0.3);
       for (let k = 0; k < 7; k++) place(new THREE.BoxGeometry(0.9, 0.08, 0.08), x, Z - 3.6 + k * 0.32, 0.5 + k, 0);
     }
+    this.walls[0].ladders = ladders;
+  }
+
+  /** 爬雲梯時離地幾高 */
+  private climbLift(x: number, z: number): number {
+    const ladders = this.walls[0]?.ladders;
+    if (!ladders) return 0;
+    const dz = Math.abs(z - SIEGE.wallZ);
+    if (dz >= SIEGE.ladderReach) return 0;
+    if (!ladders.some((l) => Math.abs(l - x) < SIEGE.ladderWidth / 2)) return 0;
+    return SIEGE.wallTop * (1 - dz / SIEGE.ladderReach);
   }
 
   /** 投石：攻城時守軍掟石，守城時雙方互掟 */
@@ -399,8 +416,17 @@ export class Battle implements CombatWorld {
       .filter((w) => w.gaps.length && (w.z - c.pos.z) * dir > -3 && (gz - w.z) * dir > 0)
       .sort((a, b) => (a.z - b.z) * dir)[0];
     if (!ahead) return [gx, gz];
-    const gap = ahead.gaps.reduce((b, g) => (Math.abs(g - c.pos.x) < Math.abs(b - c.pos.x) ? g : b), ahead.gaps[0]);
-    const through = Math.abs(c.pos.x - gap) < ahead.width / 2 - 1;
+    const near = (list: number[]) => list.reduce((b, g) => (Math.abs(g - c.pos.x) < Math.abs(b - c.pos.x) ? g : b), list[0]);
+    let gap = near(ahead.gaps);
+    let half = ahead.width / 2 - 1;
+    if (ahead.ladders?.length) {
+      const ladder = near(ahead.ladders);
+      if (Math.abs(ladder - c.pos.x) < Math.abs(gap - c.pos.x)) {
+        gap = ladder;
+        half = SIEGE.ladderWidth / 2 - 0.4;
+      }
+    }
+    const through = Math.abs(c.pos.x - gap) < half;
     return [gap, through ? ahead.z + dir * 8 : ahead.z - dir * 5];
   }
 
@@ -910,7 +936,7 @@ export class Battle implements CombatWorld {
       if (u.fled) continue;
       if (u.dead) u.deadT += dt;
       if (u.horse) continue;
-      const ground = heightAt(u.pos.x, u.pos.z);
+      const ground = heightAt(u.pos.x, u.pos.z) + (this.dungeon ? 0 : this.climbLift(u.pos.x, u.pos.z));
       if (!u.grounded) {
         u.vy -= COMBAT.gravity * dt;
         u.pos.y += u.vy * dt;

@@ -28,6 +28,11 @@ export class WorldView {
   private focusX = 0;
   private focusY = 0;
   private sky = new Sky();
+  /** 滾輪縮放：目標同而家數值，順滑過渡 */
+  private zoomGoal = 1;
+  private zoomNow = 1;
+  private picker: HTMLElement | null = null;
+  private pickerClose: (() => void) | null = null;
   private follow = true;
   private keys = new Set<string>();
   private last = 0;
@@ -53,6 +58,7 @@ export class WorldView {
     window.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     canvas.addEventListener('mousedown', (e) => this.click(e));
+    canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.resize();
   }
 
@@ -85,8 +91,23 @@ export class WorldView {
     this.canvas.height = window.innerHeight;
   }
 
+  private onWheel(e: WheelEvent) {
+    e.preventDefault();
+    const { zoomMin, zoomMax, zoomStep } = MAP_VIEW;
+    const step = e.deltaY < 0 ? zoomStep : 1 / zoomStep;
+    this.zoomGoal = Math.max(zoomMin, Math.min(zoomMax, this.zoomGoal * step));
+  }
+
+  private get zoom() {
+    return MAP_VIEW.zoom * this.zoomNow;
+  }
+
   private onKey(e: KeyboardEvent) {
     if (!this.active) return;
+    if (this.picker) {
+      if (e.code === 'Escape') this.closePicker();
+      return;
+    }
     this.keys.add(e.code);
     if (e.repeat) return;
     if (e.code === 'Space') {
@@ -113,7 +134,7 @@ export class WorldView {
     const d = depth + this.focusY - by;
     if (d <= 1) return null;
     const s = depth / d;
-    return { x: cx + (bx - this.focusX) * s * MAP_VIEW.zoom, y: horizon + reach * s, s: s * MAP_VIEW.zoom };
+    return { x: cx + (bx - this.focusX) * s * this.zoom, y: horizon + reach * s, s: s * this.zoom };
   };
 
   private toWorld(e: MouseEvent): { x: number; y: number } | null {
@@ -121,27 +142,19 @@ export class WorldView {
     if (e.clientY <= horizon + 2) return null;
     const s = (e.clientY - horizon) / reach;
     const by = this.focusY - depth * (1 / s - 1);
-    const bx = this.focusX + (e.clientX - cx) / (s * MAP_VIEW.zoom);
+    const bx = this.focusX + (e.clientX - cx) / (s * this.zoom);
     return {
       x: Math.max(0, Math.min(this.base.width, bx)) / PX,
       y: Math.max(0, Math.min(this.base.height, by)) / PX,
     };
   }
 
-  /** 畫面距離最近、夠近嘅目標 */
-  private nearest<T extends { x: number; y: number }>(list: T[], e: MouseEvent, px: number): T | undefined {
-    let best: T | undefined;
-    let bestD = Infinity;
-    for (const t of list) {
+  /** 畫面上夠近嘅目標 */
+  private near<T extends { x: number; y: number }>(list: T[], e: MouseEvent, px: number): T[] {
+    return list.filter((t) => {
       const p = this.project(t.x * PX, t.y * PX);
-      if (!p) continue;
-      const d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
-      if (d < px && d < bestD) {
-        best = t;
-        bestD = d;
-      }
-    }
-    return best;
+      return p && Math.hypot(p.x - e.clientX, p.y - e.clientY) < px;
+    });
   }
 
   private visiblePlaces(): PlaceDef[] {
@@ -151,19 +164,75 @@ export class WorldView {
 
   private click(e: MouseEvent) {
     if (!this.active || e.button !== 0) return;
-    const m = this.toWorld(e);
-    if (!m) return;
-    const place = this.nearest(this.visiblePlaces(), e, CLICK_PX);
-    this.follow = true;
-    const w = this.world.save;
-    const npc = this.nearest(w.npcs.filter((n) => Math.hypot(n.x - w.x, n.y - w.y) < this.world.vision), e, NPC_CLICK_PX);
-    if (npc) {
-      this.world.chase(npc);
+    if (this.picker) {
+      this.closePicker();
       return;
     }
-    if (place && Math.hypot(place.x - w.x, place.y - w.y) < 1.5) this.onEvent?.({ type: 'place', place });
-    else if (place) this.world.goTo(place.x, place.y, place);
+    const m = this.toWorld(e);
+    if (!m) return;
+    this.follow = true;
+    const w = this.world.save;
+    const seen = <T extends { x: number; y: number }>(list: T[]) => list.filter((n) => Math.hypot(n.x - w.x, n.y - w.y) < this.world.vision);
+    const options: { label: string; run: () => void }[] = [
+      ...this.near(this.visiblePlaces(), e, CLICK_PX).map((p) => ({
+        label: `${Math.hypot(p.x - w.x, p.y - w.y) < 1.5 ? '入去' : '前往'} ${p.name}`,
+        run: () => this.visit(p),
+      })),
+      ...this.near(seen(w.npcs), e, NPC_CLICK_PX).map((n) => ({
+        label: `截住 ${NPC[n.kind].name} ${n.size} 人`,
+        run: () => this.world.chase(n),
+      })),
+      ...this.near(seen(w.bandits), e, NPC_CLICK_PX).map((b) => ({
+        label: `追擊山賊 ${b.size} 人`,
+        run: () => this.world.goTo(b.x, b.y, null),
+      })),
+    ];
+    if (options.length > 1) {
+      this.openPicker(e, [...options, { label: '行去呢度', run: () => this.world.goTo(m.x, m.y, null) }]);
+      return;
+    }
+    if (options.length) options[0].run();
     else this.world.goTo(m.x, m.y, null);
+  }
+
+  private visit(p: PlaceDef) {
+    const w = this.world.save;
+    if (Math.hypot(p.x - w.x, p.y - w.y) < 1.5) this.onEvent?.({ type: 'place', place: p });
+    else this.world.goTo(p.x, p.y, p);
+  }
+
+  /** 附近目標太多：彈窗揀，時間暫停 */
+  private openPicker(e: MouseEvent, options: { label: string; run: () => void }[]) {
+    const wasPaused = this.world.paused;
+    this.world.paused = true;
+    const box = document.createElement('div');
+    box.className = 'map-pick';
+    for (const o of options) {
+      const b = document.createElement('button');
+      b.className = 'mini';
+      b.textContent = o.label;
+      b.onclick = () => {
+        this.closePicker();
+        this.world.paused = wasPaused;
+        o.run();
+      };
+      box.append(b);
+    }
+    this.pickerClose = () => {
+      this.world.paused = wasPaused;
+    };
+    document.body.append(box);
+    this.picker = box;
+    const { width, height } = box.getBoundingClientRect();
+    box.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, e.clientX + 10))}px`;
+    box.style.top = `${Math.max(8, Math.min(window.innerHeight - height - 8, e.clientY + 10))}px`;
+  }
+
+  private closePicker() {
+    this.picker?.remove();
+    this.picker = null;
+    this.pickerClose?.();
+    this.pickerClose = null;
   }
 
   start() {
@@ -176,6 +245,7 @@ export class WorldView {
   }
 
   stop() {
+    this.closePicker();
     this.active = false;
     this.canvas.hidden = true;
     this.bar.hidden = true;
@@ -212,6 +282,7 @@ export class WorldView {
     }
     this.focusX = Math.max(0, Math.min(this.focusX, this.base.width));
     this.focusY = Math.max(0, Math.min(this.focusY, this.base.height));
+    this.zoomNow += (this.zoomGoal - this.zoomNow) * (1 - Math.exp(-12 * dt));
     this.sky.update(dt, currentScenario().sky ?? DEFAULT_SKY, this.focusX, this.focusY);
   }
 
@@ -220,7 +291,8 @@ export class WorldView {
     const g = this.g;
     const { width, height } = this.canvas;
     const { horizon, reach, depth, cx } = this.lens();
-    const { rowStep, zoom } = MAP_VIEW;
+    const { rowStep } = MAP_VIEW;
+    const { zoom } = this;
     const bw = this.base.width;
     const bh = this.base.height;
     const rowY = (y: number) => this.focusY - depth * (reach / (y - horizon) - 1);
@@ -419,7 +491,7 @@ export class WorldView {
       `忠誠 ${w.pol.loyalty}`,
       ...(Object.keys(w.pol.wanted).length ? ['通緝中'] : []),
     ];
-    const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　Tab 部隊　空白鍵暫停　Esc 選單';
+    const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　空白鍵暫停　M 靜音　Esc 選單';
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;
   }
 }

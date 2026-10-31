@@ -1,8 +1,9 @@
-import { DRUMS } from '../data/battlefield';
+import { DRUMS, MUSIC } from '../data/battlefield';
 
 /** 全部音效都係 WebAudio 即時合成，唔用音檔 */
 export class Sfx {
   private drumTimer = 0;
+  private musicTimer = 0;
   private ctx: AudioContext | null = null;
   private noise: AudioBuffer | null = null;
   muted = false;
@@ -86,6 +87,35 @@ export class Sfx {
   fanfare(win: boolean) {
     const notes = win ? [392, 494, 587, 784] : [392, 330, 262];
     notes.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.16, 0.45, 'triangle'), i * 170));
+  }
+
+  /** 音高固定嘅一粒音，音樂用 */
+  private note(freq: number, gain: number, dur: number) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + dur);
+  }
+
+  /** 大地圖背景音樂：喺音階上隨機慢行 */
+  music(playing: () => boolean, east: () => boolean) {
+    window.clearInterval(this.musicTimer);
+    let i = 2;
+    this.musicTimer = window.setInterval(() => {
+      if (!playing() || Math.random() < MUSIC.rest) return;
+      const scale = east() ? MUSIC.east : MUSIC.west;
+      i = Math.max(0, Math.min(scale.length - 1, i + Math.floor(Math.random() * 5) - 2));
+      this.note(scale[i], MUSIC.gain, MUSIC.decay);
+      if (i % 2 === 0) this.note(scale[0] / 2, MUSIC.gain * 0.6, MUSIC.decay * 1.5);
+    }, MUSIC.stepMs);
   }
 
   /** 戰鼓：暫停時停 */

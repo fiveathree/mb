@@ -251,6 +251,18 @@ export function draw(r: Roster, pool: PoolId, count: 1 | 10): DrawResult[] | nul
   return rarities.map((k) => grant(r, pool, k));
 }
 
+/** 加經驗同升級，回傳升咗未 */
+export function addXp(s: Soldier, xp: number): boolean {
+  const before = s.level;
+  s.xp += xp;
+  while (s.level < LEVEL.max && s.xp >= xpToNext(s.level)) {
+    s.xp -= xpToNext(s.level);
+    s.level++;
+  }
+  if (s.level >= LEVEL.max) s.xp = 0;
+  return s.level > before;
+}
+
 /** 戰後結算：加經驗、升級、除名、記傷 */
 export function applyBattle(r: Roster, outcomes: BattleOutcome[], gold: number, win: boolean): BattleProgress {
   const levelUps: LevelUp[] = [];
@@ -273,14 +285,7 @@ export function applyBattle(r: Roster, outcomes: BattleOutcome[], gold: number, 
       hurt++;
     }
     s.kills += o.kills;
-    s.xp += o.xp + LEVEL.xpBattle + (win ? LEVEL.xpWin : 0);
-    const before = s.level;
-    while (s.level < LEVEL.max && s.xp >= xpToNext(s.level)) {
-      s.xp -= xpToNext(s.level);
-      s.level++;
-    }
-    if (s.level >= LEVEL.max) s.xp = 0;
-    if (s.level > before) levelUps.push({ name: def.name, level: s.level });
+    if (addXp(s, o.xp + LEVEL.xpBattle + (win ? LEVEL.xpWin : 0))) levelUps.push({ name: def.name, level: s.level });
   }
   return { gold, levelUps, lost, hurt };
 }
