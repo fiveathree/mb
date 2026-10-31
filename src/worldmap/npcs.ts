@@ -4,7 +4,7 @@ import { currentFigures, currentScenario, isMagic } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
-import type { StrikeKind } from '../data/colossus';
+import { RAMPAGE, type StrikeKind } from '../data/colossus';
 import { DRAGON_BREEDS } from '../data/units';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
@@ -12,6 +12,8 @@ import type { BanditParty, WorldSave } from './world';
 import type { WorldTerrain } from './terrain';
 
 export interface Npc {
+  /** 災厄毀咗幾多座城 */
+  strikes?: number;
   id: number;
   kind: NpcKind;
   x: number;
@@ -144,8 +146,9 @@ export class NpcSystem {
     if (kind === 'titan' && !currentScenario().titan) CALAMITY.titan.unit = 'boss_demongod';
     const home = PLACES.reduce((b, p) => (Math.hypot(p.x - x, p.y - y) < Math.hypot(b.x - x, b.y - y) ? p : b));
     const n = this.spawn(kind, home);
-    n.x = x + 16;
-    n.y = y - 8;
+    n.x = x + 9;
+    n.y = y - 5;
+    n.wait = RAMPAGE.stay;
   }
 
   private setTrip(n: Npc, dest: PlaceDef, job: string) {
@@ -365,9 +368,11 @@ export class NpcSystem {
             this.onDoom?.(place.id);
           }
           if (n.kind !== 'raider') this.onStrike?.(n.kind, place);
-          n.done = true;
+          // 災厄連毀幾座城，留低嘅時間就係追上佢嘅機會
+          n.strikes = (n.strikes ?? 0) + 1;
+          n.done = n.kind === 'raider' || n.strikes >= RAMPAGE.strikes;
           this.note(`${place.name}被${NPC[n.kind].name}${doom?.verb ?? '洗劫'}！`);
-          n.wait = 3;
+          n.wait = n.kind === 'raider' ? 3 : RAMPAGE.stay;
         } else if (n.done) {
           this.save.npcs = this.save.npcs.filter((x) => x !== n);
         }

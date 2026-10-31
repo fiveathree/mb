@@ -271,50 +271,198 @@ export function placeIcon(kind: PlaceKind | 'monster', color: string): HTMLCanva
   });
 }
 
-/** 部隊：騎馬人加軍旗 */
-export function partyIcon(color: string, wagon = false): HTMLCanvasElement {
-  return sprite(`party:${color}:${wagon}`, (g) => {
-    g.strokeStyle = INK;
-    g.fillStyle = '#3a2c24';
-    g.lineWidth = 2;
-    if (wagon) {
-      g.fillStyle = '#8a6240';
-      g.fillRect(22, 56, 50, 16);
-      g.strokeRect(22, 56, 50, 16);
-      g.fillStyle = '#e8dcc0';
+export type PartyLook = 'horse' | 'winged' | 'beast' | 'hover' | 'foot' | 'mage' | 'wagon' | 'boat' | 'orc' | 'undead' | 'beastman';
+
+function person(g: CanvasRenderingContext2D, x: number, y: number, s: number, color: string, skin: string, head: 'plain' | 'hat' | 'horn' | 'hood') {
+  g.strokeStyle = INK;
+  g.lineWidth = 2;
+  g.fillStyle = color;
+  g.beginPath();
+  g.moveTo(x - 9 * s, y);
+  g.lineTo(x - 6 * s, y - 20 * s);
+  g.lineTo(x + 6 * s, y - 20 * s);
+  g.lineTo(x + 9 * s, y);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.fillStyle = skin;
+  g.beginPath();
+  g.arc(x, y - 26 * s, 6 * s, 0, Math.PI * 2);
+  g.fill();
+  g.stroke();
+  g.fillStyle = head === 'horn' ? '#e8dcc0' : color;
+  if (head === 'hat') {
+    g.beginPath();
+    g.moveTo(x - 8 * s, y - 28 * s);
+    g.lineTo(x, y - 46 * s);
+    g.lineTo(x + 8 * s, y - 28 * s);
+    g.fill();
+  } else if (head === 'hood') {
+    g.beginPath();
+    g.arc(x, y - 28 * s, 8 * s, Math.PI, 0);
+    g.fill();
+  } else if (head === 'horn') {
+    for (const d of [1, -1]) {
       g.beginPath();
-      g.moveTo(24, 56);
-      g.quadraticCurveTo(47, 26, 70, 56);
-      g.closePath();
+      g.moveTo(x + d * 4 * s, y - 30 * s);
+      g.lineTo(x + d * 12 * s, y - 42 * s);
+      g.lineTo(x + d * 2 * s, y - 33 * s);
       g.fill();
-      g.stroke();
-      g.fillStyle = '#3a2c24';
-      for (const x of [34, 62]) {
-        g.beginPath();
-        g.arc(x, 76, 8, 0, Math.PI * 2);
-        g.fill();
-      }
-      flag(g, 70, 42, color, 0.8);
-      return;
     }
-    // 馬身
+  }
+}
+
+function mountBody(g: CanvasRenderingContext2D, body: string, long: number, low: number) {
+  g.fillStyle = body;
+  g.beginPath();
+  g.ellipse(46, 62 + low, 20 * long, 9, 0, 0, Math.PI * 2);
+  g.fill();
+  g.lineWidth = 3.5;
+  g.strokeStyle = body;
+  for (const [x, d] of [[32, -3], [38, 2], [54, -2], [60, 3]] as const) {
     g.beginPath();
-    g.ellipse(46, 62, 20, 9, 0, 0, Math.PI * 2);
-    g.fill();
-    g.beginPath();
-    g.moveTo(60, 58);
-    g.lineTo(72, 44);
-    g.lineTo(78, 48);
-    g.lineTo(68, 64);
-    g.closePath();
-    g.fill();
-    g.lineWidth = 3.5;
-    g.strokeStyle = '#3a2c24';
-    for (const [x, d] of [[32, -3], [38, 2], [54, -2], [60, 3]] as const) {
-      g.beginPath();
-      g.moveTo(x, 66);
-      g.lineTo(x + d, 84);
-      g.stroke();
+    g.moveTo(x, 66 + low);
+    g.lineTo(x + d, 84);
+    g.stroke();
+  }
+}
+
+/** 部隊：騎獸、步行、法師、船，唔同人唔同樣 */
+export function partyIcon(color: string, look: PartyLook = 'horse'): HTMLCanvasElement {
+  return sprite(`party:${color}:${look}`, (g) => {
+    g.strokeStyle = INK;
+    g.lineWidth = 2;
+    switch (look) {
+      case 'wagon':
+        g.fillStyle = '#8a6240';
+        g.fillRect(22, 56, 50, 16);
+        g.strokeRect(22, 56, 50, 16);
+        g.fillStyle = '#e8dcc0';
+        g.beginPath();
+        g.moveTo(24, 56);
+        g.quadraticCurveTo(47, 26, 70, 56);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#3a2c24';
+        for (const x of [34, 62]) {
+          g.beginPath();
+          g.arc(x, 76, 8, 0, Math.PI * 2);
+          g.fill();
+        }
+        flag(g, 70, 42, color, 0.8);
+        return;
+      case 'boat':
+        g.fillStyle = '#5a3a24';
+        g.beginPath();
+        g.moveTo(14, 66);
+        g.lineTo(82, 66);
+        g.lineTo(68, 82);
+        g.lineTo(26, 82);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#f0e8d8';
+        g.beginPath();
+        g.moveTo(48, 20);
+        g.lineTo(48, 62);
+        g.lineTo(76, 60);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        return;
+      case 'foot':
+        person(g, 48, 84, 1.4, color, '#e0b48c', 'plain');
+        flag(g, 66, 84, color, 1.3);
+        return;
+      case 'mage':
+        person(g, 48, 84, 1.5, color, '#e0b48c', 'hat');
+        g.strokeStyle = '#4a3220';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(70, 84);
+        g.lineTo(70, 26);
+        g.stroke();
+        g.fillStyle = '#8ad8ff';
+        g.beginPath();
+        g.arc(70, 24, 6, 0, Math.PI * 2);
+        g.fill();
+        return;
+      case 'orc':
+        person(g, 48, 84, 1.5, color, '#5f8a45', 'horn');
+        return;
+      case 'undead':
+        person(g, 48, 84, 1.5, '#3a3844', '#dcd8c8', 'hood');
+        g.fillStyle = '#121018';
+        g.fillRect(43, 42, 4, 4);
+        g.fillRect(50, 42, 4, 4);
+        return;
+      case 'beastman':
+        person(g, 48, 84, 1.5, color, '#6b4630', 'horn');
+        return;
+      case 'hover':
+        g.fillStyle = '#5a6a80';
+        g.beginPath();
+        g.moveTo(14, 68);
+        g.lineTo(62, 56);
+        g.lineTo(84, 66);
+        g.lineTo(62, 74);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#8fe0ff';
+        g.fillRect(12, 66, 8, 5);
+        person(g, 48, 62, 0.9, color, '#e0b48c', 'plain');
+        return;
+      case 'beast':
+        mountBody(g, '#6a665e', 1.05, 3);
+        g.fillStyle = '#6a665e';
+        g.beginPath();
+        g.moveTo(62, 58);
+        g.lineTo(80, 54);
+        g.lineTo(84, 62);
+        g.lineTo(66, 68);
+        g.closePath();
+        g.fill();
+        g.beginPath();
+        g.moveTo(68, 56);
+        g.lineTo(72, 46);
+        g.lineTo(76, 56);
+        g.fill();
+        break;
+      case 'winged':
+        mountBody(g, '#d8d4c8', 0.95, 0);
+        g.fillStyle = '#f0ece0';
+        g.strokeStyle = INK;
+        g.beginPath();
+        g.moveTo(46, 58);
+        g.quadraticCurveTo(12, 8, 6, 34);
+        g.lineTo(16, 42);
+        g.lineTo(14, 52);
+        g.lineTo(26, 54);
+        g.lineTo(34, 64);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#d8d4c8';
+        g.beginPath();
+        g.moveTo(60, 58);
+        g.lineTo(74, 44);
+        g.lineTo(80, 48);
+        g.lineTo(68, 64);
+        g.closePath();
+        g.fill();
+        break;
+      default:
+        mountBody(g, '#3a2c24', 1, 0);
+        g.fillStyle = '#3a2c24';
+        g.beginPath();
+        g.moveTo(60, 58);
+        g.lineTo(72, 44);
+        g.lineTo(78, 48);
+        g.lineTo(68, 64);
+        g.closePath();
+        g.fill();
     }
     // 騎士
     g.fillStyle = color;
@@ -372,103 +520,6 @@ export function ruinIcon(color: string): HTMLCanvasElement {
       g.arc(x, 78, 3, 0, Math.PI * 2);
       g.fill();
     }
-  });
-}
-
-/** 災厄本體 */
-export function calamityIcon(kind: string): HTMLCanvasElement {
-  return sprite(`doom:${kind}`, (g) => {
-    g.lineJoin = 'round';
-    if (kind === 'titan') {
-      const aura = g.createRadialGradient(48, 44, 6, 48, 44, 46);
-      aura.addColorStop(0, 'rgba(255,200,110,.5)');
-      aura.addColorStop(1, 'rgba(255,120,60,0)');
-      g.fillStyle = aura;
-      g.fillRect(0, 0, 96, 96);
-      g.fillStyle = '#1c1416';
-      g.beginPath();
-      g.moveTo(34, 94);
-      g.lineTo(36, 58);
-      g.lineTo(18, 66);
-      g.lineTo(12, 40);
-      g.lineTo(32, 28);
-      g.lineTo(40, 24);
-      g.lineTo(38, 12);
-      g.lineTo(30, 2);
-      g.lineTo(44, 10);
-      g.lineTo(52, 10);
-      g.lineTo(66, 2);
-      g.lineTo(58, 12);
-      g.lineTo(56, 24);
-      g.lineTo(64, 28);
-      g.lineTo(84, 40);
-      g.lineTo(78, 66);
-      g.lineTo(60, 58);
-      g.lineTo(62, 94);
-      g.lineTo(50, 94);
-      g.lineTo(48, 66);
-      g.lineTo(46, 94);
-      g.closePath();
-      g.fill();
-      g.fillStyle = '#ffb03a';
-      g.fillRect(41, 15, 5, 3);
-      g.fillRect(50, 15, 5, 3);
-      return;
-    }
-    if (kind === 'witch') {
-      const aura = g.createRadialGradient(48, 46, 4, 48, 46, 46);
-      aura.addColorStop(0, 'rgba(210,90,250,.8)');
-      aura.addColorStop(1, 'rgba(120,30,200,0)');
-      g.fillStyle = aura;
-      g.fillRect(0, 0, 96, 96);
-      g.fillStyle = '#20102c';
-      g.beginPath();
-      g.moveTo(48, 14);
-      g.lineTo(60, 40);
-      g.lineTo(70, 84);
-      g.lineTo(26, 84);
-      g.lineTo(36, 40);
-      g.closePath();
-      g.fill();
-      g.fillStyle = '#e8a0ff';
-      g.beginPath();
-      g.arc(48, 34, 5, 0, Math.PI * 2);
-      g.fill();
-      return;
-    }
-    // 巨龍同飛龍
-    const body = kind === 'wyrm' ? '#2a1a4a' : '#7a1e18';
-    const web = kind === 'wyrm' ? '#4a2a7a' : '#a8342a';
-    g.fillStyle = web;
-    for (const s of [1, -1]) {
-      g.beginPath();
-      g.moveTo(48, 44);
-      g.lineTo(48 + s * 46, 16);
-      g.lineTo(48 + s * 38, 44);
-      g.lineTo(48 + s * 28, 40);
-      g.lineTo(48 + s * 22, 58);
-      g.closePath();
-      g.fill();
-    }
-    g.fillStyle = body;
-    g.beginPath();
-    g.ellipse(48, 50, 11, 24, 0, 0, Math.PI * 2);
-    g.fill();
-    g.beginPath();
-    g.moveTo(42, 34);
-    g.lineTo(48, 12);
-    g.lineTo(54, 34);
-    g.closePath();
-    g.fill();
-    g.beginPath();
-    g.moveTo(44, 70);
-    g.lineTo(48, 94);
-    g.lineTo(52, 70);
-    g.closePath();
-    g.fill();
-    g.fillStyle = '#ffb03a';
-    g.fillRect(45, 18, 2, 2);
-    g.fillRect(49, 18, 2, 2);
   });
 }
 

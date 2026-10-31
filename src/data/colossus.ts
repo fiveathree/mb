@@ -70,6 +70,10 @@ export const SUMMON_CODES: Record<string, 'titan' | 'wyrm' | 'witch' | 'dragon' 
 /** 魔王陣營親手放滅世魔法 */
 export const DOOM = { cooldown: 25, justice: -20, renown: 12, relation: -30 };
 
+/** 災厄：每座城停留幾耐先走，連毀幾座先返巢；幾遠算追到 */
+export const RAMPAGE = { stay: 22, strikes: 3, contact: 9 };
+export const isCalamity = (kind: string) => kind === 'dragon' || kind === 'witch' || kind === 'wyrm' || kind === 'titan';
+
 /** 焦土同廢墟留幾多日 */
 export const SCAR_DAYS = 40;
 /** 打中範圍內部隊：士氣同傷兵 */

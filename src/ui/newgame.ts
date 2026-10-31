@@ -11,6 +11,7 @@ import { HORSES } from '../data/horses';
 import { WEAPONS } from '../data/weapons';
 import { armorValue, createCrownHero, partyLimit, playerDef } from '../core/hero';
 import type { Hud } from './hud';
+import { portrait } from './portrait';
 
 export interface NewGameChoice {
   /** 自己改嘅名，一般本先用 */
@@ -52,6 +53,7 @@ function crownPanel(k: CrownDef): string {
   return `
     <p class="detail">${k.cls}冠位・${k.name}：${k.desc}</p>
     <div class="crown-panel">
+      <img class="crown-face" src="${portrait(k)}" alt="${k.name}" />
       <div>${bars}</div>
       <div class="crown-info">
         <div>生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, [])}</div>

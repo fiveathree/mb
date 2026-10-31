@@ -8,8 +8,12 @@ import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { partyFood, partyWage } from '../core/roster';
-import { calamityIcon, placeIcon, partyIcon, portIcon, ruinIcon, vistaIcon } from './icons';
-import { STRIKES } from '../data/colossus';
+import { placeIcon, partyIcon, portIcon, ruinIcon, vistaIcon, type PartyLook } from './icons';
+import { calamityIcon } from './doomArt';
+import { crownOf } from '../data/crowns';
+import { HORSES, moveOf } from '../data/horses';
+import { RACES } from '../data/races';
+import { STRIKES, isCalamity } from '../data/colossus';
 import { Sky, type Projected } from './sky';
 import { dayOf, hourOf, isNight, isOpen, type Blast, type World, type WorldEvent } from './world';
 
@@ -26,6 +30,14 @@ const LABEL_MIN_SCALE = 0.34;
 const DEFAULT_SKY = ['bird'];
 /** 行咗幾多格就重新計預覽路線 */
 const PREVIEW_REPLAN = 3;
+/** 大地圖 NPC 造型 */
+const NPC_LOOK: Partial<Record<string, PartyLook>> = {
+  caravan: 'wagon', fisher: 'boat', patrol: 'horse', messenger: 'horse', lord: 'horse', raider: 'orc', expedition: 'horse', figure: 'mage',
+};
+/** 右鍵：拖幾多像素先算拖動、兩下要幾快、上下拖動補償透視 */
+const DRAG_MIN = 5;
+const DOUBLE_TAP = 400;
+const DRAG_Y = 1.8;
 /** 滅世攻擊：光柱落地要幾耐，整段畫面幾長，城崩塌幾耐 */
 const IMPACT = 1;
 const BLAST_LIFE = 5;
@@ -57,6 +69,8 @@ export class WorldView {
   private picker: HTMLElement | null = null;
   private pickerClose: (() => void) | null = null;
   private follow = true;
+  private drag: { x: number; y: number; moved: number } | null = null;
+  private lastTap = 0;
   private tip = '';
   private tipUntil = 0;
   /** 瞄緊滅世魔法 */
@@ -79,13 +93,23 @@ export class WorldView {
     this.bar = document.getElementById('mapbar')!;
     this.questBar = document.getElementById('questbar')!;
     this.questBar.addEventListener('click', (e) => {
+      const doom = (e.target as HTMLElement).closest<HTMLElement>('[data-c]');
+      if (doom) {
+        const n = this.world.save.npcs.find((x) => x.id === Number(doom.dataset.c));
+        if (n) this.world.chase(n);
+        this.follow = true;
+        return;
+      }
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-q]');
       if (el) this.clickQuest(Number(el.dataset.q));
     });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    canvas.addEventListener('mousedown', (e) => this.click(e));
+    canvas.addEventListener('mousedown', (e) => (e.button === 2 ? this.dragStart(e) : this.click(e)));
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    window.addEventListener('mousemove', (e) => this.dragMove(e));
+    window.addEventListener('mouseup', (e) => this.dragEnd(e));
     canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.resize();
   }
@@ -211,6 +235,37 @@ export class WorldView {
     return PLACES.filter((p) => !p.gone && (!p.hidden || w.discovered.includes(p.id)));
   }
 
+  /** 右鍵撳住拖地圖 */
+  private dragStart(e: MouseEvent) {
+    if (!this.active) return;
+    this.drag = { x: e.clientX, y: e.clientY, moved: 0 };
+  }
+
+  private dragMove(e: MouseEvent) {
+    if (!this.drag) return;
+    const dx = e.clientX - this.drag.x;
+    const dy = e.clientY - this.drag.y;
+    this.drag.x = e.clientX;
+    this.drag.y = e.clientY;
+    this.drag.moved += Math.abs(dx) + Math.abs(dy);
+    if (this.drag.moved < DRAG_MIN) return;
+    this.follow = false;
+    const scale = this.zoom;
+    this.focusX = Math.max(0, Math.min(this.base.width, this.focusX - dx / scale));
+    this.focusY = Math.max(0, Math.min(this.base.height, this.focusY - (dy / scale) * DRAG_Y));
+  }
+
+  /** 右鍵快速撳兩下：鏡頭返去主角度 */
+  private dragEnd(e: MouseEvent) {
+    if (e.button !== 2 || !this.drag) return;
+    const tapped = this.drag.moved < DRAG_MIN;
+    this.drag = null;
+    if (!tapped) return;
+    const now = performance.now();
+    if (now - this.lastTap < DOUBLE_TAP) this.follow = true;
+    this.lastTap = now;
+  }
+
   private click(e: MouseEvent) {
     if (!this.active || e.button !== 0) return;
     if (this.picker) {
@@ -233,7 +288,12 @@ export class WorldView {
         label: `${Math.hypot(p.x - w.x, p.y - w.y) < 1.5 ? '入去' : '前往'} ${p.name}`,
         run: () => this.visit(p),
       })),
-      ...this.near(seen(w.npcs), e, NPC_CLICK_PX).map((n) => ({
+      ...w.npcs.filter((n) => isCalamity(n.kind)).filter((n) => {
+        const p = this.project(n.x * PX, n.y * PX);
+        const size = (CALAMITY_PX[n.kind] ?? 70) * Math.max(0.5, Math.min(1.6, (p?.s ?? 1) * 1.4));
+        return p && Math.abs(p.x - e.clientX) < size * 0.5 && e.clientY < p.y + 10 && e.clientY > p.y - size * 1.2;
+      }).map((n) => ({ label: `追擊 ${NPC[n.kind].name}`, run: () => this.world.chase(n) })),
+      ...this.near(seen(w.npcs.filter((n) => !isCalamity(n.kind))), e, NPC_CLICK_PX).map((n) => ({
         label: n.figure ? `見 ${figureOf(n.figure)!.name}` : `截住 ${NPC[n.kind].name} ${n.size} 人`,
         run: () => this.world.chase(n),
       })),
@@ -286,16 +346,18 @@ export class WorldView {
       else if (Math.hypot(w.x - this.preview.fromX, w.y - this.preview.fromY) > PREVIEW_REPLAN) this.planRoute(q);
     }
     const days = this.preview ? Math.ceil(this.preview.path.length / this.world.partySpeed() / TIME.secondsPerDay) : 0;
-    const key = `${w.quests.map((q) => `${q.id}:${q.progress}`).join()}|${this.preview?.id}|${days}`;
+    const dooms = w.npcs.filter((n) => isCalamity(n.kind));
+    const key = `${w.quests.map((q) => `${q.id}:${q.progress}`).join()}|${this.preview?.id}|${days}|${dooms.map((n) => `${n.id}:${Math.round(Math.hypot(n.x - w.x, n.y - w.y) / 8)}`).join()}`;
     if (key === this.questKey) return;
     this.questKey = key;
-    this.questBar.hidden = !w.quests.length;
+    this.questBar.hidden = !w.quests.length && !dooms.length;
     const line = (q: Quest) => {
       const on = this.preview?.id === q.id;
       const note = on ? `去${this.preview!.name}，約 ${days} 日。再撳出發` : `${q.story !== undefined ? '主線' : `第 ${q.deadline} 日前`}${q.need > 1 ? `　${q.progress}／${q.need}` : ''}`;
       return `<button class="quest ${on ? 'on' : ''}" data-q="${q.id}"><b>${q.title}</b><small>${note}</small></button>`;
     };
-    this.questBar.innerHTML = `<div class="pick-title">任務（撳睇路線）</div>${w.quests.map(line).join('')}`;
+    const alarm = dooms.map((n) => `<button class="quest doom" data-c="${n.id}"><b>${NPC[n.kind].name}</b><small>距離 ${Math.round(Math.hypot(n.x - w.x, n.y - w.y))} 格，撳即追擊</small></button>`).join('');
+    this.questBar.innerHTML = `${alarm}<div class="pick-title">任務（撳睇路線）</div>${w.quests.map(line).join('')}`;
   }
 
   private visit(p: PlaceDef) {
@@ -515,7 +577,7 @@ export class WorldView {
       const q = at(b.x, b.y);
       if (!q) continue;
       const radius = dotRadius(b.size) * Math.max(0.5, q.s);
-      this.drawParty(q, radius, '#d6352a');
+      this.drawParty(q, radius, '#d6352a', 'foot');
       g.font = `700 14px ${FONT}`;
       if (q.s > LABEL_MIN_SCALE) {
         const text = `山賊 ${b.size} 人`;
@@ -541,7 +603,7 @@ export class WorldView {
         continue;
       }
       const radius = dotRadius(n.size) * Math.max(0.5, q.s);
-      this.drawParty(q, radius, def.color, n.kind === 'caravan');
+      this.drawParty(q, radius, def.color, NPC_LOOK[n.kind] ?? 'foot');
       if (dist < NPC_RULES.labelDist && q.s > LABEL_MIN_SCALE) {
         const text = n.figure ? `${figureOf(n.figure)!.name}：${n.job}` : `${def.name} ${n.size} 人：${n.job}`;
         g.lineWidth = 5;
@@ -572,7 +634,9 @@ export class WorldView {
     g.beginPath();
     g.ellipse(me.x, me.y, radius * 1.3, radius * 0.6, 0, 0, Math.PI * 2);
     g.stroke();
-    this.drawParty(me, radius, '#f2c14e');
+    const hero = this.world.roster.hero;
+    const crown = crownOf(hero.crown);
+    this.drawParty(me, radius, crown ? `#${crown.color.toString(16).padStart(6, '0')}` : '#f2c14e', this.heroLook());
     const label = `你 ${men} 人`;
     g.font = `900 16px ${FONT}`;
     g.lineWidth = 5;
@@ -707,14 +771,29 @@ export class WorldView {
   }
 
   /** 部隊圖示：腳踏喺地面位置，有影 */
-  private drawParty(q: { x: number; y: number }, radius: number, color: string, wagon = false) {
+  /** 主角地圖造型：跟種族同坐騎 */
+  private heroLook(): PartyLook {
+    const h = this.world.roster.hero;
+    const race = RACES[h.race];
+    if (race.look === 'skull') return 'undead';
+    if (race.look === 'bull') return 'beastman';
+    if (race.look === 'tusks') return 'orc';
+    if (race.noRide) return 'foot';
+    if (this.world.moveMode() === 'fly') return 'winged';
+    const mount = HORSES.find((x) => x.id === h.horse);
+    if (mount?.look === 'hover') return 'hover';
+    if (mount && moveOf(mount) === 'land' && /wolf|tiger|rhino|drake/.test(mount.id)) return 'beast';
+    return 'horse';
+  }
+
+  private drawParty(q: { x: number; y: number }, radius: number, color: string, look: PartyLook = 'horse') {
     const g = this.g;
     const size = radius * 4.6;
     g.fillStyle = 'rgba(8,10,16,.35)';
     g.beginPath();
     g.ellipse(q.x, q.y, radius * 0.95, radius * 0.34, 0, 0, Math.PI * 2);
     g.fill();
-    g.drawImage(partyIcon(color, wagon), q.x - size / 2, q.y - size * 0.9, size, size);
+    g.drawImage(partyIcon(color, look), q.x - size / 2, q.y - size * 0.9, size, size);
   }
 
   /** 地點：地上有影，標記企起身 */
@@ -794,7 +873,7 @@ export class WorldView {
       `忠誠 ${w.pol.loyalty}`,
       ...(Object.keys(w.pol.wanted).length ? ['通緝中'] : []),
     ];
-    const base = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　J 工作　空白鍵暫停　M 靜音　Esc 選單';
+    const base = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　J 工作　空白鍵暫停　右鍵拖動地圖、撳兩下回中　Esc 選單';
     const doom = !this.world.canDoom ? '' : this.aiming ? '撳一座城放滅世魔法，撳空地取消' : this.world.doomWait ? `滅世魔法 ${this.world.doomWait} 日後　` : 'X 滅世魔法　';
     const hint = this.aiming ? doom : doom + base;
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;

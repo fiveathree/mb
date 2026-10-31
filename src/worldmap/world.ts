@@ -13,7 +13,7 @@ import { SCENARIOS } from '../data/scenarios';
 import { UNITS } from '../data/units';
 import { CALAMITY } from '../data/tomb';
 import { VISTA_RANGE, VISTA_REWARD } from '../data/vistas';
-import { DOOM, SCAR_DAYS, SUMMON_CODES, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
+import { DOOM, RAMPAGE, SCAR_DAYS, SUMMON_CODES, isCalamity, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
 import { crownOf } from '../data/crowns';
 import { CAMPAIGN } from '../data/gacha';
 import {
@@ -259,7 +259,12 @@ export class World {
   chase(n: Npc) {
     this.chasing = n.id;
     this.rechase = 0;
-    this.goTo(n.x, n.y, null);
+    // 追災厄抄直路，唔可以俾山同河擋住
+    if (isCalamity(n.kind)) {
+      this.path = this.terrain.path(this.save.x, this.save.y, n.x, n.y, 'fly') ?? [];
+      this.destination = null;
+      this.paused = false;
+    } else this.goTo(n.x, n.y, null);
     this.chasing = n.id;
   }
 
@@ -542,7 +547,8 @@ export class World {
       return null;
     }
     const w = this.save;
-    if (Math.hypot(n.x - w.x, n.y - w.y) < NPC_RULES.contactDist * 1.3) {
+    const huge = isCalamity(n.kind);
+    if (Math.hypot(n.x - w.x, n.y - w.y) < (huge ? RAMPAGE.contact : NPC_RULES.contactDist * 1.3)) {
       this.chasing = null;
       this.path = [];
       return { type: 'npc', npc: n };
@@ -551,7 +557,7 @@ export class World {
     if (this.rechase <= 0) {
       this.rechase = 0.8;
       const id = this.chasing;
-      this.path = this.terrain.path(w.x, w.y, n.x, n.y, this.moveMode()) ?? this.path;
+      this.path = this.terrain.path(w.x, w.y, n.x, n.y, huge ? 'fly' : this.moveMode()) ?? this.path;
       this.chasing = id;
     }
     return null;

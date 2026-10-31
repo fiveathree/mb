@@ -10,6 +10,7 @@ import { TEAM_STYLES, type UnitDef } from '../data/units';
 import type { WeaponDef } from '../data/weapons';
 import { flushParts, type Batches, type Part } from './batch';
 import { clamp, angleDiff, type Combatant, type Horse } from './entities';
+import { crownOf } from '../data/crowns';
 import { axeGeo, bladeGeo, bowGeo, leafGeo, limbGeo, loftGeo, torsoGeo, wingGeo, type Ring } from './shapes';
 
 /** 建模時嘅目標：部件加入邊個 rig、由邊個節點控制顯示 */
@@ -26,6 +27,15 @@ function part(
 
 function box(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0): THREE.Object3D {
   const node = part('box', () => new THREE.BoxGeometry(1, 1, 1), color, w, h, d);
+  node.position.set(x, y, z);
+  return node;
+}
+
+/** 發光件：唔受光影，巨神眼同裂紋用 */
+const shine = (key: string) => `e|${key}`;
+
+function glowEll(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0): THREE.Object3D {
+  const node = part(shine('ell'), () => new THREE.SphereGeometry(0.5, 7, 5), color, w, h, d);
   node.position.set(x, y, z);
   return node;
 }
@@ -341,6 +351,123 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
   return { wings, legs, neck, tail, t: 0 };
 }
 
+const crownColor = (def: UnitDef) => crownOf(def.crown)?.color ?? TEAM_STYLES[0].body;
+const giantLook2 = (def: UnitDef) => (GIANT_LOOK[def.id] ?? GIANT_DEFAULT).hi;
+
+/** 冠位角色頭飾：跟劇本同冠位類別 */
+function crownGear(def: UnitDef): HeadGear | null {
+  const c = crownOf(def.crown);
+  if (!c) return null;
+  if (['threekingdoms', 'fivedynasties', 'xiyou', 'fengshen', 'shenhua', 'jianghu', 'maoshan', 'xianxia', 'tianjie'].includes(c.scenario)) {
+    return c.cls === '智略' || c.cls === '魔導' ? 'topknot' : null;
+  }
+  if (c.scenario === 'rome' || c.scenario === 'greek') return 'crest';
+  if (c.scenario === 'biocity') return 'none';
+  return null;
+}
+
+/** 種族體型同盔甲色：同隊都一眼分到邊族 */
+const RACE_BUILD: Partial<Record<string, { wide: number; iron: number }>> = {
+  dwarf: { wide: 1.3, iron: 0xb08a4a }, orc: { wide: 1.22, iron: 0x6a5a48 }, ogre: { wide: 1.4, iron: 0x6a5a48 }, goblin: { wide: 0.85, iron: 0x7a7050 },
+  elf: { wide: 0.88, iron: 0xc8d8b0 }, darkelf: { wide: 0.88, iron: 0x3a3050 }, undead: { wide: 0.82, iron: 0x4a4650 }, demon: { wide: 1.12, iron: 0x3a2028 },
+  vampire: { wide: 0.9, iron: 0x3a1a28 }, nord: { wide: 1.14, iron: 0x9a9080 }, minotaur: { wide: 1.3, iron: 0x5a4a3a }, lizard: { wide: 1.02, iron: 0x4a6a58 },
+  giant: { wide: 1.3, iron: 0x5a5048 }, golem: { wide: 1.45, iron: 0x7c7f88 }, psionic: { wide: 0.95, iron: 0xd8b860 }, treant: { wide: 1.3, iron: 0x4a3a24 },
+  beastkin: { wide: 1, iron: 0x8a6a48 }, werewolf: { wide: 1.2, iron: 0x4a4038 }, fairy: { wide: 0.8, iron: 0xd8c8f0 }, swarm: { wide: 1.05, iron: 0x4a2a5a },
+};
+
+export type HeadGear = 'douli' | 'crest' | 'visor' | 'none' | 'qing' | 'monk' | 'topknot' | 'laurel';
+
+/** 兵種頭飾：東方斗笠、羅馬橫冠、科幻面罩等 */
+const HEAD_GEAR: Record<string, HeadGear> = {
+  dao_guard: 'douli', ya_guard: 'douli', biao_shi: 'douli', dao_tong: 'topknot', dao_zhang: 'topknot', sword_cultivator: 'topknot', jian_ke: 'topknot', yin_wei: 'douli',
+  wu_seng: 'monk', tian_bing: 'crest', tian_jiang: 'crest', jin_jia: 'crest', legionary: 'crest', hoplite: 'crest', auxilia: 'crest',
+  marine_trooper: 'visor', flame_trooper: 'visor', zombie: 'none', zombie_runner: 'none', zombie_brute: 'none', jiangshi: 'qing', nv_gui: 'none', wang_hun: 'none',
+};
+
+function buildGear(torso: THREE.Group, gear: HeadGear, color: number) {
+  switch (gear) {
+    case 'douli': {
+      const hat = cone(0.3, 0.14, 10, 0xc8a868);
+      hat.position.y = 0.97;
+      torso.add(hat);
+      break;
+    }
+    case 'crest': {
+      torso.add(dome(0.29, 0.25, 0.31, color, 0, 0.885, 0, true));
+      const crest = ell(0.42, 0.13, 0.05, 0xc8342c, 0, 1.03, 0);
+      torso.add(crest);
+      break;
+    }
+    case 'visor':
+      torso.add(dome(0.32, 0.3, 0.34, 0x3a4250, 0, 0.87, 0, true), glowEll(0.2, 0.05, 0.03, 0x6af0ff, 0, 0.84, 0.13));
+      break;
+    case 'qing': {
+      const brim = cyl(0.2, 0.22, 0.05, 10, 0x1c1a2a);
+      brim.position.y = 0.94;
+      const top = cyl(0.13, 0.15, 0.13, 10, 0x2a2840);
+      top.position.y = 1.02;
+      torso.add(brim, top, box(0.1, 0.22, 0.01, 0xf0d850, 0, 0.82, 0.135));
+      break;
+    }
+    case 'topknot':
+      torso.add(ell(0.11, 0.12, 0.11, 0x1c1a1e, 0, 1.02, -0.02), box(0.16, 0.02, 0.02, 0xd8c048, 0, 1.03, -0.02));
+      break;
+    case 'monk':
+      break;
+    default:
+      break;
+  }
+}
+
+/** 巨神造型：分神將、魔神、石巨人、屍王 */
+const GIANT_LOOK: Record<string, { hi: number; iron: number; glow: number; halo: boolean }> = {
+  boss_lightgod: { hi: 0xf0e8d0, iron: 0xd8b860, glow: 0xfff0a0, halo: true },
+  boss_asura: { hi: 0xc8502e, iron: 0xc89a40, glow: 0xffd86a, halo: true },
+  boss_tongtian: { hi: 0x8a8ac8, iron: 0x3a3a70, glow: 0x9ae0ff, halo: true },
+  boss_gonggong: { hi: 0x2f7a8a, iron: 0x1c3a4a, glow: 0x7af0ff, halo: false },
+  boss_kronos: { hi: 0x7a7468, iron: 0x3a3630, glow: 0xff8a2a, halo: false },
+  boss_cyclops: { hi: 0x9a7a58, iron: 0x4a3a2a, glow: 0xffc84a, halo: false },
+  boss_jiangwang: { hi: 0x5a6a68, iron: 0x1c1a2a, glow: 0x7af0a0, halo: false },
+  boss_blood: { hi: 0x7a1a24, iron: 0x2a0e14, glow: 0xff3a2a, halo: false },
+};
+const GIANT_DEFAULT = { hi: 0x6a2a28, iron: 0x241c24, glow: 0xff7a2a, halo: false };
+
+/** 巨神額外部件：胸核、裂紋、肩刺、光環 */
+function addGiantParts(torso: THREE.Group, def: UnitDef) {
+  const look = GIANT_LOOK[def.id] ?? GIANT_DEFAULT;
+  torso.add(glowEll(0.15, 0.15, 0.08, look.glow, 0, 0.44, 0.15));
+  for (const s of [1, -1]) {
+    // 胸前裂紋
+    const seam = glowEll(0.022, 0.42, 0.02, look.glow, s * 0.1, 0.24, 0.14);
+    seam.rotation.z = s * 0.3;
+    torso.add(seam);
+    // 肩甲
+    torso.add(ell(0.34, 0.26, 0.34, look.iron, s * 0.31, 0.6, 0, true));
+    for (let i = 0; i < 3; i++) {
+      const spike = cone(0.05, 0.3, 6, 0x141014);
+      spike.position.set(s * (0.26 + i * 0.08), 0.76 - i * 0.02, -0.06 + i * 0.06);
+      spike.rotation.z = -s * (0.2 + i * 0.25);
+      torso.add(spike);
+    }
+    torso.add(glowEll(0.05, 0.035, 0.03, look.glow, s * 0.055, 0.85, 0.125));
+    const horn = cone(0.07, 0.62, 7, 0x141014);
+    horn.position.set(s * 0.17, 1.14, -0.04);
+    horn.rotation.z = -s * 0.45;
+    torso.add(horn);
+  }
+  // 胸甲同破披風
+  torso.add(torsoPart(0.6, 0.6, 0.38, look.iron, 0.32, true));
+  const cape = limb(0.24, 0.3, 0.95, 0x220e12, 0, 0.2, -0.26);
+  cape.scale.z *= 0.1;
+  cape.rotation.x = 0.1;
+  torso.add(cape);
+  if (look.halo) {
+    const halo = part(shine('ring'), () => new THREE.TorusGeometry(1, 0.05, 5, 24), look.glow, 0.42, 0.42, 0.42);
+    halo.position.set(0, 0.92, -0.26);
+    torso.add(halo);
+  }
+}
+
 /** 由 id 計個固定數，同一兵種外觀一樣，唔同兵種有變化 */
 function hashOf(id: string): number {
   let h = 7;
@@ -406,8 +533,10 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const race = RACES[def.race ?? 'human'];
   // 巨神唔著軍服：皮膚當身體，配暗鐵
   const titanSkin = def.skin ?? race.skin;
-  const bodyColor = def.colossal ? titanSkin : def.civilian ? def.trimColor : style.body;
-  const iron = def.colossal ? 0x2c2630 : COLORS.steel;
+  const bodyColor = def.colossal ? giantLook2(def) : def.crown ? crownColor(def) : def.civilian ? def.trimColor : style.body;
+  const build = RACE_BUILD[def.race ?? 'human'];
+  const giantLook = GIANT_LOOK[def.id] ?? GIANT_DEFAULT;
+  const iron = def.colossal ? giantLook.iron : build?.iron ?? COLORS.steel;
   const legColor = def.colossal ? titanSkin : style.legs;
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
@@ -415,6 +544,9 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const hips = new THREE.Group();
   hips.position.y = 0.95;
   root.add(hips);
+  // 體型：矮人闊、精靈瘦；巨神特別粗壯
+  hips.scale.x = (def.colossal ? 1.3 : 1) * (build?.wide ?? 1);
+  hips.scale.z = def.colossal ? 1.25 : 1;
   const armored = !def.civilian && def.tier >= 3 && def.role !== 'mage';
   const robed = def.role === 'mage' || !!def.civilian;
   const skin = def.skin ?? race.skin;
@@ -428,7 +560,7 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   belt.position.y = 0.04;
   belt.scale.z *= 0.72;
   torso.add(belt, dot(0.08, 0.07, 0.04, GOLD_TRIM, 0, 0.04, 0.14, true));
-  const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, def.colossal ? 0x2c2630 : robed ? bodyColor : def.trimColor);
+  const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, def.colossal ? giantLook.iron : robed ? bodyColor : def.trimColor);
   skirt.position.y = robed ? -0.42 : -0.16;
   skirt.scale.z *= 0.74;
   torso.add(skirt);
@@ -437,20 +569,10 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
 
   buildHead(torso, def, skin, race.look);
   addRaceFeatures(torso, race.look, skin);
-  if (def.colossal) {
-    // 發光眼同角冠，遠遠都見到
-    for (const s of [1, -1]) {
-      torso.add(dot(0.05, 0.035, 0.03, 0xffb03a, s * 0.055, 0.85, 0.125));
-      const horn = cone(0.06, 0.5, 7, 0x1c1618);
-      horn.position.set(s * 0.16, 1.08, -0.02);
-      horn.rotation.z = -s * 0.4;
-      torso.add(horn);
-      const spike = cone(0.07, 0.34, 6, 0x1c1618);
-      spike.position.set(s * 0.32, 0.72, 0);
-      spike.rotation.z = -s * 0.5;
-      torso.add(spike);
-    }
-  } else if (race.look !== 'bull' && !def.civilian) buildHelmet(torso, def, style.helmet, style.crest, def.plumeColor ?? style.crestColor);
+  const gear = HEAD_GEAR[def.id] ?? crownGear(def);
+  if (def.colossal) addGiantParts(torso, def);
+  else if (gear) buildGear(torso, gear, style.helmet);
+  else if (race.look !== 'bull' && !def.civilian) buildHelmet(torso, def, style.helmet, style.crest, def.plumeColor ?? style.crestColor);
 
   // 背旗：只有英雄同精銳，遠處認得出邊個帶隊
   if (!def.civilian && (def.hero || def.tier >= 5)) {
@@ -476,8 +598,8 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
     a.rotation.order = 'YXZ';
     a.position.set(x, 0.57, 0);
     const fore = armored ? iron : skin;
-    a.add(limb(0.072, 0.06, 0.26, bodyColor, 0, -0.14, 0), ell(0.095, 0.095, 0.095, armored ? iron : bodyColor, 0, -0.29, 0, armored));
-    a.add(limb(0.056, 0.045, 0.22, fore, 0, -0.41, 0, armored), ell(0.09, 0.1, 0.09, armored ? 0x55504a : skin, 0, -0.55, 0));
+    a.add(limb(0.072, 0.06, 0.34, bodyColor, 0, -0.14, 0), ell(0.095, 0.095, 0.095, armored ? iron : bodyColor, 0, -0.29, 0, armored));
+    a.add(limb(0.056, 0.045, 0.3, fore, 0, -0.41, 0, armored), ell(0.09, 0.1, 0.09, armored ? 0x55504a : skin, 0, -0.55, 0));
     return a;
   };
 
@@ -518,11 +640,11 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const leg = (x: number) => {
     const upper = new THREE.Group();
     upper.position.set(x, 0, 0);
-    upper.add(limb(0.1, 0.075, 0.36, legColor, 0, -0.22, 0));
+    upper.add(limb(0.1, 0.075, 0.5, legColor, 0, -0.22, 0));
     const knee = new THREE.Group();
     knee.position.y = -0.44;
     const shin = armored ? iron : LEATHER;
-    knee.add(ell(0.12, 0.12, 0.13, shin, 0, 0, 0.01, armored), limb(0.07, 0.056, 0.32, shin, 0, -0.2, 0, armored), ell(0.13, 0.09, 0.27, 0x2c2622, 0, -0.45, 0.05));
+    knee.add(ell(0.12, 0.12, 0.13, shin, 0, 0, 0.01, armored), limb(0.07, 0.056, 0.48, shin, 0, -0.22, 0, armored), ell(0.13, 0.09, 0.27, 0x2c2622, 0, -0.45, 0.05));
     upper.add(knee);
     hips.add(upper);
     return [upper, knee] as const;
@@ -582,6 +704,13 @@ const HORSE_HEAD: Ring[] = [{ z: -0.1, y: 0.02, rx: 0.08, ry: 0.11 }, { z: 0.08,
 const BLANKET: Ring[] = [{ z: -0.62, y: 0.05, rx: 0.36, ry: 0.42 }, { z: -0.2, y: 0.03, rx: 0.325, ry: 0.375 }, { z: 0.3, y: 0, rx: 0.335, ry: 0.395 }];
 const BARD: Ring[] = [{ z: -0.95, y: 0.05, rx: 0.33, ry: 0.38 }, { z: -0.62, y: 0.05, rx: 0.37, ry: 0.43 }, { z: -0.2, y: 0.03, rx: 0.33, ry: 0.38 }, { z: 0.25, y: 0, rx: 0.34, ry: 0.4 }, { z: 0.75, y: 0.02, rx: 0.33, ry: 0.43 }, { z: 1.02, y: 0.1, rx: 0.25, ry: 0.33 }];
 
+/** 唔同坐騎身形：闊、高、長、腳長 */
+const MOUNT_SHAPE: Record<string, { w: number; h: number; l: number; legs?: number }> = {
+  wolf: { w: 0.8, h: 0.8, l: 0.82, legs: 0.72 }, dire_wolf: { w: 0.85, h: 0.82, l: 0.86, legs: 0.74 }, tiger: { w: 0.92, h: 0.78, l: 1, legs: 0.7 },
+  rhino: { w: 1.5, h: 1.2, l: 1.08, legs: 0.74 }, buffalo: { w: 1.3, h: 1.05, l: 1, legs: 0.8 }, camel: { w: 0.85, h: 1.05, l: 1.02, legs: 1.2 }, elk: { w: 0.8, h: 0.95, l: 0.92, legs: 1.15 },
+  drake: { w: 1.1, h: 0.88, l: 1.18, legs: 0.68 }, griffin_mount: { w: 1.05, h: 1, l: 1, legs: 0.86 }, steppe: { w: 0.9, h: 0.95, l: 0.95 }, warhorse: { w: 1.1, h: 1.08, l: 1.05 }, pack: { w: 1.1, h: 0.92, l: 0.92, legs: 0.86 },
+};
+
 export function buildHorse(def: HorseDef, team: number, batches: Batches): HorseRig {
   ctx = { batches, parts: [], gate: null };
   const cloth = TEAM_STYLES[team].cloth;
@@ -593,6 +722,8 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
   body.position.y = 1.18;
   root.add(body);
 
+  const shape = MOUNT_SHAPE[def.id];
+  if (shape) body.scale.set(shape.w, shape.h, shape.l);
   body.add(loft('horseBody', HORSE_BODY, c, 11));
   // 鞍具：鞍毯只包上半身
   body.add(loft('blanket', BLANKET, cloth, 10, [-0.45, Math.PI + 0.45]));
@@ -681,6 +812,43 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
   leg(0.2, -0.8, 3.0);
   leg(-0.2, -0.8, 3.6);
   // 懸浮載具：收埋頭同腳，加噴射口同機鼻
+  if (shape?.legs) for (const l of legs) l.upper.scale.y = shape.legs;
+  switch (def.id) {
+    case 'dire_wolf':
+    case 'wolf':
+      tail.scale.set(2.2, 0.9, 2.2);
+      head.add(cone(0.12, 0.36, 6, c).translateZ(0.5));
+      break;
+    case 'tiger':
+      for (let i = 0; i < 6; i++) body.add(box(0.66, 0.5, 0.05, 0x241c14, 0, 0.14, -0.8 + i * 0.32));
+      break;
+    case 'griffin_mount': {
+      // 鷹頭：尖喙同羽冠
+      const beak = cone(0.09, 0.3, 6, 0xe0b040);
+      beak.position.set(0, -0.08, 0.72);
+      beak.rotation.x = 1.9;
+      head.add(beak, ell(0.3, 0.22, 0.4, 0xf0ece0, 0, 0.02, 0.1));
+      break;
+    }
+    case 'nightmare':
+      // 鬃毛同馬尾燒緊
+      neck.add(glowEll(0.1, 0.26, 1.16, 0x9a4af0, 0, 0.24, 0.36));
+      tail.add(glowEll(0.2, 0.8, 0.2, 0x9a4af0, 0, -0.38, 0));
+      break;
+    case 'buffalo':
+      for (const s of [1, -1]) {
+        const horn = cone(0.05, 0.5, 6, 0xd8ccb0);
+        horn.position.set(s * 0.26, 0.12, 0);
+        horn.rotation.z = -s * 1.3;
+        head.add(horn);
+      }
+      break;
+    case 'seahorse':
+      for (const s of [1, -1]) body.add(ell(0.05, 0.4, 0.6, 0x2d9aa8, s * 0.3, 0.1, 0.5));
+      break;
+    default:
+      break;
+  }
   if (def.look === 'hover') {
     for (const l of legs) l.upper.scale.setScalar(0.001);
     neck.scale.setScalar(0.001);
