@@ -18,6 +18,8 @@ npm run og       # 由 scripts/og-image.svg 重新生成 public/og-image.png
 
 部署去 Cloudflare Pages：build command 用 `npm run build`，output directory 用 `dist`。
 
+GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後每次 push 去 `main` 都會自動 build 同部署 `dist/`。唔可以揀 Deploy from a branch，因為嗰個模式派嘅係未 build 嘅原始碼，會得個白畫面。
+
 ## 操作說明
 
 | 按鍵 | 騎馬 | 步行 |
@@ -90,5 +92,5 @@ npm run og       # 由 scripts/og-image.svg 重新生成 public/og-image.png
 11. 美術用純色 low-poly，冇貼圖，紅敵藍我。
 12. 音效本來喺階段 6，我提早加咗最簡單嘅合成音，因為打擊感要靠佢。
 13. og:image 暫時用 GitHub raw 網址，正式網域定咗要改 `index.html`。
-14. PLAN 話六個階段做齊先公開，所以暫時未部署。
+14. PLAN 話六個階段做齊先公開，而家 GitHub Pages 已經有公開網址，暫時當試玩用。
 15. F1–F6 指令同 1–4 選兵種留待階段 2。
