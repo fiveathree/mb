@@ -333,10 +333,11 @@ export class Hud {
       const rows = new Map<string, [number, number]>();
       for (const u of b.units) {
         if (u.team !== team || u.def.id === 'player') continue;
-        const r = rows.get(u.def.name) ?? [0, 0];
+        const label = `${rankTag(u.def)} ${u.def.name}`;
+        const r = rows.get(label) ?? [0, 0];
         r[1]++;
         if (!u.dead && !u.routing) r[0]++;
-        rows.set(u.def.name, r);
+        rows.set(label, r);
       }
       return `<div class="col"><h3>${TEAM_NAMES[team]}</h3>${[...rows].map(([n, [a, t]]) => `<div><span>${n}</span><b>${a} ／ ${t}</b></div>`).join('')}</div>`;
     });

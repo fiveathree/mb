@@ -8,11 +8,11 @@ import { TOMB } from '../data/tomb';
 import { currentScenario } from '../data/scenarios';
 import { GACHA, POOLS, POOL_ORDER, RARITY } from '../data/gacha';
 import { PLAYER } from '../politics/politics';
-import { accept, offersAt } from '../quests/quests';
+import { accept, acceptFavor, offersAt } from '../quests/quests';
 import { applyChoice } from '../quests/events';
 import type { StoryEvent } from '../data/quests';
 import { HORSES, HORSE_RANK, MARKET_RANKS, STABLES } from '../data/horses';
-import { FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
+import { FAVORS, FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
 import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
@@ -391,9 +391,9 @@ export class PlaceScreens {
   /** 招請人物嘅掣：大地圖撞到同酒館都用 */
   private figureButton(n: Npc, id: string, h: Record<string, () => void>, refresh: () => void): string {
     const f = figureOf(n.figure!)!;
-    const price = figurePrice(f, n.growth ?? 0);
     const r = this.roster;
     const pol = this.world.politics;
+    const price = figurePrice(f, n.growth ?? 0, pol.s.favors.includes(f.id));
     const ok = pol.s.renown >= f.renown && canAfford(r, price);
     h[id] = () => {
       if (pol.s.renown >= f.renown && spend(r, price)) {
@@ -816,7 +816,14 @@ export class PlaceScreens {
         break;
       case 'figure': {
         const f = figureOf(n.figure!)!;
-        body = `<p class="sub">${f.desc}</p>${this.figureButton(n, 'hire', h, () => this.act.onLeave())}`;
+        const done = w.pol.favors.includes(f.id);
+        const taken = w.quests.some((q) => q.figure === f.id);
+        h.favor = () => {
+          this.notice = acceptFavor(this.world, f.id, n.home);
+          refresh();
+        };
+        body = `<p class="sub">${f.desc}</p>${this.figureButton(n, 'hire', h, () => this.act.onLeave())}
+          <button class="alt" id="favor" ${done || taken ? 'disabled' : ''}>${done ? '已經幫過佢，招請半價' : taken ? '委託進行中' : `委託：${FAVORS[f.id].title}（完成招請半價）`}</button>`;
         break;
       }
       case 'lord': {

@@ -1,5 +1,6 @@
 import { PLACES, type PlaceDef } from '../data/world';
 import { QUESTS as Q, type QuestKind } from '../data/quests';
+import { FAVORS, FAVOR_DAYS } from '../data/figures';
 import type { World, WorldSave } from '../worldmap/world';
 import { dayOf } from '../worldmap/world';
 
@@ -10,6 +11,8 @@ export interface Quest {
   giver: string;
   /** 目的地 */
   target?: string;
+  /** 人物委託：做完招請半價 */
+  figure?: string;
   /** 要清幾多隊賊 */
   need: number;
   progress: number;
@@ -56,6 +59,17 @@ export function accept(world: World, q: Quest): string {
   return `接咗任務：${q.title}`;
 }
 
+/** 人物委託變成任務 */
+export function acceptFavor(world: World, figure: string, giver: string): string {
+  const f = FAVORS[figure];
+  const w = world.save;
+  const id = hash(1, figure);
+  return accept(world, {
+    id, kind: f.kind, title: f.title, giver, target: f.target, figure, need: f.need ?? 1, progress: 0, food: f.food ?? 0,
+    gold: 0, relation: 0, renown: 2, deadline: dayOf(w) + FAVOR_DAYS,
+  });
+}
+
 function finish(world: World, q: Quest) {
   const w = world.save;
   w.quests = w.quests.filter((x) => x !== q);
@@ -63,6 +77,7 @@ function finish(world: World, q: Quest) {
   w.pol.renown += q.renown;
   const owner = w.pol.owners[q.giver];
   if (owner) world.politics.addRelation(owner, q.relation);
+  if (q.figure && !w.pol.favors.includes(q.figure)) w.pol.favors.push(q.figure);
   w.questsDone++;
   world.politics.deed('quest');
   world.note(`完成任務「${q.title}」，獎金 ${q.gold} 金`);

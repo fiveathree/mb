@@ -117,10 +117,45 @@ export const FIGURES: FigureDef[] = [
   },
 ];
 
+export interface Favor {
+  title: string;
+  kind: 'bandits' | 'grain' | 'letter';
+  need?: number;
+  food?: number;
+  target?: string;
+}
+
+/** 人物專屬委託：做完招請半價 */
+export const FAVORS: Record<string, Favor> = {
+  fig_hunter: { title: '趕走林中山賊，還鐵箭伯清靜', kind: 'bandits', need: 1 },
+  fig_fisher: { title: '運 20 糧去臨江城，救濟漁村', kind: 'grain', food: 20, target: 'linjiang' },
+  fig_miner: { title: '將礦脈圖送去鐵砧山城', kind: 'letter', target: 'anvilhold' },
+  fig_healer: { title: '運 30 糧去麥田村賑災', kind: 'grain', food: 30, target: 'wheat' },
+  fig_knight: { title: '同薇奧拉一齊掃蕩三夥山賊', kind: 'bandits', need: 3 },
+  fig_master: { title: '清剿兩夥欺壓武館嘅山賊', kind: 'bandits', need: 2 },
+  fig_immortal: { title: '入十層大墳墓門口取一撮陰土', kind: 'letter', target: 'tomb' },
+  fig_vampire: { title: '將請柬送去亡靈尖塔', kind: 'letter', target: 'spire' },
+  fig_assassin: { title: '將密函送去月葉村', kind: 'letter', target: 'moonleaf' },
+  fig_wolfking: { title: '打散三夥闖入雪原嘅賊', kind: 'bandits', need: 3 },
+  fig_slimelord: { title: '運 40 糧去萬魔城開宴', kind: 'grain', food: 40, target: 'monsterhold' },
+  fig_merchant: { title: '將賬本送去烏衣鎮', kind: 'letter', target: 'wuyi' },
+};
+export const FAVOR_DISCOUNT = 0.5;
+export const FAVOR_DAYS = 25;
+
+/** 修練累積到某個數會發生嘅事 */
+export const MILESTONES: Record<string, Record<number, { text: string; seize?: boolean }>> = {
+  fig_immortal: { 2: { text: '玄機真人突破金丹，天邊雷雲三日不散' }, 5: { text: '玄機真人渡過雷劫，山門大陣響徹百里' } },
+  fig_vampire: { 2: { text: '夜宴伯爵嘅眷屬滲入各城貴族' }, 4: { text: '夜宴伯爵勢力坐大，附近村莊向佢效忠', seize: true }, 7: { text: '夜宴伯爵嘅黑夜又吞併一塊土地', seize: true } },
+  fig_master: { 3: { text: '鐵拳宋門下弟子遍佈天下' } },
+  fig_wolfking: { 3: { text: '北地狼王統一雪原部落', seize: true } },
+  fig_slimelord: { 3: { text: '史萊姆王吞食咗一頭巨獸，體型暴漲' }, 6: { text: '史萊姆王宣告魔物聯邦擴張', seize: true } },
+};
+
 export const figureOf = (id: string) => FIGURES.find((f) => f.id === id);
 
 /** 招請價：愈修練愈貴 */
-export const figurePrice = (f: FigureDef, growth: number) => Math.round(f.price * (1 + growth * 0.08));
+export const figurePrice = (f: FigureDef, growth: number, favored = false) => Math.round(f.price * (1 + growth * 0.08) * (favored ? FAVOR_DISCOUNT : 1));
 export const FIGURE_MAX_LEVEL = 9;
 /** 每次修練有幾大機會突破、每步逗留倍率 */
 export const GROWTH_CHANCE = 0.1;

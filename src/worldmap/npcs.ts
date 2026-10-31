@@ -1,5 +1,6 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
-import { FIGURES, GROWTH_CHANCE, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
+import { FIGURES, GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
+import { PLAYER } from '../politics/politics';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
 import { DRAGON_BREEDS } from '../data/units';
@@ -187,13 +188,33 @@ export class NpcSystem {
     this.paths.set(n.id, path);
   }
 
+  /** 修練夠深會影響世界，例如伯爵吞併附近村莊 */
+  private milestone(n: Npc) {
+    const m = n.figure ? MILESTONES[n.figure]?.[n.growth ?? 0] : null;
+    if (!m) return;
+    this.note(m.text);
+    if (!m.seize) return;
+    const owners = this.save.pol.owners;
+    const mine = owners[n.home];
+    const village = villages
+      .filter((v) => owners[v.id] && owners[v.id] !== mine && owners[v.id] !== PLAYER)
+      .sort((a, b) => Math.hypot(a.x - n.x, a.y - n.y) - Math.hypot(b.x - n.x, b.y - n.y))[0];
+    if (mine && village) {
+      owners[village.id] = mine;
+      this.note(`${village.name}改投新主`);
+    }
+  }
+
   private arriveRoutine(n: Npc, place: PlaceDef | null | undefined) {
     const list = this.routineOf(n);
     const step = list[(n.step ?? 0) % list.length];
     n.step = (n.step ?? 0) + 1;
     n.job = step.job;
     n.wait = step.wait * ROUTINE_WAIT;
-    if (step.grow && Math.random() < GROWTH_CHANCE) n.growth = (n.growth ?? 0) + 1;
+    if (step.grow && Math.random() < GROWTH_CHANCE) {
+      n.growth = (n.growth ?? 0) + 1;
+      this.milestone(n);
+    }
     if (!place || !this.save.stock[place.id]) return;
     if (step.haul === 'food') this.save.townFood[place.id] = (this.save.townFood[place.id] ?? 0) + NPC_RULES.farmerFood;
     if (step.haul === 'iron') this.save.stock[place.id].iron += 2;

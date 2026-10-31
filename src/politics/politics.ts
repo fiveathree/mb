@@ -17,6 +17,8 @@ export interface PoliticsSave {
   owners: Record<string, string>;
   /** 俘虜咗嘅領主（勢力 id） */
   lords: string[];
+  /** 幫過手嘅人物 */
+  favors: string[];
   /** 領地 → 守將名 */
   governors: Record<string, string>;
   relations: Record<string, number>;
@@ -47,13 +49,14 @@ export function migratePolitics(s: PoliticsSave): PoliticsSave {
   s.storyMet ??= [];
   s.lords ??= [];
   s.governors ??= {};
+  s.favors ??= [];
   for (const [id, f] of Object.entries(FIEF_OWNERS)) s.owners[id] ??= f;
   return s;
 }
 
 export function newPolitics(): PoliticsSave {
   return {
-    lords: [], governors: {},
+    lords: [], governors: {}, favors: [],
     owners: { ...FIEF_OWNERS }, relations: Object.fromEntries(FACTIONS.map((f) => [f.id, 0])),
     wars: [['griffin', 'orcs'], ['xuan', 'jiangdong'], ['wuyi', 'chishui'], ['sylvan', 'undead']],
     rank: 'free', liege: null, renown: 0, threats: [], kingdom: null, won: false,
