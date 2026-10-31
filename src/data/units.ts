@@ -406,6 +406,34 @@ UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 900,
 UNITS.boss_demon = boss('boss_demon', '惡魔領主', 'demon', 'boss_club', 1500, 20, 1, 4.6);
 UNITS.boss_dragon = { ...boss('boss_dragon', '赤焰巨龍', 'dragon', 'dragon_fire', 2400, 22, 2.2, 4), weapons: ['dragon_fire', 'boss_club'], role: 'archer' };
 
+// 各劇本兵種
+const troop = (
+  id: string, name: string, role: Role, tier: number, hp: number, armor: number, weapons: string[], trimColor: number,
+  extra: Partial<UnitDef> = {},
+): UnitDef => ({
+  id, name, role, tier, hp, armor, weapons, trimColor, walkSpeed: 2.2, runSpeed: 4.4, radius: 0.46, morale: 55 + tier * 8,
+  blockSkill: 0.3 + tier * 0.06, blockChance: 0.3 + tier * 0.05, reaction: 0.3, attackCooldown: [1.3, 2.3], dodgeChance: 0.15,
+  pool: 'scenario' as PoolId, ...extra,
+});
+for (const u of [
+  troop('legionary', '羅馬軍團兵', 'infantry', 3, 95, 10, ['elite_sword'], 0xb5362c),
+  troop('auxilia', '輔助弓手', 'archer', 2, 58, 4, ['troop_bow', 'short_sword'], 0x8a6a3a),
+  troop('hoplite', '希臘重裝步兵', 'infantry', 3, 90, 11, ['spear'], 0xc8a04a),
+  troop('barbarian', '蠻族戰士', 'infantry', 2, 80, 3, ['infantry_axe'], 0x6a4a2a),
+  troop('crusader', '十字軍騎士', 'cavalry', 4, 105, 13, ['elite_lance', 'cavalry_sword'], 0xe8e4d8, { horse: 'warhorse' }),
+  troop('sergeant', '軍士', 'infantry', 2, 75, 8, ['infantry_sword'], 0xc8c0a8),
+  troop('mamluk', '馬穆魯克', 'cavalry', 4, 92, 9, ['cavalry_sword'], 0x2d9a6a, { horse: 'steppe' }),
+  troop('dao_guard', '刀盾手', 'infantry', 2, 78, 7, ['infantry_sword'], 0x4a5a3a),
+  troop('sword_cultivator', '劍修', 'mage', 4, 90, 6, ['flying_sword', 'elite_sword'], 0x8fe0e8),
+  troop('demon_grunt', '深淵魔卒', 'infantry', 3, 100, 8, ['elite_axe'], 0x7a1a24, { race: 'demon' }),
+  troop('awakened', '覺醒者', 'infantry', 4, 120, 9, ['elite_sword'], 0xe8c04a),
+  troop('kobold', '狗頭人', 'infantry', 1, 45, 2, ['spear'], 0x8a6a3a, { race: 'goblin' }),
+]) UNITS[u.id] = u;
+UNITS.boss_cyclops = { ...boss('boss_cyclops', '獨眼巨人', 'giant', 'boss_club', 1100, 14, 1.3, 3.9) };
+UNITS.boss_hellking = { ...boss('boss_hellking', '深淵魔王', 'demon', 'boss_club', 1800, 22, 1.1, 4.6) };
+UNITS.boss_chimera = { ...boss('boss_chimera', '上古凶獸', 'giant', 'boss_club', 1400, 16, 1.4, 4.4) };
+UNITS.boss_heavenly = { ...boss('boss_heavenly', '渡劫老魔', 'demon', 'boss_fist', 1500, 18, 1, 5) };
+
 // 酒館同伴
 const companion = (id: string, name: string, desc: string, role: Role, weapons: string[], trimColor: number): UnitDef => ({
   id, name, desc, role, weapons, trimColor, tier: 4, hp: 130, armor: 10, walkSpeed: 2.4, runSpeed: 4.8, radius: 0.46, morale: 110,

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
 import { SIEGE } from '../data/factions';
+import { FORMATION_RULES, type FormationBonus, type FormationDef } from '../data/formations';
 import { THEMES, type BattleTheme } from '../data/world';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
@@ -59,6 +60,8 @@ export interface BattleSetup {
   dismount?: boolean;
   /** 第一身鏡頭 */
   firstPerson?: boolean;
+  /** 可用陣法，第一個係開局用嘅 */
+  formations?: { def: FormationDef; efficiency: number }[];
 }
 
 export interface BattleResult {
@@ -91,6 +94,9 @@ export class Battle implements CombatWorld {
   private gaps: number[] = [];
   private firstPerson = false;
   private siege = false;
+  /** 陣法：index 0 係用緊嘅 */
+  formations: { def: FormationDef; efficiency: number }[] = [];
+  private formationT = 0;
   fx: Fx;
   projectiles: Projectiles;
 
@@ -185,6 +191,34 @@ export class Battle implements CombatWorld {
       extra.push({ x, z: Z, r: 1.3 });
     }
     this.obstacles = [...this.baseObstacles, ...extra];
+  }
+
+  formationBonus(team: number, key: keyof FormationBonus): number {
+    const f = this.formations[0];
+    if (team !== 0 || !f) return 0;
+    return (f.def.bonus[key] ?? 0) * f.efficiency;
+  }
+
+  private applyFormation() {
+    const f = this.formations[0];
+    if (!f) return;
+    for (const g of this.groups[0]) {
+      g.shape = f.def.shape;
+      g.assignSlots();
+    }
+  }
+
+  /** 戰鬥中轉去下一個陣法 */
+  private nextFormation() {
+    if (this.formations.length < 2) return;
+    if (this.formationT > 0) {
+      this.hud.announce(`換陣要等 ${Math.ceil(this.formationT)} 秒`, 'guard');
+      return;
+    }
+    this.formations.push(this.formations.shift()!);
+    this.formationT = FORMATION_RULES.switchCooldown;
+    this.applyFormation();
+    this.hud.announce(`變陣：${this.formations[0].def.name}`, 'guard');
   }
 
   routeGoal(c: Combatant, gx: number, gz: number): [number, number] {
@@ -288,6 +322,17 @@ export class Battle implements CombatWorld {
       }
     });
 
+    this.formations = setup.formations ? [...setup.formations] : [];
+    this.formationT = 0;
+    this.applyFormation();
+    for (const u of this.units) {
+      if (u.team === 0 && u.ai) {
+        u.pos.x = u.ai.slotX;
+        u.pos.z = u.ai.slotZ;
+        u.pos.y = heightAt(u.pos.x, u.pos.z);
+        if (u.horse) u.horse.pos.copy(u.pos);
+      }
+    }
     this.running = true;
     this.active = true;
     this.lastNow = 0;
@@ -412,6 +457,7 @@ export class Battle implements CombatWorld {
   }
 
   private tickCommand(dt: number) {
+    this.formationT = Math.max(0, this.formationT - dt);
     this.moraleT -= dt;
     if (this.moraleT <= 0) {
       this.moraleT = 1;
@@ -473,6 +519,7 @@ export class Battle implements CombatWorld {
     if (i.pressed('F1')) this.setOrder('follow');
     if (i.pressed('F2')) this.setOrder('hold');
     if (i.pressed('F3')) this.setOrder('charge');
+    if (i.pressed('KeyG')) this.nextFormation();
     if (i.pressed('F4')) this.command((g) => { g.loose = true; g.assignSlots(); }, '散開');
     if (i.pressed('F5')) this.command((g) => { g.loose = false; g.assignSlots(); }, '密集');
     if (i.pressed('F6')) {

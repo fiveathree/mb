@@ -33,6 +33,7 @@ const CONTROLS: [string, string][] = [
   ['1 2 3 4 0', '選步弓騎法／全軍'],
   ['F1 F2 F3', '跟隨／守住／衝鋒'],
   ['F4 F5 F6', '散開／密集／停射'],
+  ['G', '變陣'],
   ['Tab', '戰況表'],
   ['Esc', '暫停／撤退'],
 ];
@@ -230,7 +231,9 @@ export class Hud {
       const tags = [ORDER_LABEL[g.order], g.loose ? '散開' : '', g.holdFire ? '停射' : ''].filter(Boolean).join('・');
       return `<div class="${b.selected.has(g.role) ? 'sel' : ''}"><kbd>${i + 1}</kbd><span>${ROLE_LABEL[g.role]} ${alive}</span><em>${tags}</em></div>`;
     }).join('');
-    return `${rows}<div class="mor">士氣 ${Math.round(b.moraleOf(0) * 100)}%　敵 ${Math.round(b.moraleOf(1) * 100)}%</div>`;
+    const form = b.formations[0];
+    const formLine = form ? `<div class="mor">陣法 ${form.def.name} ${Math.round(form.efficiency * 100)}%${b.formations.length > 1 ? '　G 變陣' : ''}</div>` : '';
+    return `${rows}${formLine}<div class="mor">士氣 ${Math.round(b.moraleOf(0) * 100)}%　敵 ${Math.round(b.moraleOf(1) * 100)}%</div>`;
   }
 
   /** 英雄名牌跟住頭頂 */

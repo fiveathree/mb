@@ -73,6 +73,16 @@ html, body {
 
 .detail { min-height: 19px; margin-bottom: 8px; font-size: 13px; color: var(--gold); text-align: left; }
 
+.fms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.fm { display: grid; gap: 2px; padding: 6px 7px; text-align: left; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); }
+.fm b { display: flex; justify-content: space-between; font-size: 14px; }
+.fm b small { color: var(--dim); font-weight: 400; }
+.fm > small { color: var(--dim); font-size: 11px; }
+.fm em { font-style: normal; font-size: 11px; color: var(--green); }
+.fm:hover:not(.off) { border-color: var(--gold); }
+.fm.off { opacity: 0.5; cursor: default; }
+.fm.off em { color: var(--red); }
+
 /* 大地圖 */
 #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #16202f; }
 #map[hidden] { display: none !important; }

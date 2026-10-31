@@ -56,6 +56,7 @@ export interface WorldSave {
   arenaWins: number;
   pol: PoliticsSave;
   nextDragon: number;
+  scenario: string;
 }
 
 function townStock(id: string): Record<GoodId, number> {
@@ -80,6 +81,7 @@ export function migrateWorld(w: WorldSave): WorldSave {
   w.arenaWins ??= 0;
   w.pol ??= newPolitics();
   w.nextDragon ??= NPC_RULES.dragonFirstDay;
+  w.scenario ??= 'chaos';
   return w;
 }
 

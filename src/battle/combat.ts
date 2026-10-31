@@ -7,6 +7,7 @@ import { angleDiff, bearing, clamp, flatDist, rad, type Combatant, type Horse } 
 import type { Fx } from './fx';
 import type { Sfx } from './audio';
 import type { Projectiles } from './projectiles';
+import type { FormationBonus } from '../data/formations';
 
 export interface BattleStats {
   kills: number;
@@ -32,6 +33,8 @@ export interface CombatWorld {
   playerAim(muzzle: Vector3, out: Vector3): void;
   /** 圍城時將行軍目標改去最近缺口 */
   routeGoal(c: Combatant, gx: number, gz: number): [number, number];
+  /** 陣法加成，敵軍回傳 0 */
+  formationBonus(team: number, key: keyof FormationBonus): number;
 }
 
 const tmp = new Vector3();
@@ -173,9 +176,11 @@ export function strike(
 
   const coef = couched ? COMBAT.couchSpeedDamageCoef : COMBAT.speedDamageCoef;
   const dirMult = w.thrustOnly ? 1 : COMBAT.dirDamageMult[dir];
-  const cavMult = t.horse ? w.antiCavalry : 1;
-  const raw = w.baseDamage * (att.def.damageMult ?? 1) * (1 + relSpeed * coef) * chargeMult * dirMult * cavMult * heightMult(att, t);
-  const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
+  const cavMult = t.horse ? w.antiCavalry + world.formationBonus(att.team, 'antiCavalry') : 1;
+  const formMult = 1 + world.formationBonus(att.team, 'damage');
+  const raw = w.baseDamage * (att.def.damageMult ?? 1) * (1 + relSpeed * coef) * chargeMult * dirMult * cavMult * heightMult(att, t) * formMult;
+  const guard = world.formationBonus(t.team, 'armor');
+  const armorCut = (armor: number) => Math.max(raw - (armor + guard) * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
 
   const isPlayerAtt = att === world.player;
   const isPlayerTgt = t === world.player;
@@ -231,9 +236,11 @@ export function shotHit(
   const nx = vx / speed;
   const nz = vz / speed;
   const head = !hitHorse && hitRatio >= R.headHeight;
-  const power = w.spell ? att.def.spellMult ?? 1 : att.def.damageMult ?? 1;
-  const raw = w.baseDamage * power * mult * (head ? R.headMult : 1) * heightMult(att, t);
-  const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
+  const power = w.spell ? (att.def.spellMult ?? 1) * (1 + world.formationBonus(att.team, 'spell')) : att.def.damageMult ?? 1;
+  const shield = Math.max(0, 1 - world.formationBonus(t.team, 'arrow'));
+  const raw = w.baseDamage * power * mult * (head ? R.headMult : 1) * heightMult(att, t) * shield;
+  const guard = world.formationBonus(t.team, 'armor');
+  const armorCut = (armor: number) => Math.max(raw - (armor + guard) * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
   const isPlayerAtt = att === world.player;
   const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2, t.pos.z);
 
@@ -269,7 +276,7 @@ export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: V
     const d = flatDist(t.pos, pos);
     if (d > radius) continue;
     const dist = Math.max(d, 0.01);
-    const raw = w.baseDamage * (att.def.spellMult ?? 1) * mult * (1 - (d / radius) * 0.6);
+    const raw = w.baseDamage * (att.def.spellMult ?? 1) * (1 + world.formationBonus(att.team, 'spell')) * mult * (1 - (d / radius) * 0.6);
     const nx = (t.pos.x - pos.x) / dist;
     const nz = (t.pos.z - pos.z) / dist;
     if (t.wardT > 0) continue;

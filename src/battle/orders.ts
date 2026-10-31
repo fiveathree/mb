@@ -1,4 +1,5 @@
 import { BATTLEFIELD, FORMATION } from '../data/battlefield';
+import type { FormationShape } from '../data/formations';
 import { ENEMY_COMMAND, ROLE_KEYS, type Role } from '../data/units';
 import { clamp, type Combatant } from './entities';
 
@@ -6,12 +7,49 @@ export type OrderType = 'hold' | 'follow' | 'charge';
 
 export const ORDER_LABEL: Record<OrderType, string> = { hold: '守住', follow: '跟隨', charge: '衝鋒' };
 
+/** 隊形：回傳（橫向位置，向後排數），單位係一個間距 */
+function shapeSlot(shape: FormationShape, i: number, n: number): [number, number] {
+  switch (shape) {
+    case 'line':
+      return [i - (n - 1) / 2, 0];
+    case 'wings': {
+      // 中央凹入，兩翼前伸
+      const side = i % 2 ? 1 : -1;
+      const step = Math.ceil(i / 2);
+      return [side * step, -step * 0.7 + n * 0.2];
+    }
+    case 'wedge': {
+      // 箭頭向前
+      const side = i % 2 ? 1 : -1;
+      const step = Math.ceil(i / 2);
+      return [side * step, step * 0.9];
+    }
+    case 'ring': {
+      const a = (i / n) * Math.PI * 2;
+      const r = Math.max(2, n / 5);
+      return [Math.sin(a) * r, Math.cos(a) * r];
+    }
+    case 'square': {
+      const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
+      const row = Math.floor(i / cols);
+      return [(i % cols) - (cols - 1) / 2, row * 0.8];
+    }
+    default: {
+      const cols = Math.max(1, Math.ceil(Math.sqrt(n * FORMATION.rowsAspect)));
+      const row = Math.floor(i / cols);
+      const rowCount = Math.min(cols, n - row * cols);
+      return [(i % cols) - (rowCount - 1) / 2, row];
+    }
+  }
+}
+
 /** 同一陣營同一兵種嘅編隊 */
 export class Group {
   members: Combatant[] = [];
   order: OrderType = 'hold';
   loose = false;
   holdFire = false;
+  shape: FormationShape = 'block';
   anchorX = 0;
   anchorZ = 0;
   facing = 0;
@@ -40,15 +78,12 @@ export class Group {
     const list = this.alive;
     const spacing = this.loose ? FORMATION.looseSpacing : FORMATION.tightSpacing;
     const size = spacing * (this.role === 'cavalry' ? 1.8 : 1);
-    const cols = Math.max(1, Math.ceil(Math.sqrt(list.length * FORMATION.rowsAspect)));
     const fx = Math.sin(this.facing);
     const fz = Math.cos(this.facing);
     const rx = -fz;
     const rz = fx;
     list.forEach((m, i) => {
-      const row = Math.floor(i / cols);
-      const rowCount = Math.min(cols, list.length - row * cols);
-      const col = (i % cols) - (rowCount - 1) / 2;
+      const [col, row] = shapeSlot(this.shape, i, list.length);
       const ai = m.ai;
       if (!ai) return;
       ai.slotX = this.anchorX + rx * col * size - fx * row * size;

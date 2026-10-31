@@ -3,6 +3,9 @@ import { Battle, type BattleResult } from './battle/battle';
 import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
 import { ARTIFACTS, DUNGEON, PLAYABLE, START_REGIONS, factionOf } from './data/factions';
 import { showNewGame } from './ui/newgame';
+import { showFormationPick } from './ui/formation';
+import { formationsFor, type FormationCheck } from './core/formation';
+import { applyScenario, currentScenario, scenarioOf } from './data/scenarios';
 import {
   addSoldier, applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
 } from './core/roster';
@@ -17,6 +20,8 @@ import { PlaceScreens } from './ui/place';
 import { raiderArmy, type Npc } from './worldmap/npcs';
 import { WorldView } from './worldmap/view';
 import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type WorldSave } from './worldmap/world';
+
+const FORMATION_MIN_TROOPS = 4;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
@@ -58,6 +63,7 @@ function saveGame() {
 }
 
 function useGame(r: Roster, w: WorldSave) {
+  applyScenario(w.scenario ?? 'chaos');
   roster = migrateRoster(r);
   world = new World(w, roster);
   view.setWorld(world);
@@ -120,14 +126,23 @@ async function startBattle(
 ) {
   afterBattle = done;
   view.stop();
-  battle.sfx.unlock();
-  hud.hideScreen();
   const h = roster.hero;
-  battle.start({
-    playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
-  });
-  inBattle = true;
-  await lockMouse();
+  const launch = async (formations: FormationCheck[]) => {
+    battle.sfx.unlock();
+    hud.hideScreen();
+    battle.start({
+      playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
+      formations,
+    });
+    inBattle = true;
+    await lockMouse();
+  };
+  // 一個人或者地下城唔使佈陣
+  if (soldiers.length < FORMATION_MIN_TROOPS || extra.firstPerson) {
+    await launch([]);
+    return;
+  }
+  showFormationPick(hud, formationsFor(currentScenario().cultures, h, soldiers), (order) => void launch(order));
 }
 
 function placeReward(p: PlaceDef): string {
@@ -308,7 +323,7 @@ async function showMenu() {
   const slots = await readSlots();
   const line = (i: number) => {
     const s = slots[i];
-    const info = s ? `第 ${dayOf(s.world)} 日・兵 ${s.roster.soldiers.length}・勝 ${s.roster.wins}` : '空';
+    const info = s ? `${scenarioOf(s.world.scenario ?? 'chaos').name}・第 ${dayOf(s.world)} 日・兵 ${s.roster.soldiers.length}・勝 ${s.roster.wins}` : '空';
     return `<div class="slot"><span>存檔 ${i + 1}：${info}</span>
       <button class="go small" data-load="${i}">${s ? '繼續' : '新遊戲'}</button>
       ${s ? `<button class="alt small" data-del="${i}">刪除</button>` : ''}</div>`;
@@ -335,9 +350,12 @@ async function showMenu() {
         r.hero = createHero({ race: c.race, background: bg });
         r.gold = bg.gold;
         r.soldiers = [];
-        for (const e of bg.army) for (let i = 0; i < e.count; i++) addSoldier(r, e.unit);
+        for (const e of bg.army) {
+          for (let i = 0; i < e.count; i++) addSoldier(r, e.unit === 'footman' ? c.scenario.levy : e.unit);
+        }
         r.tickets.human += bg.tickets ?? 0;
         const w = newWorld();
+        w.scenario = c.scenario.id;
         w.food = bg.food;
         w.pol.renown = Math.max(0, bg.renown ?? 0);
         const start = START_REGIONS[c.region];

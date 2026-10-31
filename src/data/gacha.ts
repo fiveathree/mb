@@ -1,5 +1,5 @@
 export type Rarity = 'common' | 'fine' | 'special' | 'hero';
-export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair' | 'boss';
+export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair' | 'boss' | 'scenario';
 
 export const RARITY_ORDER: Rarity[] = ['common', 'fine', 'special', 'hero'];
 
@@ -10,7 +10,7 @@ export const RARITY: Record<Rarity, { name: string; color: string; rate: number 
   hero: { name: '英雄', color: '#f2c14e', rate: 0.01 },
 };
 
-export type TicketPool = Exclude<PoolId, 'boss'>;
+export type TicketPool = Exclude<PoolId, 'boss' | 'scenario'>;
 
 export const POOLS: Record<TicketPool, { name: string; ticket: string; source: string }> = {
   human: { name: '四方豪傑', ticket: '通用招募令', source: '城鎮購買、清剿賊巢' },

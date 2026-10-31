@@ -3,6 +3,7 @@ import {
   type GoodId,
 } from '../data/economy';
 import { ARTIFACTS, SIEGE } from '../data/factions';
+import { currentScenario } from '../data/scenarios';
 import { GACHA, POOLS } from '../data/gacha';
 import { PLAYER } from '../politics/politics';
 import { HORSES } from '../data/horses';
@@ -16,8 +17,6 @@ import {
 import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
 import type { Hud } from './hud';
-
-const MERC_POOL = ['footman', 'pikeman', 'archer', 'axeman', 'crossbowman', 'horseman', 'lancer'];
 
 type TownTab = 'market' | 'smith' | 'tavern' | 'workshop' | 'arena';
 const TOWN_TABS: [TownTab, string][] = [
@@ -213,7 +212,8 @@ export class PlaceScreens {
 
   private mercOffers(p: PlaceDef): UnitDef[] {
     const slot = Math.floor(dayOf(this.world.save) / SHOP.mercRefreshDays) + p.x;
-    return Array.from({ length: SHOP.mercOffers }, (_, i) => UNITS[MERC_POOL[(slot + i * 2) % MERC_POOL.length]]);
+    const pool = currentScenario().mercs;
+    return Array.from({ length: SHOP.mercOffers }, (_, i) => UNITS[pool[(slot + i * 2) % pool.length]]);
   }
 
   private tavernTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
@@ -296,7 +296,7 @@ export class PlaceScreens {
       food: () => this.buyFood(SHOP.foodPrice, refresh),
       recruit: () => {
         if (spend(r, cost)) {
-          for (let i = 0; i < count; i++) addSoldier(r, 'footman');
+          for (let i = 0; i < count; i++) addSoldier(r, currentScenario().levy);
           w.recruitedUntil[p.id] = dayOf(w) + refreshDays;
           this.notice = `招咗 ${count} 個新兵`;
         }
