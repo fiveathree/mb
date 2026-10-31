@@ -203,11 +203,15 @@ html, body {
 
 /* 準星 */
 #reticle { position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; transform: translate(-50%, -50%); }
-#reticle .dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.75); }
+#reticle .dot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.75); }
+/* 十字線：游標鎖定時靠佢知道瞄緊邊 */
+#reticle::before, #reticle::after { content: ''; position: absolute; left: 50%; top: 50%; background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7); }
+#reticle::before { width: 26px; height: 2px; margin: -1px 0 0 -13px; }
+#reticle::after { width: 2px; height: 26px; margin: -13px 0 0 -1px; }
 .spread { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 1px solid rgba(255, 255, 255, 0.75); border-radius: 50%; }
 .spread.on { display: block; }
 .dir {
-  position: absolute; width: 0; height: 0; opacity: 0.2;
+  position: absolute; width: 0; height: 0; opacity: 0.5; filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
   border-style: solid; border-color: transparent; transition: opacity 80ms;
   --c: #fff;
 }

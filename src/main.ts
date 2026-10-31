@@ -202,6 +202,7 @@ async function startBattle(
     });
     inBattle = true;
     await lockMouse();
+    hud.announce('滑鼠鎖定用嚟轉鏡頭，Esc 叫返游標', 'guard');
   };
   // 一個人或者地下城唔使佈陣
   if (soldiers.length < FORMATION_MIN_TROOPS || extra.firstPerson) {
