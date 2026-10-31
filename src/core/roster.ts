@@ -215,9 +215,9 @@ export function poolUnits(pool: PoolId, rarity: Rarity): UnitDef[] {
   const list = Object.values(UNITS).filter((u) => !u.companion && (u.pool ?? 'human') === pool && rarityOf(u) === rarity);
   if (pool !== 'human') return list;
   // 通用卡池跟劇本：羅馬抽到軍團兵，三國抽到刀盾手
-  const { levy, mercs } = currentScenario();
+  const { levy, mercs, scifi } = currentScenario();
   const local = [...new Set([levy, ...mercs])].map((id) => UNITS[id]).filter((u) => u.pool === 'scenario' && rarityOf(u) === rarity);
-  return [...list, ...local];
+  return scifi ? local : [...list, ...local];
 }
 
 function rollRarity(): Rarity {

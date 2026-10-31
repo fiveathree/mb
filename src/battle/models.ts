@@ -484,6 +484,14 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
   leg(-0.2, 0.8, 0.55);
   leg(0.2, -0.8, 3.0);
   leg(-0.2, -0.8, 3.6);
+  // 懸浮載具：收埋頭同腳，加噴射口同機鼻
+  if (def.look === 'hover') {
+    for (const l of legs) l.upper.scale.setScalar(0.001);
+    neck.scale.setScalar(0.001);
+    tail.scale.setScalar(0.001);
+    body.add(box(0.5, 0.3, 0.9, c, 0, -0.06, 1.1), box(0.9, 0.12, 0.3, 0x3a3f48, 0, -0.34, 0.6), box(0.9, 0.12, 0.3, 0x3a3f48, 0, -0.34, -0.7));
+    body.add(box(0.26, 0.26, 0.2, 0x8fe0ff, 0.2, 0, -1.18), box(0.26, 0.26, 0.2, 0x8fe0ff, -0.2, 0, -1.18));
+  }
 
   return { root, body, neck, legs, tail, parts: ctx.parts };
 }

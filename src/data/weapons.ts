@@ -301,6 +301,8 @@ export const PLAYER_ARSENAL = [
   'pike', 'longbow', 'horsebow', 'crossbow', 'javelin',
   'fireball', 'lightning', 'ward', 'heal',
 ];
+/** 科幻劇本鐵匠賣嘅 */
+export const SCIFI_ARSENAL = ['sword', 'gauss_rifle', 'heavy_cannon', 'ward', 'heal'];
 export const LOADOUT_SIZE = 4;
 export const DEFAULT_LOADOUT = ['sword', 'lance', 'longbow', 'axe'];
 

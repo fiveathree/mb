@@ -151,13 +151,14 @@ export const LOOT = {
 };
 
 export const WEAPON_PRICE: Record<string, number> = {
+  gauss_rifle: 700, heavy_cannon: 2400,
   sword: 0, lance: 0, horsebow: 0, hand_axe: 350, mace: 380, axe: 520, greatsword: 800,
   pike: 300, longbow: 650, crossbow: 900, javelin: 280,
   fireball: 1800, lightning: 2200, ward: 1400, heal: 1600,
 };
 
 export const HORSE_PRICE: Record<string, number> = {
-  hunter: 0, pack: 300, steppe: 900, warhorse: 2400, camel: 700, elk: 1100, buffalo: 800, seahorse: 2600,
+  hunter: 0, pack: 300, steppe: 900, warhorse: 2400, camel: 700, elk: 1100, buffalo: 800, seahorse: 2600, hoverbike: 0, jetskimmer: 3000,
   dire_wolf: 1600, tiger: 2600, drake: 3200, rhino: 3600, unicorn: 4200, nightmare: 4500, pegasus: 5000, griffin_mount: 6000,
 };
 

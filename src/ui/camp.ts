@@ -293,7 +293,8 @@ export class Camp {
       return shops.length ? `${shops.join('、')}馬房` : '各地鐵匠';
     };
     const magic = currentScenario().cultures.includes('magic');
-    const mounts = HORSES.filter((h) => !h.troopOnly && (!h.fantasy || magic)).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
+    const scifi = !!currentScenario().scifi;
+    const mounts = HORSES.filter((h) => !h.troopOnly && (!h.fantasy || magic) && !!h.scifi === scifi).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
       `<div class="codex-row ${hero.horses.includes(h.id) ? 'own' : ''}">${tag(HORSE_RANK[h.id])} ${h.name}（${MOVE_NAME[moveOf(h)]}）<small>${source(h.id)}</small></div>`
     )).join('');
     const figures = currentFigures().map((f) => {
@@ -359,8 +360,10 @@ export class Camp {
     const pool = POOLS[this.pool];
     const rates = RARITY_ORDER.map((k) => `<span style="color:${RARITY[k].color}">${RARITY[k].name} ${(RARITY[k].rate * 100).toFixed(1)}%</span>`).join('');
     const have = r.tickets[this.pool];
+    const pools = currentScenario().pools ?? POOL_ORDER;
+    if (!pools.includes(this.pool)) this.pool = pools[0];
     return `
-      <div class="pools">${POOL_ORDER.map((p) => `<button class="pool ${p === this.pool ? 'on' : ''}" data-pool="${p}"><b>${POOLS[p].name}</b><small>${POOLS[p].ticket} ${r.tickets[p]}</small></button>`).join('')}</div>
+      <div class="pools">${pools.map((p) => `<button class="pool ${p === this.pool ? 'on' : ''}" data-pool="${p}"><b>${POOLS[p].name}</b><small>${POOLS[p].ticket} ${r.tickets[p]}</small></button>`).join('')}</div>
       <div class="rates">${rates}</div>
       <div class="pick-title">${pool.ticket}來源：${pool.source}。距離英雄保底仲有 ${GACHA.pity - r.pity[this.pool]} 抽，十連保底至少一張精良，重複英雄退 ${GACHA.duplicateHeroRefund} 金。</div>
       <div class="draws">${this.lastDraw.length ? this.lastDraw.map((d, i) => this.drawCard(d, i)).join('') : '<p class="sub">攻城、闖地下城同迷宮先攞到招募令。</p>'}</div>

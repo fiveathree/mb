@@ -769,9 +769,16 @@ async function showMenu() {
         r.gold = bg.gold;
         r.soldiers = [];
         for (const e of bg.army) {
-          for (let i = 0; i < e.count; i++) addSoldier(r, e.unit === 'footman' ? c.scenario.levy : e.unit);
+          for (let i = 0; i < e.count; i++) addSoldier(r, e.unit === 'footman' || c.scenario.scifi ? c.scenario.levy : e.unit);
         }
         r.tickets.human += bg.tickets ?? 0;
+        if (c.scenario.scifi) {
+          // 星海：起步用槍同懸浮機車
+          r.hero.weapons.push('gauss_rifle');
+          r.hero.loadout = ['gauss_rifle', ...r.hero.loadout.filter((x) => x === 'sword')];
+          r.hero.horses = ['hoverbike'];
+          r.hero.horse = 'hoverbike';
+        }
         const w = newWorld();
         w.scenario = c.scenario.id;
         w.food = bg.food;

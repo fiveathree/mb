@@ -40,7 +40,9 @@ export interface HorseDef {
   /** 只喺有魔法嘅劇本先有得賣 */
   fantasy?: boolean;
   /** 額外外形 */
-  look?: 'wings' | 'horn' | 'antlers' | 'tusk' | 'hump';
+  look?: 'wings' | 'horn' | 'antlers' | 'tusk' | 'hump' | 'hover';
+  /** 只喺科幻劇本出現 */
+  scifi?: boolean;
   /** 識飛：半空按住空白鍵爬升；大地圖飛得過河同山 */
   flight?: boolean;
   /** 識游水：戰場過河唔減速；大地圖游得過河 */
@@ -106,6 +108,8 @@ export const HORSES: HorseDef[] = [
     turnRadius: 4.5, maxTurnRate: 2.2, stamina: 85, staminaDrain: 11, staminaRegen: 8, staminaResume: 22,
     hp: 95, armor: 2, jumpSpeed: 6, ramMult: 0.6, color: 0x5a5650, barded: false,
   },
+  mount('hoverbike', '懸浮機車', '貼地飛馳，過水冇問題', 10, 19, 7, 130, 6, 5, 1, 0x6a7a8a, { scifi: true, swim: true, look: 'hover' }),
+  mount('jetskimmer', '噴射滑翼', '小型飛行載具', 10, 20, 6, 120, 5, 12, 0.9, 0x4a6a9a, { scifi: true, flight: true, look: 'hover' }),
   mount('buffalo', '水牛', '慢，但過河如履平地', 6.5, 11, 8, 180, 5, 4.2, 1.1, 0x4a4440, { swim: true }),
   mount('seahorse', '海龍駒', '半馬半龍，水陸兩棲', 9, 16, 6, 170, 7, 5.6, 1, 0x3f9aa8, { fantasy: true, swim: true, look: 'tusk' }),
   mount('camel', '駱駝', '耐力好，嚇馬', 7, 12, 8, 170, 3, 4.4, 0.9, 0xc8a56a, { look: 'hump', stamina: 170, staminaDrain: 7 }),
@@ -129,7 +133,7 @@ export const RIVER = { halfWidth: 9, slow: 0.5, swimBoost: 1.15 };
 
 /** 坐騎冠位 */
 export const HORSE_RANK: Record<string, Rarity> = {
-  hunter: 'common', pack: 'common', wolf: 'common', steppe: 'fine', camel: 'fine', elk: 'fine', buffalo: 'fine', seahorse: 'special', warhorse: 'special', dire_wolf: 'special', tiger: 'special',
+  hunter: 'common', pack: 'common', wolf: 'common', steppe: 'fine', camel: 'fine', elk: 'fine', buffalo: 'fine', seahorse: 'special', hoverbike: 'common', jetskimmer: 'fine', warhorse: 'special', dire_wolf: 'special', tiger: 'special',
   drake: 'hero', rhino: 'hero', unicorn: 'hero', nightmare: 'hero', pegasus: 'hero', griffin_mount: 'ur',
 };
 

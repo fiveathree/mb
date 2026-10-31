@@ -14,7 +14,7 @@ import type { StoryEvent } from '../data/quests';
 import { HORSES, HORSE_RANK, MARKET_RANKS, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { FAVORS, FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
 import { UNITS, type UnitDef } from '../data/units';
-import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
+import { PLAYER_ARSENAL, SCIFI_ARSENAL, WEAPONS } from '../data/weapons';
 import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
 import { freeArmor, horsePrice, skillOf, weaponPrice } from '../core/hero';
 import {
@@ -358,7 +358,7 @@ export class PlaceScreens {
       this.notice = '休息咗一日';
       refresh();
     };
-    const owned = POOL_ORDER.map((k) => `${POOLS[k].ticket} ${r.tickets[k]}`).join('・');
+    const owned = (currentScenario().pools ?? POOL_ORDER).map((k) => `${POOLS[k].ticket} ${r.tickets[k]}`).join('・');
     return `
       <div class="pick-title">糧食（當地糧價 ${w.foodPrice(p.id).toFixed(1)} 金，買得多會升）　載重 ${w.cargoCount()}／${w.cargoCap()}</div>
       <div class="row wrap">${this.foodButtons(p.id, h, refresh)}</div>
@@ -377,7 +377,8 @@ export class PlaceScreens {
         refresh();
       };
     };
-    const weapons = PLAYER_ARSENAL.map((id) => {
+    const scifi = !!currentScenario().scifi;
+    const weapons = (scifi ? SCIFI_ARSENAL : PLAYER_ARSENAL).map((id) => {
       const owned = hero.weapons.includes(id);
       if (!owned) buy(`w_${id}`, weaponPrice(id), () => hero.weapons.push(id));
       return `<button class="mini" id="w_${id}" ${owned ? 'disabled' : ''}>${WEAPONS[id].name} ${owned ? '已有' : weaponPrice(id)}</button>`;
@@ -399,7 +400,7 @@ export class PlaceScreens {
     }).join('');
     const magic = currentScenario().cultures.includes('magic');
     const stable = STABLES[p.id] ?? [];
-    const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic) && (MARKET_RANKS.includes(HORSE_RANK[d.id]) || stable.includes(d.id))).map((d) => {
+    const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic) && !!d.scifi === scifi && (MARKET_RANKS.includes(HORSE_RANK[d.id]) || stable.includes(d.id))).map((d) => {
       const owned = hero.horses.includes(d.id);
       if (!owned) buy(`h_${d.id}`, horsePrice(d.id), () => hero.horses.push(d.id));
       return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>[${RARITY[HORSE_RANK[d.id]].name}] ${d.name}（${MOVE_NAME[moveOf(d)]}） ${owned ? '已有' : horsePrice(d.id)}</button>`;

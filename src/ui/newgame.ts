@@ -24,7 +24,9 @@ function armyText(b: StartOption): string {
 /** 開局：揀種族、地域、身世 */
 export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack: () => void) {
   const c: NewGameChoice = { scenario: SCENARIOS[0], race: 'human', region: 'west', background: BACKGROUNDS[0] };
+  const racesOf = () => c.scenario.races ?? RACE_KEYS;
   const render = () => {
+    if (!racesOf().includes(c.race)) c.race = 'human';
     const chip = (attr: string, id: string, label: string, on: boolean) => `<button class="wp ${on ? 'on' : ''}" data-${attr}="${id}">${label}</button>`;
     const b = c.background;
     hud.showScreen(`
@@ -34,7 +36,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
         <div class="weapons">${SCENARIOS.map((s) => chip('sc', s.id, s.name, s.id === c.scenario.id)).join('')}</div>
         <p class="detail">${c.scenario.desc}</p>
         <div class="pick-title">種族</div>
-        <div class="weapons">${RACE_KEYS.map((k) => chip('race', k, PLAYABLE[k].name, k === c.race)).join('')}</div>
+        <div class="weapons">${racesOf().map((k) => chip('race', k, PLAYABLE[k].name, k === c.race)).join('')}</div>
         <p class="detail">${PLAYABLE[c.race].desc}</p>
         <div class="pick-title">出身</div>
         <div class="weapons">${BACKGROUNDS.map((x) => chip('bg', x.id, x.name, x.id === b.id)).join('')}</div>
@@ -54,7 +56,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
     all('[data-bg]', (el) => { el.onclick = () => { c.background = BACKGROUNDS.find((x) => x.id === el.dataset.bg)!; render(); }; });
     document.getElementById('dice')!.onclick = () => {
       c.scenario = pick(SCENARIOS);
-      c.race = pick(RACE_KEYS);
+      c.race = pick(racesOf());
       c.region = pick(REGION_KEYS);
       c.background = pick(BACKGROUNDS);
       render();

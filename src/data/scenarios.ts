@@ -2,6 +2,8 @@ import type { ArmyEntry } from './battlefield';
 import { FACTIONS } from './factions';
 import type { Culture } from './formations';
 import { NPC } from './economy';
+import type { TicketPool } from './gacha';
+import type { PlayableRace } from './factions';
 import { figuresFor } from './figures';
 import { BIOMES, MAP, PLACES } from './world';
 
@@ -25,6 +27,12 @@ export interface Scenario {
   sky?: string[];
   /** 只出現呢個劇本專屬人物 */
   ownFigures?: boolean;
+  /** 主角可揀種族，冇就全部 */
+  races?: PlayableRace[];
+  /** 可用卡池，冇就全部 */
+  pools?: TicketPool[];
+  /** 科幻：有槍械同懸浮載具，通用卡池只抽劇本兵種 */
+  scifi?: boolean;
 }
 
 const army = (...list: [string, number][]): ArmyEntry[] => list.map(([unit, count]) => ({ unit, count }));
@@ -181,6 +189,12 @@ export const SCENARIOS: Scenario[] = [
     boss: { unit: 'boss_ember', lair: '熾礦之心', desc: '礦坑最深處，一塊會呼吸嘅巨大熾礦。' },
   },
 ];
+
+// 歷史劇本：只得人類同人類卡池
+for (const id of ['threekingdoms', 'fivedynasties', 'rome', 'crusade']) {
+  Object.assign(SCENARIOS.find((s) => s.id === id)!, { races: ['human', 'nord'], pools: ['human'] });
+}
+Object.assign(SCENARIOS.find((s) => s.id === 'starwar')!, { races: ['human', 'psionic'], pools: ['human'], scifi: true });
 
 export const scenarioOf = (id: string): Scenario => SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
 
