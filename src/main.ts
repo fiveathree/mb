@@ -715,6 +715,10 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !inBattle) battle.sfx.muted = !battle.sfx.muted;
 });
 
+view.onJob = () => {
+  view.stop();
+  camp.show(() => reopenPlace(), 'job');
+};
 view.onParty = () => {
   view.stop();
   camp.show(() => reopenPlace());

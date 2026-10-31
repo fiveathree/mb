@@ -2,6 +2,7 @@ import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef, type PlaceKind } fro
 import type { Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
+import { jobOf } from '../data/jobs';
 import { MOVE_NAME } from '../data/horses';
 import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
@@ -57,6 +58,7 @@ export class WorldView {
   onEvent: ((e: WorldEvent) => void) | null = null;
   onMenu: (() => void) | null = null;
   onParty: (() => void) | null = null;
+  onJob: (() => void) | null = null;
 
   constructor(private canvas: HTMLCanvasElement, private world: World) {
     this.g = canvas.getContext('2d')!;
@@ -148,6 +150,8 @@ export class WorldView {
     } else if (e.code === 'Tab') {
       e.preventDefault();
       this.onParty?.();
+    } else if (e.code === 'KeyJ') {
+      this.onJob?.();
     } else if (e.code === 'Escape') {
       this.onMenu?.();
     }
@@ -628,6 +632,7 @@ export class WorldView {
       `金 ${r.infiniteGold ? '∞' : r.gold}`,
       `糧 ${Math.floor(w.food)}（−${partyFood(r).toFixed(1)}／日）`,
       `餉 ${partyWage(r)}／週`,
+      `${jobOf(r.hero.job).name} ${r.hero.jobLevel} 級`,
       `部隊 ${r.soldiers.length + 1} 人${hurt ? `（傷 ${hurt}）` : ''}`,
       `${MOVE_NAME[this.world.moveMode()]} ${this.world.partySpeed().toFixed(1)}`,
       `士氣 ${Math.round(w.morale)}`,
@@ -636,7 +641,7 @@ export class WorldView {
       `忠誠 ${w.pol.loyalty}`,
       ...(Object.keys(w.pol.wanted).length ? ['通緝中'] : []),
     ];
-    const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　空白鍵暫停　M 靜音　Esc 選單';
+    const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　J 工作　空白鍵暫停　M 靜音　Esc 選單';
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;
   }
 }

@@ -1,6 +1,7 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
+import { JOBS, JOB_RULES, WORK_PLACE, jobOf } from '../data/jobs';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
@@ -19,10 +20,10 @@ import type { World } from '../worldmap/world';
 import { GearPanel } from './gear';
 import type { Hud } from './hud';
 
-type Tab = 'party' | 'gear' | 'hero' | 'roster' | 'gacha' | 'realm' | 'codex';
+export type Tab = 'party' | 'gear' | 'hero' | 'job' | 'roster' | 'gacha' | 'realm' | 'codex';
 
 const PAGE_SIZE = 12;
-const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力'], ['codex', '圖鑑']];
+const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero', '角色'], ['job', '職業'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力'], ['codex', '圖鑑']];
 
 /** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
@@ -55,7 +56,7 @@ export class Camp {
   private render() {
     const r = this.roster;
     const body = {
-      party: () => this.partyHtml(), gear: () => this.gear.html(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(), codex: () => this.codexHtml(),
+      party: () => this.partyHtml(), gear: () => this.gear.html(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(), codex: () => this.codexHtml(), job: () => this.jobHtml(),
     }[this.tab]();
     this.hud.showScreen(`
       <div class="card camp">
@@ -77,6 +78,24 @@ export class Camp {
     const hero = this.roster.hero;
     if (this.tab === 'gear') this.gear.bind();
     this.$$('#back', (el) => { el.onclick = this.onBack; });
+    this.$$('[data-work]', (el) => {
+      el.onclick = () => {
+        this.notice = this.world.doWork(jobOf(hero.job).work[Number(el.dataset.work)]);
+        this.render();
+      };
+    });
+    this.$$('[data-job]', (el) => {
+      el.onclick = () => {
+        if (el.dataset.job === hero.job) return;
+        if (spend(this.roster, JOB_RULES.changeCost)) {
+          hero.job = el.dataset.job!;
+          hero.jobLevel = 1;
+          hero.jobXp = 0;
+          this.notice = `轉職做${jobOf(hero.job).name}`;
+        } else this.notice = '金幣不足';
+        this.render();
+      };
+    });
     this.$$('.tab', (el) => {
       el.onclick = () => {
         this.tab = el.dataset.tab as Tab;
@@ -278,6 +297,26 @@ export class Camp {
         <span>${this.page + 1}／${pages}</span>
         <button class="alt pager" data-step="1" ${this.page < pages - 1 ? '' : 'disabled'}>下一頁</button>
       </div>`;
+  }
+
+  /** 職業：做工同轉職 */
+  private jobHtml(): string {
+    const h = this.roster.hero;
+    const job = jobOf(h.job);
+    const here = this.world.workPlaces();
+    const works = job.work.map((w, i) => {
+      const ok = here.has(w.where);
+      return `<button class="alt work" data-work="${i}" ${ok ? '' : 'disabled'}>${w.label}（${w.hours} 個鐘）<small>${ok ? '' : `要去${WORK_PLACE[w.where]}`}</small></button>`;
+    }).join('');
+    const need = h.jobLevel * JOB_RULES.xpPerLevel;
+    const list = JOBS.map((j) => `<button class="wp ${j.id === h.job ? 'on' : ''}" data-job="${j.id}">${j.name}</button>`).join('');
+    return `
+      <div class="pick-title">而家職業：${job.name} ${h.jobLevel} 級（${h.jobXp}／${need}）。${job.desc}</div>
+      <p class="notice">${this.notice}</p>
+      <div class="pick-title">工作（會過時間，收成隨等級增加）</div>
+      <div class="row wrap">${works}</div>
+      <div class="pick-title">轉職（${JOB_RULES.changeCost} 金，職業等級重新計）</div>
+      <div class="weapons">${list}</div>`;
   }
 
   /** 圖鑑：坐騎點攞、人物而家喺邊 */

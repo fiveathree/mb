@@ -17,6 +17,8 @@ import {
   addXp, isElite, sortedSoldiers,
 } from '../core/roster';
 import { WorldTerrain, type MoveMode } from './terrain';
+import { gainHeroXp } from '../core/hero';
+import { JOB_RULES, WORK_PLACE, type WorkDef, type WorkPlace } from '../data/jobs';
 import { HORSES, moveOf } from '../data/horses';
 import { RACES } from '../data/races';
 
@@ -227,6 +229,96 @@ export class World {
     const cav = list.filter((s) => UNITS[s.unit].horse).length / n;
     const size = Math.min(PARTY.sizePenaltyMax, n * PARTY.sizePenalty);
     return PARTY.speed * (1 - size) * (1 + cav * PARTY.cavalryBonus);
+  }
+
+  /** 而家呢度做得到邊類工 */
+  workPlaces(): Set<WorkPlace> {
+    const w = this.save;
+    const out = new Set<WorkPlace>(['any']);
+    const near = (p: PlaceDef) => Math.hypot(p.x - w.x, p.y - w.y) < JOB_RULES.reach;
+    for (const p of PLACES) {
+      if (p.gone || !near(p)) continue;
+      if (p.kind === 'town') out.add('town');
+      if (p.kind === 'village') out.add('village');
+    }
+    const t = this.terrain;
+    const r = JOB_RULES.reach;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const x = Math.round(w.x) + dx;
+        const y = Math.round(w.y) + dy;
+        if (!t.inside(x, y)) continue;
+        const tile = t.at(x, y);
+        if (tile === 'forest') out.add('forest');
+        if (tile === 'water') out.add('water');
+        if (tile === 'mountain') out.add('mine');
+      }
+    }
+    return out;
+  }
+
+  /** 做一份工：過時間、攞收成、加職業經驗，回傳結果 */
+  doWork(work: WorkDef): string {
+    const w = this.save;
+    const h = this.roster.hero;
+    if (!this.workPlaces().has(work.where)) return `要去${WORK_PLACE[work.where]}先做到`;
+    if (work.needFood && w.food < work.needFood) return `要 ${work.needFood} 糧`;
+    if (work.needGood && w.cargo[work.needGood[0]] < work.needGood[1]) return `要 ${work.needGood[1]} 件${GOODS[work.needGood[0]].name}`;
+    if (work.needFood) w.food -= work.needFood;
+    if (work.needGood) w.cargo[work.needGood[0]] -= work.needGood[1];
+    this.advanceTime((work.hours / 24) * TIME.secondsPerDay);
+    if (work.risk && Math.random() < work.risk.chance) {
+      w.pol.justice = Math.max(-100, w.pol.justice + work.risk.justice);
+      this.roster.gold = Math.max(0, this.roster.gold - work.risk.gold);
+      return `失手被捉！罰 ${work.risk.gold} 金，正義 ${work.risk.justice}`;
+    }
+    const mult = 1 + (h.jobLevel - 1) * JOB_RULES.yieldPerLevel;
+    const got: string[] = [];
+    if (work.gold) {
+      const n = Math.round(work.gold * mult * JOB_RULES.goldScale);
+      this.roster.gold += n;
+      got.push(`${n} 金`);
+    }
+    if (work.food) {
+      const n = Math.round(work.food * mult);
+      w.food += n;
+      got.push(`${n} 糧`);
+    }
+    for (const [id, base] of Object.entries(work.goods ?? {}) as [GoodId, number][]) {
+      const n = Math.max(1, Math.round(base * mult));
+      const room = Math.floor((this.cargoCap() - this.cargoCount()) / GOODS[id].weight);
+      const take = Math.min(n, room);
+      if (take <= 0) {
+        got.push('載唔落貨');
+        continue;
+      }
+      w.cargo[id] += take;
+      got.push(`${GOODS[id].name} ${take}`);
+    }
+    if (work.morale) {
+      w.morale = Math.min(100, w.morale + work.morale);
+      got.push(`士氣 +${work.morale}`);
+    }
+    if (work.renown) {
+      w.pol.renown += work.renown;
+      got.push(`聲望 +${work.renown}`);
+    }
+    if (work.heroXp) {
+      gainHeroXp(h, Math.round(work.heroXp * mult));
+      got.push(`經驗 +${Math.round(work.heroXp * mult)}`);
+    }
+    if (work.heal) {
+      const hurt = this.roster.soldiers.filter((s) => s.hurtDays > 0);
+      for (const s of hurt) s.hurtDays = 0;
+      got.push(`治好 ${hurt.length} 人`);
+    }
+    h.jobXp++;
+    if (h.jobXp >= h.jobLevel * JOB_RULES.xpPerLevel && h.jobLevel < JOB_RULES.maxLevel) {
+      h.jobXp = 0;
+      h.jobLevel++;
+      got.push(`職業升到 ${h.jobLevel} 級`);
+    }
+    return `${work.label}：${got.join('、')}`;
   }
 
   /** 主角坐騎決定部隊點行 */

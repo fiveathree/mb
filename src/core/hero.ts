@@ -3,6 +3,7 @@ import {
 } from '../data/economy';
 import { ARTIFACTS, PLAYABLE, type ArtifactDef, type PlayableRace, type StartOption } from '../data/factions';
 import { HORSES, type HorseDef } from '../data/horses';
+import { BACKGROUND_JOB, jobOf } from '../data/jobs';
 import { RACES } from '../data/races';
 import { LOADOUT_SIZE } from '../data/weapons';
 import { PLAYER_UNIT, type UnitDef } from '../data/units';
@@ -23,6 +24,9 @@ export interface Hero {
   loadout: string[];
   race: PlayableRace;
   artifacts: string[];
+  job: string;
+  jobLevel: number;
+  jobXp: number;
 }
 
 export interface HeroStart {
@@ -35,6 +39,9 @@ export function migrateHero(h: Hero): Hero {
   h.race ??= 'human';
   h.artifacts ??= [];
   h.skills.magic ??= 0;
+  h.job ??= 'warrior';
+  h.jobLevel ??= 1;
+  h.jobXp ??= 0;
   return h;
 }
 
@@ -43,6 +50,7 @@ export function createHero(start: HeroStart): Hero {
   const h = newHero();
   const race = PLAYABLE[start.race];
   h.race = start.race;
+  h.job = BACKGROUND_JOB[start.background.id] ?? 'warrior';
   for (const part of [race.attrs, start.background.attrs]) {
     for (const [k, v] of Object.entries(part)) h.attrs[k as AttrId] += v;
   }
@@ -77,7 +85,7 @@ export function newHero(): Hero {
     attrs: { str: s, agi: s, int: s, cha: s },
     skills: Object.fromEntries(SKILL_ORDER.map((k) => [k, 0])) as Record<SkillId, number>,
     weapons: [...HERO.startWeapons], horses: [HERO.startHorse], armors: [...HERO.startArmor],
-    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout], race: 'human', artifacts: [],
+    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout], race: 'human', artifacts: [], job: 'warrior', jobLevel: 1, jobXp: 0,
   };
   h.equip.body = HERO.startArmor[0];
   return h;
@@ -132,7 +140,8 @@ export function skillOf(h: Hero, soldiers: Soldier[], id: SkillId): number {
   for (const c of COMPANIONS) {
     if (c.skill === id && soldiers.some((s) => s.unit === c.unit)) bonus = Math.max(bonus, c.bonus);
   }
-  return h.skills[id] + bonus;
+  const perk = jobOf(h.job).skill;
+  return h.skills[id] + bonus + (perk?.[0] === id ? perk[1] : 0);
 }
 
 function worn(h: Hero): ArmorDef[] {
