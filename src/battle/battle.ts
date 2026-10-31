@@ -423,6 +423,10 @@ export class Battle implements CombatWorld {
     this.hud.announce(`變陣：${this.formations[0].def.name}`, 'guard');
   }
 
+  get crawling() {
+    return this.dungeon;
+  }
+
   wallBlocks(ax: number, az: number, bx: number, bz: number, y: number): boolean {
     for (const w of this.walls) {
       if ((az - w.z) * (bz - w.z) > 0) continue;

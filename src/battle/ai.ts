@@ -188,7 +188,9 @@ function updateFoot(c: Combatant, ai: AiState, dt: number, world: CombatWorld) {
   }
   const shooting = !!w.ranged && !!t && !group.holdFire && dist < ARCHER_AI.range && !t.routing;
 
-  const engage = !!t && !w.ranged && (group.order === 'charge' || dist < AI.engageDist);
+  // 地下城跟隨時，同房見到敵人就主動埋身
+  const roomFoe = !!t && world.crawling && dist < AI.roomEngageDist && !world.wallBlocks(c.pos.x, c.pos.z, t.pos.x, t.pos.z, c.pos.y + 1);
+  const engage = !!t && !w.ranged && (group.order === 'charge' || dist < AI.engageDist || roomFoe);
   const faceTarget = engage || shooting;
   const yawGoal = t && faceTarget ? bearing(c.pos, t.pos) : group.facing;
   if (c.phase !== 'swing') {

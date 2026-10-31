@@ -485,6 +485,8 @@ for (const id of ['dwarf_breaker', 'hero_barn']) Object.assign(UNITS[id], { race
 
 /** 步兵同弓兵行為參數 */
 export const AI = {
+  /** 地下城跟隨時，同房幾遠就主動打 */
+  roomEngageDist: 30,
   turnRate: 5,
   accel: 14,
   /** 同一目標最多幾多個敵人同時出招 */
