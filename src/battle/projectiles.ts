@@ -10,6 +10,7 @@ import { heightAt } from './terrain';
 
 const MAX = 500;
 const SUBSTEPS = 3;
+const ROCK_SCALE = 25;
 const HUMAN_HEIGHT = 1.8;
 const RIDER_HEIGHT = 3;
 const RIDER_BODY_FROM = 1.65;
@@ -107,6 +108,19 @@ export class Projectiles {
     s.vel.copy(dir).multiplyScalar(r.speed).add(c.velocity);
   }
 
+  /** 投石：指定落點同飛行時間嘅拋物線 */
+  lob(owner: Combatant, w: WeaponDef, from: THREE.Vector3, to: THREE.Vector3, flight: number) {
+    const s = this.shots[this.next];
+    this.next = (this.next + 1) % MAX;
+    s.live = true;
+    s.stuck = 0;
+    s.owner = owner;
+    s.weapon = w;
+    s.mult = 1;
+    s.pos.copy(from);
+    s.vel.set((to.x - from.x) / flight, (to.y - from.y) / flight + 0.5 * COMBAT.gravity * flight, (to.z - from.z) / flight);
+  }
+
   update(world: CombatWorld, dt: number) {
     const R = COMBAT.ranged;
     for (let i = 0; i < MAX; i++) {
@@ -163,6 +177,8 @@ export class Projectiles {
         continue;
       }
       this.dummy.position.copy(s.pos);
+      if (s.weapon?.id === 'siege_rock') this.dummy.scale.set(ROCK_SCALE, ROCK_SCALE, ROCK_SCALE * 0.05);
+      else this.dummy.scale.set(1, 1, 1);
       this.dummy.quaternion.setFromUnitVectors(FORWARD, v1.copy(s.vel).normalize());
       this.dummy.updateMatrix();
       this.mesh.setMatrixAt(i, this.dummy.matrix);

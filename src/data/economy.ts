@@ -233,6 +233,14 @@ export const COMPANIONS = [
   { unit: 'comp_veteran', price: 1100, skill: 'tactics' as SkillId, bonus: 4 },
 ];
 
+/** 同伴唔夾：同時喺部隊就有機會嗌交，嗌多幾次有人走 */
+export const COMPANION_FEUD = {
+  pairs: [['comp_trader', 'comp_veteran'], ['comp_medic', 'comp_veteran']] as [string, string][],
+  chance: 0.06,
+  morale: 6,
+  leaveChance: 0.2,
+};
+
 // ── 競技場 ──
 export const ARENA = {
   /** 每勝一場升一級難度 */

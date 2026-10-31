@@ -39,7 +39,24 @@ export interface HorseDef {
   fantasy?: boolean;
   /** 額外外形 */
   look?: 'wings' | 'horn' | 'antlers' | 'tusk' | 'hump';
+  /** 識飛：半空按住空白鍵爬升 */
+  flight?: boolean;
 }
+
+/** 飛行坐騎 */
+export const FLIGHT = {
+  /** 爬升、滑翔下降（公尺／秒） */
+  climb: 7,
+  sink: 2.4,
+  /** 垂直加速度 */
+  accel: 16,
+  /** 離地最高幾多公尺 */
+  ceiling: 26,
+  /** 飛過呢個高度就唔撞牆同樹 */
+  clearance: 8,
+  /** 爬升每秒耗體力 */
+  staminaDrain: 14,
+};
 
 /** 新坐騎：速度、耐打、跳躍、撞擊係主要分別 */
 const mount = (
@@ -90,8 +107,8 @@ export const HORSES: HorseDef[] = [
   mount('drake', '蜥蜴龍', '厚鱗，鞍下噴火氣勢', 8, 14, 7, 220, 12, 5.4, 1.4, 0x3f8f70, { fantasy: true, look: 'tusk' }),
   mount('unicorn', '獨角獸', '快而聖潔，一角穿甲', 9.5, 18, 5.5, 140, 5, 7, 1.3, 0xf2f0f4, { fantasy: true, look: 'horn' }),
   mount('nightmare', '夢魘', '黑焰之馬，全速最快', 9.5, 19, 7, 150, 6, 6.2, 1.2, 0x18161e, { fantasy: true, look: 'horn' }),
-  mount('pegasus', '天馬', '翼拍一下跳到半空', 9, 17, 5.5, 125, 3, 12, 0.8, 0xe8ecf4, { fantasy: true, look: 'wings' }),
-  mount('griffin_mount', '獅鷲', '飛撲最高，撞擊最狠嘅翼獸', 9, 16.5, 6, 210, 9, 13, 1.5, 0xb08a4a, { fantasy: true, look: 'wings' }),
+  mount('pegasus', '天馬', '翼拍一下跳到半空', 9, 17, 5.5, 125, 3, 12, 0.8, 0xe8ecf4, { fantasy: true, look: 'wings', flight: true }),
+  mount('griffin_mount', '獅鷲', '飛撲最高，撞擊最狠嘅翼獸', 9, 16.5, 6, 210, 9, 13, 1.5, 0xb08a4a, { fantasy: true, look: 'wings', flight: true }),
 ];
 
 /** 受傷馬匹最低速度比例 */

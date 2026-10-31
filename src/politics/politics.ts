@@ -15,6 +15,8 @@ export interface Threat {
 
 export interface PoliticsSave {
   owners: Record<string, string>;
+  /** 俘虜咗嘅領主（勢力 id） */
+  lords: string[];
   relations: Record<string, number>;
   wars: [string, string][];
   rank: Rank;
@@ -41,11 +43,13 @@ export function migratePolitics(s: PoliticsSave): PoliticsSave {
   s.wanted ??= {};
   s.outlaw ??= false;
   s.storyMet ??= [];
+  s.lords ??= [];
   return s;
 }
 
 export function newPolitics(): PoliticsSave {
   return {
+    lords: [],
     owners: { ...FIEF_OWNERS }, relations: Object.fromEntries(FACTIONS.map((f) => [f.id, 0])),
     wars: [['griffin', 'orcs'], ['xuan', 'jiangdong'], ['wuyi', 'chishui'], ['sylvan', 'undead']],
     rank: 'free', liege: null, renown: 0, threats: [], kingdom: null, won: false,
@@ -96,6 +100,15 @@ export class Politics {
     if (!this.atWar(PLAYER, f)) this.s.wars.push([PLAYER, f]);
     this.addRelation(f, P.warRelation);
     this.note(`你向${this.nameOf(f)}宣戰`);
+  }
+
+  /** 處置第一個領主俘虜：收贖金或者無條件放人 */
+  releaseLord(ransom: boolean) {
+    const f = this.s.lords.shift();
+    if (!f) return;
+    this.addRelation(f, ransom ? P.ransomRelation : P.freeRelation);
+    if (!ransom) this.s.justice = Math.min(100, this.s.justice + P.freeJustice);
+    this.note(`${ransom ? '收贖金放返' : '無條件釋放'}${this.nameOf(f)}領主`);
   }
 
   makePeace(f: string) {
@@ -198,6 +211,10 @@ export class Politics {
     this.s.threats = this.s.threats.filter((t) => t.place !== place.id);
     if (this.s.liege) this.addRelation(this.s.liege, 10);
     this.note(`你攻陷${place.name}（原屬${this.nameOf(old)}）`);
+    if (old && old !== PLAYER && Math.random() < P.lordCaptureChance) {
+      this.s.lords.push(old);
+      this.note(`俘虜咗${this.nameOf(old)}嘅領主`);
+    }
     if (this.fiefsOf(PLAYER).length >= P.victoryFiefs && this.s.rank === 'king') this.s.won = true;
   }
 

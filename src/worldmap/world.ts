@@ -1,6 +1,6 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
-import { CAPTIVE, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { CAPTIVE, COMPANION_FEUD, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
@@ -323,9 +323,27 @@ export class World {
       }
     }
 
+    this.companionFeud();
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
     else if (w.pol.loyalty < HONOR.desertLoyalty && Math.random() < HONOR.desertChance) this.desert();
+  }
+
+  /** 唔夾嘅同伴嗌交 */
+  private companionFeud() {
+    const r = this.roster;
+    for (const [a, b] of COMPANION_FEUD.pairs) {
+      const one = r.soldiers.find((s) => s.unit === a);
+      const two = r.soldiers.find((s) => s.unit === b);
+      if (!one || !two || Math.random() >= COMPANION_FEUD.chance) continue;
+      this.save.morale -= COMPANION_FEUD.morale;
+      if (Math.random() < COMPANION_FEUD.leaveChance) {
+        r.soldiers.splice(r.soldiers.indexOf(one), 1);
+        this.note(`${UNITS[a].name}受唔住${UNITS[b].name}，離隊走咗`);
+      } else {
+        this.note(`${UNITS[a].name}同${UNITS[b].name}大嗌交，士氣下跌`);
+      }
+    }
   }
 
   private worldEvent() {

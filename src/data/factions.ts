@@ -84,6 +84,13 @@ export const POLITICS = {
   /** 送禮 */
   giftCost: 500,
   giftRelation: 8,
+  /** 攻陷領地時俘虜領主機率 */
+  lordCaptureChance: 0.6,
+  ransomGold: 1200,
+  ransomRelation: 2,
+  /** 無條件放人 */
+  freeRelation: 14,
+  freeJustice: 3,
   /** 打贏該國部隊加好感 */
   beatEnemyRelation: 3,
   /** 聲望：打贏普通仗、攻陷領地 */
@@ -108,6 +115,11 @@ export const SIEGE = {
   defenderOffset: 10,
   /** 守城時敵軍攻破幾多個缺口 */
   defendBreaches: 2,
+  /** 城牆每隔幾遠搭一把雲梯（裝飾） */
+  ladderEvery: 34,
+  /** 幾秒掟一嚿石、石飛幾耐 */
+  rockEvery: 6,
+  rockFlight: 2.2,
 };
 
 /** 地下城：只帶幾個精兵 */

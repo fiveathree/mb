@@ -14,6 +14,8 @@ export interface HorseControl {
   turn: number;
   sprint: boolean;
   jump: boolean;
+  /** 飛行坐騎爬升 */
+  climb?: boolean;
 }
 
 export class Horse {

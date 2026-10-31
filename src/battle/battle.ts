@@ -119,6 +119,9 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  private rockT = 0;
+  private rockSide = 0;
+  private defending = false;
   private fliers!: Fliers;
   /** 教學用：每幀回呼 */
   onTick: ((b: Battle) => void) | null = null;
@@ -227,6 +230,7 @@ export class Battle implements CombatWorld {
       const gaps = Array.from({ length: breaches }, (_, i) => -W * 0.7 + ((i + 0.5) / breaches) * W * 1.4);
       this.walls.push({ z: Z, gaps, width: breachWidth });
     }
+    if (!dungeon) this.buildSiegeGear();
     const half = dungeon ? DUNGEON.halfWidth : SIEGE.wallHalfWidth;
     for (const w of this.walls) {
       for (let x = -half; x < half; x += 2) {
@@ -240,7 +244,44 @@ export class Battle implements CombatWorld {
     spots.forEach((s, i) => mesh.setMatrixAt(i, m.makeTranslation(s.x, heightAt(s.x, s.z) + 3, s.z)));
     mesh.castShadow = true;
     this.wall.add(mesh);
-    this.obstacles = [...this.baseObstacles, ...spots.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+    this.obstacles = [...this.obstacles, ...spots.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 攻城器械：缺口兩旁攻城塔，城牆搭雲梯 */
+  private buildSiegeGear() {
+    const { wallZ: Z, wallHalfWidth: W, ladderEvery } = SIEGE;
+    const wood = new THREE.MeshLambertMaterial({ color: 0x6a4a2c, flatShading: true });
+    const place = (geo: THREE.BufferGeometry, x: number, z: number, y = 0, tilt = 0) => {
+      const mesh = new THREE.Mesh(geo, wood);
+      mesh.position.set(x, heightAt(x, z) + y, z);
+      mesh.rotation.x = tilt;
+      mesh.castShadow = true;
+      this.wall.add(mesh);
+    };
+    const { gaps, width } = this.walls[0];
+    const towers = gaps.map((g) => g + width / 2 + 3);
+    for (const x of towers) {
+      place(new THREE.BoxGeometry(4.4, 11, 4.4), x, Z - 3.6, 5.5);
+      place(new THREE.BoxGeometry(5, 0.5, 5), x, Z - 3.6, 11.2);
+    }
+    this.obstacles = [...this.obstacles, ...towers.map((x) => ({ x, z: Z - 3.6, r: 2.8 }))];
+    for (let x = -W + ladderEvery / 2; x < W; x += ladderEvery) {
+      if (gaps.some((g) => Math.abs(g - x) < width)) continue;
+      for (const side of [-0.45, 0.45]) place(new THREE.BoxGeometry(0.14, 7.6, 0.14), x + side, Z - 2.6, 3.4, 0.3);
+      for (let k = 0; k < 7; k++) place(new THREE.BoxGeometry(0.9, 0.08, 0.08), x, Z - 3.6 + k * 0.32, 0.5 + k, 0);
+    }
+  }
+
+  /** 投石：攻城時守軍掟石，守城時雙方互掟 */
+  private throwRock() {
+    this.rockSide = this.defending ? 1 - this.rockSide : 1;
+    const team = this.rockSide;
+    const owners = this.units.filter((u) => u.team === team && !u.dead);
+    const targets = this.units.filter((u) => u.team !== team && !u.dead);
+    if (!owners.length || !targets.length) return;
+    const t = targets[Math.floor(Math.random() * targets.length)];
+    const from = new THREE.Vector3(t.pos.x + (Math.random() - 0.5) * 30, 14, SIEGE.wallZ + (team === 1 && !this.defending ? 8 : team === 1 ? -60 : 8));
+    this.projectiles.lob(owners[0], WEAPONS.siege_rock, from, t.pos, SIEGE.rockFlight);
   }
 
   /** 地下城佈置：部下跟主角；敵人分房守住，Boss 喺最後一間 */
@@ -383,6 +424,8 @@ export class Battle implements CombatWorld {
     this.freezeT = this.slowT = this.shakeAmt = 0;
     this.moraleT = this.thinkT = this.slotT = this.followT = 0;
     this.warcryT = 0;
+    this.rockT = SIEGE.rockEvery;
+    this.defending = !!setup.defend;
     this.camYaw = this.viewYaw = setup.defend ? Math.PI : 0;
     this.camPitch = this.viewPitch = 0.16;
 
@@ -605,6 +648,13 @@ export class Battle implements CombatWorld {
   private tickCommand(dt: number) {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
+    if (this.siege && !this.dungeon) {
+      this.rockT -= dt;
+      if (this.rockT <= 0) {
+        this.rockT = SIEGE.rockEvery;
+        this.throwRock();
+      }
+    }
     this.moraleT -= dt;
     if (this.moraleT <= 0) {
       this.moraleT = 1;
@@ -708,7 +758,7 @@ export class Battle implements CombatWorld {
     const jump = i.pressed('Space');
 
     if (p.horse) {
-      Object.assign(p.horse.ctl, { throttle, turn: strafe, sprint, jump });
+      Object.assign(p.horse.ctl, { throttle, turn: strafe, sprint, jump, climb: i.down('Space') });
     } else if (p.grounded && p.phase !== 'stagger') {
       const fx = Math.sin(this.camYaw);
       const fz = Math.cos(this.camYaw);

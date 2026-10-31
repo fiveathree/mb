@@ -165,6 +165,19 @@ export class Camp {
     act('.gift', (f) => {
       if (spend(this.roster, POLITICS.giftCost)) pol.addRelation(f, POLITICS.giftRelation);
     });
+    this.$$('#ransom', (el) => {
+      el.onclick = () => {
+        pol.releaseLord(true);
+        this.roster.gold += POLITICS.ransomGold;
+        this.render();
+      };
+    });
+    this.$$('#freeLord', (el) => {
+      el.onclick = () => {
+        pol.releaseLord(false);
+        this.render();
+      };
+    });
     this.$$('#crown', (el) => {
       el.onclick = () => {
         const name = document.querySelector<HTMLInputElement>('#screen #kname')?.value.trim() || '鐵騎王國';
@@ -287,6 +300,9 @@ export class Camp {
       <div class="pick-title">身份：${s.outlaw ? '山賊・' : ''}${RANK_NAME[s.rank]}${s.liege ? `（${pol.nameOf(s.liege)}）` : ''}${s.kingdom ? `・${s.kingdom}` : ''}・聲望 ${s.renown}・領地 ${pol.fiefsOf(PLAYER).length}${s.won ? '・已統一大陸！' : ''}</div>
       <table class="report trade"><tr><th>勢力</th><th>領地</th><th>好感</th><th>關係</th><th></th></tr>${rows}</table>
       <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。攻下第一塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
+      ${s.lords.length ? `<div class="pick-title">領主俘虜 ${s.lords.length} 人（${pol.nameOf(s.lords[0])}）：
+        <button class="mini" id="ransom">收贖金 ${POLITICS.ransomGold}</button>
+        <button class="mini" id="freeLord">無條件放人</button></div>` : ''}
       ${crown}`;
   }
 
