@@ -4,12 +4,12 @@ import type { TicketPool } from './gacha';
 /** 大地圖斜角鏡頭 */
 export const MAP_VIEW = {
   /** 地平線喺畫面幾高（比例） */
-  horizon: 1 / 3,
+  horizon: 0.1,
   /** 焦點（主角）喺畫面幾高 */
-  focus: 0.66,
-  /** 鏡頭距離（畫面高度倍數），愈大愈似由高處望落嚟 */
-  depth: 1.5,
-  zoom: 0.9,
+  focus: 0.6,
+  /** 鏡頭距離（畫面高度倍數）：愈細，主角附近地面愈唔壓扁，似由上向下望 */
+  depth: 0.7,
+  zoom: 0.8,
   /** 地面每幾多像素畫一行 */
   rowStep: 3,
   /** 天空同時有幾多隻飛行生物 */
