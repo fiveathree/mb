@@ -206,7 +206,7 @@ export class PlaceScreens {
       };
       return `<button class="alt" id="q${i}" ${taken ? 'disabled' : ''}>${q.title}（${q.gold} 金，${q.deadline - dayOf(w)} 日內）${taken ? '　已接' : ''}</button>`;
     }).join('');
-    const active = w.quests.map((q) => `<div>${q.title}${q.kind === 'bandits' ? ` ${q.progress}／${q.need}` : ''}・第 ${q.deadline} 日前</div>`).join('');
+    const active = w.quests.map((q) => `<div>${q.title}${q.kind === 'bandits' ? ` ${q.progress}／${q.need}` : ''}・${q.story !== undefined ? '主線' : `第 ${q.deadline} 日前`}</div>`).join('');
     return `<div class="pick-title">城中告示</div><div class="row wrap">${rows}</div>
       <div class="pick-title">進行中</div><div class="progress">${active || '<div>冇任務</div>'}</div>`;
   }
@@ -741,6 +741,7 @@ export class PlaceScreens {
     const h: Record<string, () => void> = {};
     const btns = e.choices.map((c, i) => {
       h[`c${i}`] = () => {
+        if (c.effect === 'none') return this.act.onLeave();
         const text = applyChoice(this.world, c.effect);
         this.show(e.title, text, '<div class="row"><button class="go" id="bye">繼續</button></div>', { bye: this.act.onLeave });
       };

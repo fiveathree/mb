@@ -273,7 +273,7 @@ export class WorldView {
     this.questBar.hidden = !w.quests.length;
     const line = (q: Quest) => {
       const on = this.preview?.id === q.id;
-      const note = on ? `去${this.preview!.name}，約 ${days} 日。再撳出發` : `第 ${q.deadline} 日前${q.need > 1 ? `　${q.progress}／${q.need}` : ''}`;
+      const note = on ? `去${this.preview!.name}，約 ${days} 日。再撳出發` : `${q.story !== undefined ? '主線' : `第 ${q.deadline} 日前`}${q.need > 1 ? `　${q.progress}／${q.need}` : ''}`;
       return `<button class="quest ${on ? 'on' : ''}" data-q="${q.id}"><b>${q.title}</b><small>${note}</small></button>`;
     };
     this.questBar.innerHTML = `<div class="pick-title">任務（撳睇路線）</div>${w.quests.map(line).join('')}`;

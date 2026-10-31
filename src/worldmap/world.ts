@@ -4,7 +4,7 @@ import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, type Difficulty, 
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
-import { expireQuests, type Quest } from '../quests/quests';
+import { ensureStory, expireQuests, type Quest } from '../quests/quests';
 import { HONOR } from '../data/honor';
 import { Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
@@ -70,6 +70,8 @@ export interface WorldSave {
   arenaUntil: Record<string, number>;
   arenaWins: number;
   mapVersion?: number;
+  /** 主線去到第幾章 */
+  storyChapter?: number;
   difficulty?: Difficulty;
   /** 大墳墓打到第幾層 */
   tombFloor: number;
@@ -209,6 +211,7 @@ export class World {
       this.note('遠征隊打散一夥山賊');
     };
     this.npcs.refill();
+    ensureStory(this);
   }
 
   /** 行去 NPC 嗰度 */
@@ -328,6 +331,12 @@ export class World {
       }
     }
     return `${work.label}：${got.join('、')}`;
+  }
+
+  /** 彈一段故事，下次行軍時顯示 */
+  tellStory(title: string, text: string) {
+    this.pendingStory = { id: `story_${title}`, title, text, choices: [{ label: '繼續', effect: 'none' }] };
+    this.note(title);
   }
 
   /** 主角坐騎決定部隊點行 */

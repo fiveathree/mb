@@ -1,12 +1,16 @@
 import { PLACES, type PlaceDef } from '../data/world';
 import { QUESTS as Q, type QuestKind } from '../data/quests';
 import { FAVORS, FAVOR_DAYS } from '../data/figures';
+import { CHAPTERS, STORY_RULES } from '../data/story';
+import { currentScenario } from '../data/scenarios';
 import type { World, WorldSave } from '../worldmap/world';
 import { dayOf } from '../worldmap/world';
 
 export interface Quest {
   id: number;
-  kind: QuestKind;
+  kind: QuestKind | 'boss';
+  /** 主線第幾章 */
+  story?: number;
   title: string;
   giver: string;
   /** 目的地 */
@@ -54,7 +58,7 @@ export function offersAt(w: WorldSave, town: PlaceDef): Quest[] {
 export function accept(world: World, q: Quest): string {
   const w = world.save;
   if (w.quests.some((x) => x.id === q.id)) return '已經接咗';
-  if (w.quests.length >= Q.maxActive) return `最多同時接 ${Q.maxActive} 個任務`;
+  if (w.quests.filter((x) => x.story === undefined).length >= Q.maxActive) return `最多同時接 ${Q.maxActive} 個任務`;
   w.quests.push({ ...q });
   return `接咗任務：${q.title}`;
 }
@@ -81,6 +85,43 @@ function finish(world: World, q: Quest) {
   w.questsDone++;
   world.politics.deed('quest');
   world.note(`完成任務「${q.title}」，獎金 ${q.gold} 金`);
+  if (q.story !== undefined) nextChapter(world, q.story + 1);
+}
+
+/** 將故事入面嘅地名換成呢個劇本嘅叫法 */
+function storyText(text: string): string {
+  const name = (id: string) => PLACES.find((p) => p.id === id)?.name ?? '';
+  return text.replace('{hook}', currentScenario().desc).replace(/\{a\}/g, name('griffon')).replace(/\{b\}/g, name('linjiang'))
+    .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair'));
+}
+
+/** 開新一章：主線唔過期，亦唔佔任務名額 */
+export function nextChapter(world: World, index: number) {
+  const w = world.save;
+  w.storyChapter = index;
+  const c = CHAPTERS[index];
+  if (!c) {
+    world.roster.gold += STORY_RULES.finalGold;
+    w.pol.renown += STORY_RULES.finalRenown;
+    world.tellStory('主線完結', `${storyText(STORY_RULES.ending)}（${STORY_RULES.finalGold} 金、聲望 +${STORY_RULES.finalRenown}）`);
+    return;
+  }
+  w.quests.unshift({
+    id: 900000 + index, kind: c.kind, story: index, title: c.title, giver: 'griffon', target: c.target, need: c.need ?? 1, progress: 0, food: c.food ?? 0,
+    gold: (index + 1) * STORY_RULES.goldPerChapter, relation: 0, renown: STORY_RULES.renown, deadline: 999999,
+  });
+  world.tellStory(c.title, storyText(c.text));
+}
+
+/** 舊存檔同新遊戲都由呢度開始主線 */
+export function ensureStory(world: World) {
+  if (world.save.storyChapter === undefined) nextChapter(world, 0);
+}
+
+/** 打贏主線 Boss 地點 */
+export function onBossBeaten(world: World, place: string) {
+  const q = world.save.quests.find((x) => x.kind === 'boss' && x.target === place);
+  if (q) finish(world, q);
 }
 
 /** 打贏山賊時更新 */
@@ -97,7 +138,7 @@ export function onBanditBeaten(world: World) {
 export function onArrive(world: World, place: PlaceDef): string[] {
   const out: string[] = [];
   for (const q of [...world.save.quests]) {
-    if (q.target !== place.id) continue;
+    if (q.target !== place.id || q.kind === 'boss') continue;
     if (q.food > world.save.food) {
       out.push(`糧唔夠，交唔到「${q.title}」`);
       continue;

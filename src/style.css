@@ -345,3 +345,8 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 .feat { padding: 1px 6px; font-size: 11px; color: var(--dim); border: 1px solid var(--line); border-radius: 4px; }
 .feat.own { color: var(--gold); border-color: var(--gold); }
 .card.newgame .row { margin-top: 2px; }
+
+/* 玩法指南 */
+.guide-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; text-align: left; font-size: 12px; }
+.guide-list b { display: block; color: var(--gold); }
+.guide-list span { color: var(--dim); }

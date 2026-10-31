@@ -14,11 +14,12 @@ import { SLOT_COUNT, deleteSlot, exportCode, importCode, readSlots, writeSlot, t
 import { ENDINGS } from './data/quests';
 import { STORY_HEROES, type StoryHero } from './data/honor';
 import { PLAYER } from './politics/politics';
-import { onArrive, onBanditBeaten } from './quests/quests';
+import { onArrive, onBanditBeaten, onBossBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
 import { ARENA, ARMORS, CAPTIVE, DIFFICULTY, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { settings } from './core/settings';
+import { GUIDE } from './data/story';
 import { CALAMITY, TOMB } from './data/tomb';
 import { HORSES, HORSE_RANK, MOUNT_REWARD } from './data/horses';
 import { CAMPAIGN, POOLS, RARITY } from './data/gacha';
@@ -383,6 +384,7 @@ function attackPlace(p: PlaceDef) {
   void startBattle(p.garrison!, p.garrisonLevel ?? 1, p.theme ?? 'plains', (win) => {
     if (!win) return '';
     world.markCleared(p);
+    onBossBeaten(world, p.id);
     const reward = placeReward(p);
     if (p.kind === 'lair' && world.save.pol.outlaw) {
       world.save.pol.owners[p.id] = PLAYER;
@@ -756,8 +758,17 @@ async function showMenu() {
       <h1>鐵騎風雲</h1>
       <p class="sub">由無名傭兵開始，帶隊遊走裂天大陸，攻城闖迷宮，招募四方豪傑。</p>
       ${Array.from({ length: SLOT_COUNT }, (_, i) => line(i)).join('')}
-      <div class="row"><button class="alt" id="tut">教學關</button><button class="alt" id="menuSet">設定</button></div>
+      <div class="row"><button class="alt" id="tut">教學關</button><button class="alt" id="menuGuide">玩法指南</button><button class="alt" id="menuSet">設定</button></div>
     </div>`);
+  document.getElementById('menuGuide')!.onclick = () => {
+    hud.showScreen(`
+      <div class="card guide">
+        <h2>玩法指南</h2>
+        <div class="guide-list">${GUIDE.map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}</div>
+        <div class="row"><button class="go" id="guideBack">返回</button></div>
+      </div>`);
+    document.getElementById('guideBack')!.onclick = () => void showMenu();
+  };
   document.getElementById('tut')!.onclick = () => void startTutorial();
   document.getElementById('menuSet')!.onclick = () => hud.showSettings(applySettings, () => void showMenu());
   document.querySelectorAll<HTMLElement>('#screen [data-exp]').forEach((el) => {
