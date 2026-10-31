@@ -1,27 +1,80 @@
-/** 階段 1 戰場設定 */
+import type { Role } from './units';
+
+/** 部隊對戰設定 */
 export const BATTLEFIELD = {
   /** 地形邊長（公尺） */
   size: 420,
   segments: 110,
   /** 可活動半徑 */
-  arenaRadius: 150,
+  arenaRadius: 170,
   hillAmplitude: 2.4,
   treeCount: 240,
   /** 中央保留空地半徑 */
-  clearRadius: 60,
+  clearRadius: 90,
   /** 場內散落樹數 */
   innerTrees: 14,
   rockCount: 60,
   seed: 20261031,
-  playerStart: { x: 0, z: -60 },
-  enemyCenter: { x: 0, z: 25 },
-  /** 敵軍編成 */
-  enemies: [
-    'footman', 'footman', 'footman', 'footman', 'footman',
-    'pikeman', 'pikeman', 'pikeman',
-    'axeman', 'axeman',
+};
+
+export interface ArmyEntry {
+  unit: string;
+  count: number;
+}
+
+/** 雙方編成（玩家另計） */
+export const ARMIES: ArmyEntry[][] = [
+  [
+    { unit: 'footman', count: 10 }, { unit: 'pikeman', count: 8 }, { unit: 'axeman', count: 3 },
+    { unit: 'archer', count: 8 }, { unit: 'crossbowman', count: 3 },
+    { unit: 'lancer', count: 4 }, { unit: 'horseman', count: 3 },
   ],
-  enemySpacing: 3,
+  [
+    { unit: 'footman', count: 13 }, { unit: 'pikeman', count: 6 }, { unit: 'axeman', count: 5 },
+    { unit: 'archer', count: 7 }, { unit: 'crossbowman', count: 3 },
+    { unit: 'lancer', count: 3 }, { unit: 'horseman', count: 3 },
+  ],
+];
+
+/** 陣形 */
+export const FORMATION = {
+  /** 我軍步兵中心，敵軍鏡像 */
+  startZ: 72,
+  tightSpacing: 1.7,
+  looseSpacing: 3.6,
+  rowsAspect: 3,
+  /** 各兵種相對主陣嘅位置：右移、前移（公尺） */
+  offset: {
+    infantry: { side: 0, forward: 0 },
+    archer: { side: 0, forward: -14 },
+    cavalry: { side: 34, forward: -6 },
+  } as Record<Role, { side: number; forward: number }>,
+  /** 跟隨時排喺玩家身後幾遠 */
+  followBehind: 9,
+  /** 守住此處：陣地喺玩家前方幾遠 */
+  holdAhead: 6,
+  /** 跟隨陣地更新間隔（秒） */
+  followRefresh: 0.5,
+};
+
+/** 地形優勢：高度差每公尺傷害加成同上限 */
+export const TERRAIN = {
+  heightDamagePerMeter: 0.035,
+  heightDamageMax: 0.18,
+};
+
+/** 戰後結算 */
+export const REWARDS = {
+  /** 倒下嘅士兵有呢個機率只係受傷 */
+  woundedChance: 0.45,
+  goldPerTier: 26,
+  expPerTier: 40,
+  renownPerTier: 0.5,
+  /** 受傷敵人有呢個機率變俘虜 */
+  captureChance: 0.5,
+  /** 勝利基本獎勵 */
+  winGold: 120,
+  winRenown: 8,
 };
 
 export const COLORS = {
@@ -40,4 +93,5 @@ export const COLORS = {
   blood: 0x8a1712,
   dust: 0xb5a586,
   spark: 0xffd97a,
+  arrow: 0xe7ddc6,
 };

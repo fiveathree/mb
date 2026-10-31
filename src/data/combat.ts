@@ -53,6 +53,8 @@ export const COMBAT = {
     /** 高過呢個速度先算撞人（公尺／秒） */
     minSpeed: 6.5,
     damagePerSpeed: 4.2,
+    /** 部隊騎兵撞人嘅傷害倍率，玩家先有全傷害 */
+    troopMult: 0.4,
     launchPerSpeed: 0.85,
     /** 撞中後馬匹速度倍率 */
     speedKeep: 0.86,
@@ -77,7 +79,27 @@ export const COMBAT = {
     recoverTime: 0.5,
   },
 
-  /** 敵方命中騎乘中玩家時，打中馬嘅機率 */
+  /** 重力（公尺／秒²），箭矢同跳躍共用 */
+  gravity: 16,
+  ranged: {
+    /** 箭矢命中嘅身體半徑寬容（公尺） */
+    hitRadius: 0.5,
+    /** 命中高度比例高過呢個算爆頭 */
+    headHeight: 0.84,
+    headMult: 1.5,
+    /** 未舉盾但持盾，箭由正面嚟時有呢個機率被盾擋住 */
+    passiveShieldChance: 0.4,
+    /** 準星歸零距離（公尺） */
+    zeroDist: 35,
+    /** 準星無目標時嘅瞄準距離 */
+    maxAimDist: 120,
+    /** 準星線離目標幾近就當係瞄緊佢（只用嚟定距離，唔會自動修正方向） */
+    aimAssistRadius: 1.6,
+    /** 箭插地面停留秒數 */
+    stuckLife: 7,
+  },
+
+  /** 打中騎乘目標時，打中馬嘅機率 */
   hitHorseChance: 0.4,
   /** 馬死跌落傷害同倒地時間 */
   fallDamage: 12,
@@ -111,4 +133,7 @@ export const CAMERA = {
   speedFovBoost: 16,
   /** 騎馬轉彎時鏡頭跟轉嘅比例（0 = 完全獨立，1 = 完全跟馬） */
   followHorseTurn: 0.65,
+  /** 拉弓瞄準時 FOV 同鏡頭距離倍率 */
+  aimFovDrop: 18,
+  aimDistanceMult: 0.72,
 };

@@ -1,6 +1,20 @@
 import type { DamageType } from './combat';
 
-export type WeaponModel = 'sword' | 'axe' | 'lance' | 'spear';
+export type WeaponModel = 'sword' | 'axe' | 'mace' | 'lance' | 'spear' | 'bow' | 'crossbow' | 'javelin';
+
+export interface RangedDef {
+  /** 飛行速度（公尺／秒） */
+  speed: number;
+  /** 拉滿時散布（度） */
+  spreadDeg: number;
+  /** 未拉滿時額外散布（度） */
+  undrawnSpreadDeg: number;
+  /** 全速騎射時額外散布（度） */
+  mountedSpreadDeg: number;
+  ammo: number;
+  /** 未拉滿時傷害最低比例 */
+  minDamageMult: number;
+}
 
 export interface WeaponDef {
   id: string;
@@ -28,55 +42,140 @@ export interface WeaponDef {
   thrustOnly: boolean;
   couchable: boolean;
   hasShield: boolean;
+  /** 打騎馬目標嘅傷害倍率 */
+  antiCavalry: number;
   /** 持械模型長度（公尺） */
   length: number;
+  ranged?: RangedDef;
 }
 
+const melee = {
+  cleave: 1, shieldBreak: 1, thrustOnly: false, couchable: false, hasShield: false, antiCavalry: 1,
+};
+
 const WEAPON_LIST: WeaponDef[] = [
+  // ── 玩家近戰 ──
   {
-    id: 'sword', name: '長劍＋盾', model: 'sword', damageType: 'cut',
+    ...melee, id: 'sword', name: '長劍＋盾', model: 'sword', damageType: 'cut',
     baseDamage: 30, reach: 2.3, windupMin: 0.16, chargeFull: 0.55,
-    swingTime: 0.28, recoverTime: 0.26, arcDeg: 120, cleave: 1, shieldBreak: 1,
-    thrustOnly: false, couchable: false, hasShield: true, length: 1,
+    swingTime: 0.28, recoverTime: 0.26, arcDeg: 120, hasShield: true, length: 1,
   },
   {
-    id: 'axe', name: '雙手斧', model: 'axe', damageType: 'cut',
+    ...melee, id: 'hand_axe', name: '單手斧＋盾', model: 'axe', damageType: 'cut',
+    baseDamage: 33, reach: 2.05, windupMin: 0.2, chargeFull: 0.6,
+    swingTime: 0.3, recoverTime: 0.32, arcDeg: 110, shieldBreak: 1.8, hasShield: true, length: 0.8,
+  },
+  {
+    ...melee, id: 'mace', name: '釘頭錘＋盾', model: 'mace', damageType: 'blunt',
+    baseDamage: 27, reach: 2.05, windupMin: 0.2, chargeFull: 0.6,
+    swingTime: 0.3, recoverTime: 0.32, arcDeg: 110, hasShield: true, length: 0.85,
+  },
+  {
+    ...melee, id: 'axe', name: '雙手斧', model: 'axe', damageType: 'cut',
     baseDamage: 44, reach: 2.5, windupMin: 0.26, chargeFull: 0.85,
-    swingTime: 0.38, recoverTime: 0.42, arcDeg: 130, cleave: 2, shieldBreak: 2.2,
-    thrustOnly: false, couchable: false, hasShield: false, length: 1.25,
+    swingTime: 0.38, recoverTime: 0.42, arcDeg: 130, cleave: 2, shieldBreak: 2.2, length: 1.25,
   },
   {
-    id: 'lance', name: '騎槍', model: 'lance', damageType: 'pierce',
+    ...melee, id: 'greatsword', name: '雙手大劍', model: 'sword', damageType: 'cut',
+    baseDamage: 38, reach: 2.9, windupMin: 0.22, chargeFull: 0.75,
+    swingTime: 0.34, recoverTime: 0.36, arcDeg: 140, cleave: 2, length: 1.45,
+  },
+  {
+    ...melee, id: 'lance', name: '騎槍', model: 'lance', damageType: 'pierce',
     baseDamage: 28, reach: 3.6, windupMin: 0.22, chargeFull: 0.7,
-    swingTime: 0.3, recoverTime: 0.38, arcDeg: 30, cleave: 1, shieldBreak: 1,
-    thrustOnly: true, couchable: true, hasShield: false, length: 3.4,
+    swingTime: 0.3, recoverTime: 0.38, arcDeg: 30, thrustOnly: true, couchable: true, length: 3.4,
   },
   {
-    id: 'spear', name: '長矛', model: 'spear', damageType: 'pierce',
+    ...melee, id: 'pike', name: '長矛', model: 'spear', damageType: 'pierce',
+    baseDamage: 30, reach: 3.3, windupMin: 0.2, chargeFull: 0.6,
+    swingTime: 0.28, recoverTime: 0.34, arcDeg: 30, thrustOnly: true, antiCavalry: 1.6, length: 2.8,
+  },
+
+  // ── 玩家遠程 ──
+  {
+    ...melee, id: 'longbow', name: '長弓', model: 'bow', damageType: 'pierce',
+    baseDamage: 46, reach: 0, windupMin: 0.2, chargeFull: 1.1,
+    swingTime: 0, recoverTime: 0.35, arcDeg: 0, length: 1.4,
+    ranged: { speed: 62, spreadDeg: 0.35, undrawnSpreadDeg: 5, mountedSpreadDeg: 4, ammo: 30, minDamageMult: 0.35 },
+  },
+  {
+    ...melee, id: 'horsebow', name: '騎弓', model: 'bow', damageType: 'pierce',
+    baseDamage: 32, reach: 0, windupMin: 0.15, chargeFull: 0.75,
+    swingTime: 0, recoverTime: 0.25, arcDeg: 0, length: 1,
+    ranged: { speed: 52, spreadDeg: 0.6, undrawnSpreadDeg: 4, mountedSpreadDeg: 1.4, ammo: 30, minDamageMult: 0.4 },
+  },
+  {
+    ...melee, id: 'crossbow', name: '弩', model: 'crossbow', damageType: 'pierce',
+    baseDamage: 64, reach: 0, windupMin: 0.05, chargeFull: 0.05,
+    swingTime: 0, recoverTime: 2.1, arcDeg: 0, shieldBreak: 1.5, length: 0.8,
+    ranged: { speed: 78, spreadDeg: 0.25, undrawnSpreadDeg: 0, mountedSpreadDeg: 5, ammo: 18, minDamageMult: 1 },
+  },
+  {
+    ...melee, id: 'javelin', name: '標槍', model: 'javelin', damageType: 'pierce',
+    baseDamage: 58, reach: 0, windupMin: 0.25, chargeFull: 0.6,
+    swingTime: 0, recoverTime: 0.55, arcDeg: 0, shieldBreak: 2, length: 1.5,
+    ranged: { speed: 30, spreadDeg: 0.8, undrawnSpreadDeg: 3, mountedSpreadDeg: 1.5, ammo: 6, minDamageMult: 0.5 },
+  },
+
+  // ── 部隊裝備 ──
+  {
+    ...melee, id: 'spear', name: '長矛', model: 'spear', damageType: 'pierce',
     baseDamage: 20, reach: 3, windupMin: 0.4, chargeFull: 0.4,
-    swingTime: 0.3, recoverTime: 0.5, arcDeg: 30, cleave: 1, shieldBreak: 1,
-    thrustOnly: true, couchable: false, hasShield: false, length: 2.6,
+    swingTime: 0.3, recoverTime: 0.5, arcDeg: 30, thrustOnly: true, antiCavalry: 1.8, length: 2.6,
   },
   {
-    id: 'infantry_sword', name: '步兵劍', model: 'sword', damageType: 'cut',
+    ...melee, id: 'infantry_sword', name: '步兵劍', model: 'sword', damageType: 'cut',
     baseDamage: 17, reach: 2, windupMin: 0.45, chargeFull: 0.45,
-    swingTime: 0.3, recoverTime: 0.5, arcDeg: 110, cleave: 1, shieldBreak: 1,
-    thrustOnly: false, couchable: false, hasShield: true, length: 0.9,
+    swingTime: 0.3, recoverTime: 0.5, arcDeg: 110, hasShield: true, length: 0.9,
   },
   {
-    id: 'infantry_axe', name: '戰斧', model: 'axe', damageType: 'cut',
+    ...melee, id: 'infantry_axe', name: '戰斧', model: 'axe', damageType: 'cut',
     baseDamage: 26, reach: 2.2, windupMin: 0.6, chargeFull: 0.6,
-    swingTime: 0.36, recoverTime: 0.65, arcDeg: 120, cleave: 1, shieldBreak: 2,
-    thrustOnly: false, couchable: false, hasShield: false, length: 1.1,
+    swingTime: 0.36, recoverTime: 0.65, arcDeg: 120, shieldBreak: 2, length: 1.1,
+  },
+  {
+    ...melee, id: 'short_sword', name: '短劍', model: 'sword', damageType: 'cut',
+    baseDamage: 13, reach: 1.8, windupMin: 0.45, chargeFull: 0.45,
+    swingTime: 0.28, recoverTime: 0.5, arcDeg: 100, length: 0.65,
+  },
+  {
+    ...melee, id: 'troop_bow', name: '獵弓', model: 'bow', damageType: 'pierce',
+    baseDamage: 17, reach: 0, windupMin: 0.3, chargeFull: 1.2,
+    swingTime: 0, recoverTime: 0.9, arcDeg: 0, length: 1.2,
+    ranged: { speed: 50, spreadDeg: 2.2, undrawnSpreadDeg: 3, mountedSpreadDeg: 3, ammo: 22, minDamageMult: 0.5 },
+  },
+  {
+    ...melee, id: 'troop_crossbow', name: '軍弩', model: 'crossbow', damageType: 'pierce',
+    baseDamage: 26, reach: 0, windupMin: 0.4, chargeFull: 0.5,
+    swingTime: 0, recoverTime: 2.4, arcDeg: 0, shieldBreak: 1.5, length: 0.8,
+    ranged: { speed: 66, spreadDeg: 1.6, undrawnSpreadDeg: 0, mountedSpreadDeg: 4, ammo: 14, minDamageMult: 1 },
+  },
+  {
+    ...melee, id: 'troop_lance', name: '騎兵槍', model: 'lance', damageType: 'pierce',
+    baseDamage: 11, reach: 3.3, windupMin: 0.3, chargeFull: 0.5,
+    swingTime: 0.3, recoverTime: 0.5, arcDeg: 30, thrustOnly: true, couchable: true, length: 3.1,
+  },
+  {
+    ...melee, id: 'cavalry_sword', name: '馬刀', model: 'sword', damageType: 'cut',
+    baseDamage: 20, reach: 2.2, windupMin: 0.25, chargeFull: 0.4,
+    swingTime: 0.28, recoverTime: 0.5, arcDeg: 120, length: 0.95,
   },
 ];
 
 export const WEAPONS: Record<string, WeaponDef> = Object.fromEntries(WEAPON_LIST.map((w) => [w.id, w]));
 
+/** 玩家開局可揀嘅武器，順序即選擇畫面順序 */
+export const PLAYER_ARSENAL = [
+  'sword', 'hand_axe', 'mace', 'axe', 'greatsword', 'lance',
+  'pike', 'longbow', 'horsebow', 'crossbow', 'javelin',
+];
+export const LOADOUT_SIZE = 4;
+export const DEFAULT_LOADOUT = ['sword', 'lance', 'longbow', 'axe'];
+
 export const SHIELD = {
-  /** 玩家同 AI 嘅盾牌耐久 */
+  /** 玩家同部隊嘅盾牌耐久 */
   playerDurability: 220,
-  infantryDurability: 110,
+  troopDurability: 110,
   /** 盾牌耐久消耗 = 傷害 × 呢個倍率 × 武器 shieldBreak */
   damageRatio: 1,
 };

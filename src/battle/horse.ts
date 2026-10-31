@@ -1,22 +1,16 @@
+import { COMBAT } from '../data/combat';
 import { HORSE_INJURED_MIN_SPEED, HORSE_MIN_TURN_SPEED, HORSE_RADIUS } from '../data/horses';
 import { BATTLEFIELD } from '../data/battlefield';
 import { heightAt, type Obstacle } from './terrain';
 import { clamp, moveToward, type Horse } from './entities';
 
-export interface HorseControl {
-  throttle: number;
-  turn: number;
-  sprint: boolean;
-  jump: boolean;
-}
-
-const GRAVITY = 16;
 /** 低速時嘅最細轉彎半徑（公尺） */
 const LOW_SPEED_RADIUS = 2.5;
 
 /** 回傳今幀轉向角度（弧度），鏡頭用嚟跟轉 */
-export function updateHorse(h: Horse, ctl: HorseControl, dt: number, obstacles: Obstacle[]): number {
+export function updateHorse(h: Horse, dt: number, obstacles: Obstacle[]): number {
   const d = h.def;
+  const ctl = h.ctl;
   if (h.dead) {
     h.deadT += dt;
     return 0;
@@ -52,6 +46,7 @@ export function updateHorse(h: Horse, ctl: HorseControl, dt: number, obstacles: 
   for (const o of obstacles) {
     const dx = h.pos.x - o.x;
     const dz = h.pos.z - o.z;
+    if (Math.abs(dx) > 4 || Math.abs(dz) > 4) continue;
     const min = o.r + HORSE_RADIUS;
     const dist = Math.hypot(dx, dz);
     if (dist < min && dist > 0.001) {
@@ -76,7 +71,7 @@ export function updateHorse(h: Horse, ctl: HorseControl, dt: number, obstacles: 
       h.grounded = false;
     }
   } else {
-    h.vy -= GRAVITY * dt;
+    h.vy -= COMBAT.gravity * dt;
     h.pos.y += h.vy * dt;
     if (h.pos.y <= ground) {
       h.pos.y = ground;

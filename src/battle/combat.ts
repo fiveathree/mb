@@ -1,11 +1,12 @@
 import { Vector3 } from 'three';
 import { COMBAT, FEEL, type AttackDir } from '../data/combat';
-import { COLORS } from '../data/battlefield';
+import { COLORS, TERRAIN } from '../data/battlefield';
 import { SHIELD, type WeaponDef } from '../data/weapons';
 import { HORSE_RADIUS } from '../data/horses';
 import { angleDiff, bearing, clamp, flatDist, rad, type Combatant, type Horse } from './entities';
 import type { Fx } from './fx';
 import type { Sfx } from './audio';
+import type { Projectiles } from './projectiles';
 
 export interface BattleStats {
   kills: number;
@@ -20,12 +21,15 @@ export interface CombatWorld {
   player: Combatant;
   fx: Fx;
   sfx: Sfx;
+  projectiles: Projectiles;
   stats: BattleStats;
   freeze(seconds: number): void;
   slowMo(): void;
   shake(amount: number): void;
   announce(text: string, kind: 'hit' | 'kill' | 'guard' | 'hurt'): void;
-  onPlayerDismounted(horse: Horse): void;
+  onUnitDown(t: Combatant, by: Combatant): void;
+  /** 玩家瞄準方向（鏡頭準星） */
+  playerAim(muzzle: Vector3, out: Vector3): void;
 }
 
 const tmp = new Vector3();
@@ -42,7 +46,7 @@ export function startCharge(c: Combatant, dir: AttackDir) {
 }
 
 export function startBlock(c: Combatant, dir: AttackDir) {
-  if (c.phase !== 'idle') return;
+  if (c.phase !== 'idle' || c.weapon.ranged) return;
   c.phase = 'block';
   c.phaseT = 0;
   c.blockDir = dir;
@@ -56,6 +60,12 @@ export function stagger(c: Combatant, time: number) {
 }
 
 function beginSwing(c: Combatant, world: CombatWorld) {
+  if (c.weapon.ranged) {
+    world.projectiles.fire(world, c);
+    c.phase = 'recover';
+    c.phaseT = 0;
+    return;
+  }
   c.chargeMult = COMBAT.chargeMinMult + (COMBAT.chargeMaxMult - COMBAT.chargeMinMult) * c.charge;
   c.phase = 'swing';
   c.phaseT = 0;
@@ -89,6 +99,8 @@ function checkSweep(c: Combatant, world: CombatWorld, p0: number, p1: number) {
   const padBase = rad(COMBAT.sweepPadDeg + (c.horse ? COMBAT.mountedSweepPadDeg : 0));
   for (const t of world.units) {
     if (t.team === c.team || t.dead || c.hitThisSwing.has(t)) continue;
+    const dx = t.pos.x - c.pos.x;
+    if (dx > 6 || dx < -6) continue;
     const targetRadius = t.horse ? HORSE_RADIUS : t.def.radius;
     const d = flatDist(c.pos, t.pos) - targetRadius;
     if (d > w.reach) continue;
@@ -113,7 +125,13 @@ function canBlock(t: Combatant, att: Combatant, dir: AttackDir): boolean {
   return t.hasActiveShield || t.blockDir === mirrorDir(dir);
 }
 
-/** 計傷害同結算一次命中；回傳 true 代表被擋住 */
+/** 高處打低處有傷害加成 */
+function heightMult(att: Combatant, t: Combatant): number {
+  const bonus = clamp((att.pos.y - t.pos.y) * TERRAIN.heightDamagePerMeter, -TERRAIN.heightDamageMax, TERRAIN.heightDamageMax);
+  return 1 + bonus;
+}
+
+/** 計傷害同結算一次近戰命中；回傳 true 代表被擋住 */
 export function strike(
   world: CombatWorld, att: Combatant, t: Combatant, w: WeaponDef, dir: AttackDir, chargeMult: number, couched: boolean,
 ): boolean {
@@ -128,7 +146,8 @@ export function strike(
 
   const coef = couched ? COMBAT.couchSpeedDamageCoef : COMBAT.speedDamageCoef;
   const dirMult = w.thrustOnly ? 1 : COMBAT.dirDamageMult[dir];
-  const raw = w.baseDamage * (1 + relSpeed * coef) * chargeMult * dirMult;
+  const cavMult = t.horse ? w.antiCavalry : 1;
+  const raw = w.baseDamage * (1 + relSpeed * coef) * chargeMult * dirMult * cavMult * heightMult(att, t);
   const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
 
   const isPlayerAtt = att === world.player;
@@ -148,21 +167,23 @@ export function strike(
     }
     if (raw < COMBAT.guardBreakDamage) {
       world.fx.burst(hitPos, COLORS.spark, 10, 5);
-      world.sfx.clash();
-      world.freeze(FEEL.guardHitStop);
+      if (isPlayerAtt || isPlayerTgt) {
+        world.sfx.clash();
+        world.freeze(FEEL.guardHitStop);
+      }
       if (isPlayerAtt) world.announce('被擋住', 'guard');
       else if (isPlayerTgt) world.announce('擋得好！', 'guard');
       return true;
     }
     passRatio = COMBAT.guardBreakPassThrough;
     stagger(t, COMBAT.guardBreakStagger);
-    world.sfx.clash();
+    if (isPlayerAtt || isPlayerTgt) world.sfx.clash();
     if (isPlayerAtt) world.announce('破防！', 'hit');
   }
 
-  // 敵人打中騎乘中玩家時，可能打中馬
+  // 打中騎乘目標時，可能打中馬
   if (t.horse && Math.random() < COMBAT.hitHorseChance) {
-    damageHorse(world, t.horse, Math.round(armorCut(t.horse.def.armor)));
+    damageHorse(world, t.horse, Math.round(armorCut(t.horse.def.armor)), att);
     world.fx.burst(hitPos, COLORS.blood, 8, 4);
     return false;
   }
@@ -173,18 +194,53 @@ export function strike(
   return false;
 }
 
+/** 計遠程命中；hitRatio 係命中高度佔身高比例 */
+export function shotHit(
+  world: CombatWorld, att: Combatant, t: Combatant, w: WeaponDef, mult: number,
+  hitRatio: number, hitHorse: boolean, vx: number, vz: number,
+) {
+  const R = COMBAT.ranged;
+  const speed = Math.max(Math.hypot(vx, vz), 0.01);
+  const nx = vx / speed;
+  const nz = vz / speed;
+  const head = !hitHorse && hitRatio >= R.headHeight;
+  const raw = w.baseDamage * mult * (head ? R.headMult : 1) * heightMult(att, t);
+  const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
+  const isPlayerAtt = att === world.player;
+  const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2, t.pos.z);
+
+  const front = Math.abs(angleDiff(Math.atan2(-vx, -vz), t.aimYaw)) < rad(COMBAT.blockArcDeg);
+  if (front && t.hasActiveShield && !hitHorse
+    && (t.phase === 'block' || Math.random() < R.passiveShieldChance)) {
+    t.shieldHp = Math.max(0, t.shieldHp - raw * w.shieldBreak);
+    world.fx.burst(hitPos, COLORS.wood, 5, 3);
+    if (isPlayerAtt) world.announce('箭被盾擋住', 'guard');
+    return;
+  }
+
+  if (hitHorse && t.horse) {
+    damageHorse(world, t.horse, Math.round(armorCut(t.horse.def.armor)), att);
+    world.fx.burst(hitPos, COLORS.blood, 6, 3);
+    if (isPlayerAtt) world.announce('射中戰馬', 'hit');
+    return;
+  }
+  const final = Math.round(armorCut(t.def.armor));
+  applyDamage(world, att, t, final, nx, nz, clamp(raw * COMBAT.launchPerDamage * 0.35, 0, 4), head ? '爆頭' : '射中');
+}
+
 function applyDamage(
   world: CombatWorld, att: Combatant, t: Combatant, final: number, nx: number, nz: number, launch: number, label: string,
 ) {
   const isPlayerAtt = att === world.player;
+  const isPlayerTgt = t === world.player;
   t.hp -= final;
   const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2 + (t.horse ? 0.8 : 0), t.pos.z);
-  world.fx.burst(hitPos, COLORS.blood, 10 + Math.min(20, final / 4), 3 + launch * 0.5);
+  world.fx.burst(hitPos, COLORS.blood, 6 + Math.min(16, final / 5), 3 + launch * 0.5);
 
   if (isPlayerAtt) world.stats.bestHit = Math.max(world.stats.bestHit, final);
   const killed = t.hp <= 0;
 
-  if (t !== world.player) {
+  if (!isPlayerTgt && !t.horse) {
     t.vel.x = nx * launch;
     t.vel.z = nz * launch;
     if (launch > 4) {
@@ -195,22 +251,23 @@ function applyDamage(
 
   if (killed) {
     kill(world, t, att);
-    world.sfx.hit(true);
     if (isPlayerAtt) {
+      world.sfx.hit(true);
       world.freeze(FEEL.killHitStop);
       world.shake(FEEL.shakeOnKill);
       if (final >= FEEL.slowMo.threshold) world.slowMo();
       world.announce(`${label ? label + '！' : '擊殺！'} ${final}`, 'kill');
     }
   } else {
-    world.sfx.hit(false);
-    if (t === world.player) {
+    if (isPlayerTgt) {
+      world.sfx.hit(false);
       stagger(t, COMBAT.hitStagger * COMBAT.playerStaggerRatio);
       world.shake(FEEL.shakeOnHurt);
       world.announce(`受傷 −${final}`, 'hurt');
     } else {
       stagger(t, COMBAT.hitStagger + launch * 0.06);
       if (isPlayerAtt) {
+        world.sfx.hit(false);
         world.freeze(FEEL.hitStop);
         world.shake(FEEL.shakeOnHit);
         world.announce(`${label ? label + ' ' : ''}${final}`, 'hit');
@@ -225,37 +282,39 @@ function kill(world: CombatWorld, t: Combatant, att: Combatant) {
   t.phase = 'idle';
   t.couched = false;
   t.spin = -2 - Math.random() * 2;
-  if (att === world.player) world.stats.kills++;
-  if (t === world.player && t.horse) {
-    const h = t.horse;
+  if (att === world.player && t !== att) world.stats.kills++;
+  const h = t.horse;
+  if (h) {
+    t.pos.copy(h.pos);
+    t.vel.copy(h.vel);
     h.rider = null;
+    h.ctl = { throttle: 0, turn: 0, sprint: false, jump: false };
     t.horse = null;
-    world.onPlayerDismounted(h);
   }
+  world.onUnitDown(t, att);
 }
 
-export function damageHorse(world: CombatWorld, h: Horse, dmg: number) {
+export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Combatant) {
   if (h.dead) return;
   h.hp -= dmg;
-  if (h.rider === world.player) world.announce(`戰馬受傷 −${dmg}`, 'hurt');
+  const rider = h.rider;
+  if (rider === world.player) world.announce(`戰馬受傷 −${dmg}`, 'hurt');
   if (h.hp > 0) return;
   h.hp = 0;
   h.dead = true;
   h.deadT = 0;
   h.speed = 0;
   h.vel.set(0, 0, 0);
-  const rider = h.rider;
   if (rider) {
     h.rider = null;
     rider.horse = null;
     rider.couched = false;
     rider.pos.copy(h.pos);
     rider.vel.set(0, 0, 0);
-    world.announce('戰馬陣亡，你跌咗落地！', 'hurt');
+    if (rider === world.player) world.announce('戰馬陣亡，你跌咗落地！', 'hurt');
     rider.hp -= COMBAT.fallDamage;
-    if (rider.hp <= 0) kill(world, rider, rider);
+    if (rider.hp <= 0) kill(world, rider, by);
     else stagger(rider, COMBAT.fallStagger);
-    world.onPlayerDismounted(h);
   }
 }
 
@@ -326,14 +385,14 @@ export function updateRam(c: Combatant, world: CombatWorld) {
   const fz = Math.cos(h.heading);
   const r = COMBAT.ram;
   for (const t of world.units) {
-    if (t.team === c.team || t.dead || c.contactCooldown.has(t)) continue;
+    if (t.team === c.team || t.dead || t.horse || c.contactCooldown.has(t)) continue;
     const dx = t.pos.x - h.pos.x;
     const dz = t.pos.z - h.pos.z;
     const forward = dx * fx + dz * fz;
     const side = Math.abs(dx * fz - dz * fx);
     if (forward < 0 || forward > r.reach || side > r.halfWidth + t.def.radius) continue;
     c.contactCooldown.set(t, r.cooldown);
-    const raw = h.speed * r.damagePerSpeed * h.def.ramMult;
+    const raw = h.speed * r.damagePerSpeed * h.def.ramMult * (c === world.player ? 1 : r.troopMult);
     const final = Math.round(Math.max(raw - t.def.armor, raw * COMBAT.minDamageRatio));
     const launch = clamp(h.speed * r.launchPerSpeed, 0, COMBAT.maxLaunch);
     const len = Math.max(Math.hypot(dx, dz), 0.01);
@@ -341,8 +400,9 @@ export function updateRam(c: Combatant, world: CombatWorld) {
     const nx = fx * 0.7 + (dx / len) * 0.6;
     const nz = fz * 0.7 + (dz / len) * 0.6;
     applyDamage(world, c, t, final, nx, nz, launch, '撞飛');
-    world.sfx.thud();
+    if (c === world.player) world.sfx.thud();
     h.speed *= r.speedKeep;
-    damageHorse(world, h, Math.round(final * r.horseRecoil));
+    damageHorse(world, h, Math.round(final * r.horseRecoil), t);
+    if (!c.horse) return;
   }
 }

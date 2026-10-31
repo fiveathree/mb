@@ -4,8 +4,16 @@ import type { HorseDef } from '../data/horses';
 import type { UnitDef } from '../data/units';
 import { SHIELD, WEAPONS, type WeaponDef } from '../data/weapons';
 import type { HorseRig, HumanRig } from './models';
+import type { Group } from './orders';
 
 export type Phase = 'idle' | 'charge' | 'swing' | 'recover' | 'block' | 'stagger';
+
+export interface HorseControl {
+  throttle: number;
+  turn: number;
+  sprint: boolean;
+  jump: boolean;
+}
 
 export class Horse {
   pos = new Vector3();
@@ -23,6 +31,7 @@ export class Horse {
   rider: Combatant | null = null;
   gaitPhase = 0;
   turnInput = 0;
+  ctl: HorseControl = { throttle: 0, turn: 0, sprint: false, jump: false };
 
   constructor(public def: HorseDef, public rig: HorseRig) {
     this.stamina = def.stamina;
@@ -31,16 +40,25 @@ export class Horse {
 }
 
 export interface AiState {
+  group: Group;
+  target: Combatant | null;
+  retarget: number;
   slotAngle: number;
   cooldown: number;
   dodgeT: number;
   dodgeDir: number;
   dodgeDecided: boolean;
-  /** 上一次回應過嘅玩家攻擊編號 */
+  /** 上一次回應過嘅目標攻擊編號 */
   seenAttack: number;
   reactT: number;
   willBlock: boolean;
   correctBlock: boolean;
+  /** 騎兵衝鋒鎖定時間 */
+  commitT: number;
+  /** 拉滿後放箭嘅延遲 */
+  releaseAt: number;
+  slotX: number;
+  slotZ: number;
 }
 
 export class Combatant {
@@ -54,8 +72,15 @@ export class Combatant {
   dead = false;
   deadT = 0;
   spin = 0;
+  /** 已逃離戰場 */
+  fled = false;
+  /** 倒下但只係受傷 */
+  wounded = false;
+  morale: number;
+  routing = false;
   weapons: WeaponDef[];
   weaponIdx = 0;
+  ammo: Record<string, number> = {};
   shieldHp: number;
   shieldMax: number;
 
@@ -80,10 +105,12 @@ export class Combatant {
   walkPhase = 0;
   ai: AiState | null = null;
 
-  constructor(public def: UnitDef, public team: number, public rig: HumanRig) {
+  constructor(public def: UnitDef, public team: number, public rig: HumanRig, weaponIds: string[]) {
     this.hp = def.hp;
-    this.weapons = def.weapons.map((id) => WEAPONS[id]);
-    const durability = team === 0 ? SHIELD.playerDurability : SHIELD.infantryDurability;
+    this.morale = def.morale;
+    this.weapons = weaponIds.map((id) => WEAPONS[id]);
+    for (const w of this.weapons) if (w.ranged) this.ammo[w.id] = w.ranged.ammo;
+    const durability = def.id === 'player' ? SHIELD.playerDurability : SHIELD.troopDurability;
     this.shieldHp = durability;
     this.shieldMax = durability;
   }
@@ -123,3 +150,4 @@ export function moveToward(v: number, target: number, step: number): number {
 
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 export const rad = (deg: number) => (deg * Math.PI) / 180;
+export const randRange = (lo: number, hi: number) => lo + Math.random() * (hi - lo);

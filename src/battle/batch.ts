@@ -1,0 +1,78 @@
+import * as THREE from 'three';
+
+const BOX_CAPACITY = 7000;
+const OTHER_CAPACITY = 1600;
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+
+interface Batch {
+  mesh: THREE.InstancedMesh;
+  next: number;
+}
+
+/** 一件要畫嘅模型部件；gate 隱藏時部件唔畫 */
+export interface Part {
+  node: THREE.Object3D;
+  mesh: THREE.InstancedMesh;
+  index: number;
+  gate: THREE.Object3D | null;
+}
+
+/** 所有人同馬嘅部件共用 InstancedMesh，令百人同場都只係幾個 draw call */
+export class Batches {
+  private batches = new Map<string, Batch>();
+  private color = new THREE.Color();
+
+  constructor(private scene: THREE.Scene) {}
+
+  private batch(key: string, make: () => THREE.BufferGeometry): Batch {
+    let b = this.batches.get(key);
+    if (!b) {
+      const capacity = key === 'box' ? BOX_CAPACITY : OTHER_CAPACITY;
+      const mesh = new THREE.InstancedMesh(
+        make(), new THREE.MeshLambertMaterial({ flatShading: true }), capacity,
+      );
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.castShadow = true;
+      mesh.frustumCulled = false;
+      mesh.count = 0;
+      this.scene.add(mesh);
+      b = { mesh, next: 0 };
+      this.batches.set(key, b);
+    }
+    return b;
+  }
+
+  alloc(key: string, make: () => THREE.BufferGeometry, color: number, node: THREE.Object3D, gate: THREE.Object3D | null): Part {
+    const b = this.batch(key, make);
+    const index = b.next++;
+    b.mesh.count = b.next;
+    b.mesh.setColorAt(index, this.color.set(color));
+    b.mesh.instanceColor!.needsUpdate = true;
+    return { node, mesh: b.mesh, index, gate };
+  }
+
+  /** 新一場戰鬥由頭分配 */
+  reset() {
+    for (const b of this.batches.values()) {
+      b.next = 0;
+      b.mesh.count = 0;
+    }
+  }
+
+  commit() {
+    for (const b of this.batches.values()) b.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  get drawCount(): number {
+    return this.batches.size;
+  }
+}
+
+/** 將 rig 嘅部件世界矩陣寫入 InstancedMesh */
+export function flushParts(root: THREE.Object3D, parts: Part[], hidden = false) {
+  root.updateMatrixWorld(true);
+  for (const p of parts) {
+    const off = hidden || (p.gate !== null && !p.gate.visible);
+    p.mesh.setMatrixAt(p.index, off ? ZERO : p.node.matrixWorld);
+  }
+}
