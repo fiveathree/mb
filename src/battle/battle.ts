@@ -120,6 +120,7 @@ export class Battle implements CombatWorld {
   private formationT = 0;
   private warcryT = 0;
   private forest = false;
+  private wallHalf = 0;
   private rockT = 0;
   private traps: { x: number; z: number; cd: number }[] = [];
   private rockSide = 0;
@@ -240,6 +241,7 @@ export class Battle implements CombatWorld {
     }
     if (!dungeon) this.buildSiegeGear();
     const half = dungeon ? DUNGEON.halfWidth : SIEGE.wallHalfWidth;
+    this.wallHalf = half;
     // 雲梯位：牆照畫，但冇碰撞，士兵爬得過
     const solid: { x: number; z: number }[] = spots.slice();
     for (const w of this.walls) {
@@ -419,6 +421,18 @@ export class Battle implements CombatWorld {
     this.formationT = FORMATION_RULES.switchCooldown;
     this.applyFormation();
     this.hud.announce(`變陣：${this.formations[0].def.name}`, 'guard');
+  }
+
+  wallBlocks(ax: number, az: number, bx: number, bz: number, y: number): boolean {
+    for (const w of this.walls) {
+      if ((az - w.z) * (bz - w.z) > 0) continue;
+      const t = az === bz ? 0 : (w.z - az) / (bz - az);
+      const x = ax + (bx - ax) * t;
+      if (Math.abs(x) > this.wallHalf) continue;
+      if (w.gaps.some((g) => Math.abs(g - x) < w.width / 2)) continue;
+      if (y < heightAt(x, w.z) + SIEGE.wallTop) return true;
+    }
+    return false;
   }
 
   routeGoal(c: Combatant, gx: number, gz: number): [number, number] {

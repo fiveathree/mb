@@ -17,6 +17,9 @@ export interface BattleStats {
 }
 
 /** combat 需要嘅世界介面 */
+/** 近戰出手高度，用嚟判斷隔牆 */
+const MELEE_HEIGHT = 1.2;
+
 export interface CombatWorld {
   units: Combatant[];
   player: Combatant;
@@ -33,6 +36,8 @@ export interface CombatWorld {
   playerAim(muzzle: Vector3, out: Vector3): void;
   /** 圍城時將行軍目標改去最近缺口 */
   routeGoal(c: Combatant, gx: number, gz: number): [number, number];
+  /** 由 a 去 b 喺高度 y 有冇被牆擋住 */
+  wallBlocks(ax: number, az: number, bx: number, bz: number, y: number): boolean;
   /** 陣法加成，按隊形凝聚度打折 */
   formationBonus(team: number, key: keyof FormationBonus): number;
 }
@@ -137,6 +142,7 @@ function checkSweep(c: Combatant, world: CombatWorld, p0: number, p1: number) {
     const a = angleDiff(bearing(c.pos, t.pos), c.aimYaw);
     const pad = padBase + Math.atan2(targetRadius, Math.max(d, 0.3));
     if (a < win[0] - pad || a > win[1] + pad) continue;
+    if (world.wallBlocks(c.pos.x, c.pos.z, t.pos.x, t.pos.z, c.pos.y + MELEE_HEIGHT)) continue;
     c.hitThisSwing.add(t);
     const blocked = strike(world, c, t, w, c.dir, c.chargeMult, false);
     if (blocked) {
@@ -276,6 +282,7 @@ export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: V
     if (t.team === att.team || t.dead) continue;
     const d = flatDist(t.pos, pos);
     if (d > radius) continue;
+    if (world.wallBlocks(pos.x, pos.z, t.pos.x, t.pos.z, pos.y + 0.5)) continue;
     const dist = Math.max(d, 0.01);
     const raw = w.baseDamage * (att.def.spellMult ?? 1) * (1 + world.formationBonus(att.team, 'spell')) * mult * (1 - (d / radius) * 0.6);
     const nx = (t.pos.x - pos.x) / dist;

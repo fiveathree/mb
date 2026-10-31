@@ -59,6 +59,16 @@ export interface HumanRig {
   marker: THREE.Group;
   pose: ArmPose;
   parts: Part[];
+  dragon?: DragonRig;
+}
+
+export interface DragonRig {
+  wings: THREE.Group[];
+  legs: THREE.Group[];
+  neck: THREE.Group;
+  tail: THREE.Group;
+  /** 拍翼計時 */
+  t: number;
 }
 
 function buildWeapon(w: WeaponDef): THREE.Group {
@@ -153,14 +163,6 @@ function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
     case 'snout':
       torso.add(box(0.13, 0.1, 0.18, skin, 0, 0.78, 0.15));
       break;
-    case 'dragon':
-      torso.add(box(0.2, 0.15, 0.42, skin, 0, 0.78, 0.26), box(0.14, 0.14, 0.9, skin, 0, 0.1, -0.55));
-      side((s) => {
-        const wing = box(1.1, 0.04, 0.6, new THREE.Color(skin).multiplyScalar(0.55).getHex(), s * 0.75, 0.62, -0.18);
-        wing.rotation.z = s * 0.45;
-        return wing;
-      });
-      break;
     case 'wings':
       side((s) => {
         const wing = box(0.7, 0.03, 0.34, skin, s * 0.5, 0.58, -0.17);
@@ -181,6 +183,61 @@ function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
     default:
       break;
   }
+}
+
+/** 真正嘅四足巨龍：頸、頭、翼、尾、四腳，加落 hips */
+function buildDragon(hips: THREE.Group, skin: number): DragonRig {
+  const belly = new THREE.Color(skin).lerp(new THREE.Color(0xe8d8a8), 0.45).getHex();
+  const dark = new THREE.Color(skin).multiplyScalar(0.55).getHex();
+  const body = new THREE.Group();
+  body.position.y = 0.1;
+  hips.add(body);
+  body.add(box(0.74, 0.72, 1.7, skin), box(0.62, 0.62, 0.62, skin, 0, 0.08, 0.95), box(0.56, 0.08, 1.9, belly, 0, -0.36, 0.1));
+  for (let i = 0; i < 5; i++) body.add(box(0.05, 0.16, 0.2, dark, 0, 0.44, 0.7 - i * 0.38));
+
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.3, 1.2);
+  neck.rotation.x = -0.75;
+  neck.add(box(0.34, 0.34, 0.5, skin, 0, 0, 0.22), box(0.28, 0.28, 0.5, skin, 0, 0, 0.64));
+  const head = new THREE.Group();
+  head.position.set(0, 0, 0.92);
+  head.rotation.x = 0.8;
+  head.add(box(0.4, 0.3, 0.46, skin, 0, 0, 0.14), box(0.28, 0.18, 0.42, skin, 0, -0.04, 0.54), box(0.26, 0.05, 0.38, belly, 0, -0.15, 0.5));
+  for (const s of [1, -1]) {
+    const horn = cone(0.05, 0.42, 5, 0xe8dcc0);
+    horn.position.set(s * 0.14, 0.26, -0.14);
+    horn.rotation.x = -0.9;
+    head.add(horn, box(0.05, 0.05, 0.05, 0xf2c14e, s * 0.17, 0.08, 0.26));
+  }
+  neck.add(head);
+  body.add(neck);
+
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.06, -0.85);
+  tail.rotation.x = 0.16;
+  tail.add(box(0.42, 0.4, 0.8, skin, 0, 0, -0.38), box(0.28, 0.26, 0.8, skin, 0, -0.02, -1.08), box(0.16, 0.14, 0.7, skin, 0, -0.04, -1.76));
+  const tip = cone(0.16, 0.42, 4, dark);
+  tip.position.set(0, -0.04, -2.2);
+  tip.rotation.x = -Math.PI / 2;
+  tail.add(tip);
+  body.add(tail);
+
+  const wings = [1, -1].map((s) => {
+    const wing = new THREE.Group();
+    wing.position.set(s * 0.36, 0.34, 0.35);
+    wing.add(box(1.9, 0.05, 0.14, dark, s * 0.95, 0, 0.3), box(1.8, 0.03, 0.95, dark, s * 0.95, 0, -0.2));
+    body.add(wing);
+    return wing;
+  });
+
+  const legs = [[1, 0.72], [-1, 0.72], [1, -0.62], [-1, -0.62]].map(([s, z]) => {
+    const leg = new THREE.Group();
+    leg.position.set(s * 0.42, -0.2, z);
+    leg.add(box(0.26, 0.5, 0.32, skin, 0, -0.22, 0), box(0.2, 0.42, 0.24, skin, 0, -0.6, 0), box(0.28, 0.08, 0.42, dark, 0, -0.82, 0.08));
+    body.add(leg);
+    return leg;
+  });
+  return { wings, legs, neck, tail, t: 0 };
 }
 
 export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
@@ -288,10 +345,15 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   };
   const [legL, kneeL] = leg(0.13);
   const [legR, kneeR] = leg(-0.13);
-  // 半人馬冇人腳
-  if (def.race === 'centaur') {
+  // 半人馬冇人腳；龍連上身都收埋，換成自己嘅身體
+  if (def.race === 'centaur' || def.race === 'dragon') {
     legL.scale.setScalar(0.001);
     legR.scale.setScalar(0.001);
+  }
+  let dragon: DragonRig | undefined;
+  if (def.race === 'dragon') {
+    torso.scale.setScalar(0.001);
+    dragon = buildDragon(hips, def.skin ?? race.skin);
   }
 
   // 頭頂標記：英雄用金色
@@ -306,7 +368,7 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
 
   return {
     root, hips, torso, armR, wrist, armL, gripL, legL, legR, kneeL, kneeR, weaponMeshes, shield, marker,
-    pose: { ...IDLE_POSE }, parts: ctx.parts,
+    pose: { ...IDLE_POSE }, parts: ctx.parts, dragon,
   };
 }
 
@@ -475,7 +537,12 @@ export function syncHuman(c: Combatant, dt: number) {
     r.kneeR.rotation.x = Math.max(0, s) * amp * 1.2;
   }
 
-  if (c.dead) {
+  if (r.dragon) syncDragon(c, r.dragon, dt);
+
+  if (c.dead && r.dragon) {
+    // 龍係側身瞓低，唔係好似人咁向後跌
+    r.root.rotation.z = (Math.PI / 2) * clamp(c.deadT / 0.9, 0, 1);
+  } else if (c.dead) {
     const fall = clamp(c.deadT / 0.5, 0, 1);
     r.root.rotation.x = c.spin * c.deadT * (c.grounded ? 0 : 1) + (-Math.PI / 2) * fall * fall;
     r.root.position.y = c.pos.y + 0.18 * fall;
@@ -505,6 +572,23 @@ export function syncHuman(c: Combatant, dt: number) {
   r.marker.visible = !c.dead;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id;
   flushParts(r.root, r.parts);
+}
+
+function syncDragon(c: Combatant, d: DragonRig, dt: number) {
+  if (c.dead) return;
+  d.t += dt;
+  const speed = Math.hypot(c.vel.x, c.vel.z);
+  const flap = 0.3 + Math.sin(d.t * 2.4) * (speed > 1 ? 0.4 : 0.14);
+  d.wings[0].rotation.z = flap;
+  d.wings[1].rotation.z = -flap;
+  d.tail.rotation.y = Math.sin(d.t * 1.6) * 0.3;
+  // 蓄力噴息時頸向前伸
+  const target = c.phase === 'charge' ? -0.25 : -0.75;
+  d.neck.rotation.x += (target - d.neck.rotation.x) * (1 - Math.exp(-5 * dt));
+  const amp = clamp(speed / 3, 0, 1) * 0.5;
+  d.legs.forEach((leg, i) => {
+    leg.rotation.x = Math.sin(c.walkPhase * 0.6 + (i === 0 || i === 3 ? 0 : Math.PI)) * amp;
+  });
 }
 
 export function syncHorse(h: Horse, dt: number) {

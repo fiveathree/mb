@@ -88,7 +88,7 @@ export class Projectiles {
       world.playerAim(muzzle, dir);
       world.sfx.arrow();
     } else {
-      aiAim(c, muzzle, r.speed, dir);
+      aiAim(world, c, muzzle, r.speed, dir);
     }
 
     const spread = rad(Projectiles.spreadDeg(c));
@@ -135,7 +135,15 @@ export class Projectiles {
       const step = dt / SUBSTEPS;
       for (let k = 0; k < SUBSTEPS && s.live; k++) {
         if (!s.weapon!.spell?.flat) s.vel.y -= COMBAT.gravity * step;
+        const px = s.pos.x;
+        const pz = s.pos.z;
         s.pos.addScaledVector(s.vel, step);
+        if (world.wallBlocks(px, pz, s.pos.x, s.pos.z, s.pos.y)) {
+          s.live = false;
+          if (s.weapon!.spell?.aoe) explode(world, s.owner!, s.weapon!, s.pos, s.mult);
+          else if (!s.weapon!.spell) s.stuck = R.stuckLife;
+          break;
+        }
         for (const t of world.units) {
           if (t.dead || t.team === s.owner!.team) continue;
           const dx = t.pos.x - s.pos.x;
@@ -188,7 +196,7 @@ export class Projectiles {
 }
 
 /** AI 按飛行時間預判目標，計拋物線 */
-function aiAim(c: Combatant, muzzle: THREE.Vector3, speed: number, out: THREE.Vector3) {
+function aiAim(world: CombatWorld, c: Combatant, muzzle: THREE.Vector3, speed: number, out: THREE.Vector3) {
   const t = c.ai?.target;
   if (!t) {
     out.set(Math.sin(c.aimYaw), 0.1, Math.cos(c.aimYaw));
@@ -204,4 +212,12 @@ function aiAim(c: Combatant, muzzle: THREE.Vector3, speed: number, out: THREE.Ve
   const dist = Math.hypot(dx, dz);
   const time = dist / speed;
   out.set(dx / time, (ty - muzzle.y) / time + 0.5 * COMBAT.gravity * time, dz / time).normalize();
+  // 隔牆就拋高射過去
+  if (c.weapon.spell?.flat || !world.wallBlocks(muzzle.x, muzzle.z, tx, tz, muzzle.y + 1)) return;
+  const g = COMBAT.gravity;
+  const v2 = speed * speed;
+  const disc = v2 * v2 - g * (g * dist * dist + 2 * (ty - muzzle.y) * v2);
+  if (disc < 0) return;
+  const pitch = Math.atan2(v2 + Math.sqrt(disc), g * dist);
+  out.set((dx / dist) * Math.cos(pitch), Math.sin(pitch), (dz / dist) * Math.cos(pitch));
 }
