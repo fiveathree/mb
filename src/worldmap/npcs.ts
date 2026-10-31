@@ -1,4 +1,5 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
+import { HONOR } from '../data/honor';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
 import type { BanditParty, WorldSave } from './world';
@@ -34,6 +35,12 @@ function nearestTown(p: PlaceDef): PlaceDef {
 
 export function raiderArmy(n: Npc): ArmyEntry[] {
   if (n.kind === 'dragon') return [{ unit: 'boss_dragon', count: 1 }];
+  if (n.kind === 'patrol') {
+    return [
+      { unit: 'footman', count: Math.ceil(n.size * 0.6) }, { unit: 'archer', count: Math.ceil(n.size * 0.25) },
+      { unit: 'horseman', count: Math.floor(n.size * 0.15) },
+    ];
+  }
   return NPC_RULES.raiderArmy.map((a) => ({ unit: a.unit, count: Math.max(1, Math.round(n.size * a.share)) }));
 }
 
@@ -211,7 +218,7 @@ export class NpcSystem {
         n.wait -= dt;
         continue;
       }
-      if (n.kind === 'patrol' && this.hunt(n, bandits, dt)) continue;
+      if (n.kind === 'patrol' && (this.pursue(n, dt) || this.hunt(n, bandits, dt))) continue;
       const path = this.paths.get(n.id);
       if (!path || !path.length) {
         if (path) {
@@ -243,6 +250,32 @@ export class NpcSystem {
         budget = 0;
       }
     }
+  }
+
+  /** 呢隊巡邏隊係咪捉緊你 */
+  isHunting(n: Npc): boolean {
+    const w = this.save;
+    const owner = w.pol.owners[n.home];
+    if (!owner || !w.pol.wanted[owner]) return false;
+    return Math.hypot(n.x - w.x, n.y - w.y) < HONOR.hunterSight;
+  }
+
+  /** 通緝犯喺附近就追 */
+  private pursue(n: Npc, dt: number): boolean {
+    if (!this.isHunting(n)) return false;
+    n.job = '追捕通緝犯';
+    this.paths.delete(n.id);
+    const w = this.save;
+    const dx = w.x - n.x;
+    const dy = w.y - n.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const nx = n.x + (dx / d) * NPC.patrol.speed * dt;
+    const ny = n.y + (dy / d) * NPC.patrol.speed * dt;
+    if (this.terrain.passable(Math.round(nx), Math.round(ny))) {
+      n.x = nx;
+      n.y = ny;
+    }
+    return true;
   }
 
   /** 巡邏隊追剿山賊 */

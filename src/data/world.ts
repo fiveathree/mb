@@ -93,7 +93,8 @@ export const BANDIT = {
 
 export const SHOP = {
   foodPrice: 2,
-  foodPack: 20,
+  /** 每次購買數量選擇 */
+  buyLots: [1, 10],
   /** 村莊新兵 */
   villageRecruit: { cost: 40, count: 2, refreshDays: 4 },
   /** 酒館傭兵價 = 兵階 × 呢個數 */

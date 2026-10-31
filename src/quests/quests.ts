@@ -64,11 +64,13 @@ function finish(world: World, q: Quest) {
   const owner = w.pol.owners[q.giver];
   if (owner) world.politics.addRelation(owner, q.relation);
   w.questsDone++;
+  world.politics.deed('quest');
   world.note(`完成任務「${q.title}」，獎金 ${q.gold} 金`);
 }
 
 /** 打贏山賊時更新 */
 export function onBanditBeaten(world: World) {
+  world.politics.deed('beatBandit');
   for (const q of [...world.save.quests]) {
     if (q.kind !== 'bandits') continue;
     q.progress++;

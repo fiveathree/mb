@@ -5,7 +5,8 @@ import { POLITICS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
 import { expireQuests, type Quest } from '../quests/quests';
-import { Politics, newPolitics, type PoliticsSave } from '../politics/politics';
+import { HONOR } from '../data/honor';
+import { Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
 import { CAMPAIGN } from '../data/gacha';
@@ -85,7 +86,7 @@ export function migrateWorld(w: WorldSave): WorldSave {
   w.workshops ??= {};
   w.arenaUntil ??= {};
   w.arenaWins ??= 0;
-  w.pol ??= newPolitics();
+  w.pol = migratePolitics(w.pol ?? newPolitics());
   w.nextDragon ??= NPC_RULES.dragonFirstDay;
   w.scenario ??= 'chaos';
   w.quests ??= [];
@@ -105,7 +106,8 @@ export type WorldEvent =
   | { type: 'place'; place: PlaceDef }
   | { type: 'bandit'; bandit: BanditParty }
   | { type: 'npc'; npc: Npc }
-  | { type: 'story'; event: StoryEvent };
+  | { type: 'story'; event: StoryEvent }
+  | { type: 'hunted'; npc: Npc };
 
 export function banditArmy(b: BanditParty): ArmyEntry[] {
   return BANDIT.army.map((a) => ({ unit: a.unit, count: Math.max(1, Math.round(b.size * a.share)) }));
@@ -140,6 +142,7 @@ export class World {
   private chasing: number | null = null;
   private rechase = 0;
   private pendingStory: StoryEvent | null = null;
+  private hunterGrace = 0;
   readonly npcs: NpcSystem;
   readonly politics: Politics;
 
@@ -196,7 +199,24 @@ export class World {
       this.pendingStory = null;
       return { type: 'story', event };
     }
+    const hunter = this.checkHunters(dt);
+    if (hunter) return hunter;
     return this.updateChase(dt) ?? this.move(dt) ?? this.updateBandits(dt);
+  }
+
+  /** 通緝：官兵行埋嚟就截住你 */
+  private checkHunters(dt: number): WorldEvent | null {
+    this.hunterGrace = Math.max(0, this.hunterGrace - dt);
+    if (this.hunterGrace > 0) return null;
+    const w = this.save;
+    for (const n of w.npcs) {
+      if (n.kind !== 'patrol' || !this.npcs.isHunting(n)) continue;
+      if (Math.hypot(n.x - w.x, n.y - w.y) < NPC_RULES.contactDist * 1.2) {
+        this.hunterGrace = BANDIT.graceSeconds;
+        return { type: 'hunted', npc: n };
+      }
+    }
+    return null;
   }
 
   private updateChase(dt: number): WorldEvent | null {
@@ -289,6 +309,7 @@ export class World {
 
     w.morale = Math.max(0, w.morale);
     if (w.morale < MORALE_PARTY.desertBelow) this.desert();
+    else if (w.pol.loyalty < HONOR.desertLoyalty && Math.random() < HONOR.desertChance) this.desert();
   }
 
   private driftMarkets() {
@@ -398,7 +419,8 @@ export class World {
     this.graceT = Math.max(0, this.graceT - dt);
     for (const b of w.bandits) {
       const dist = Math.hypot(b.x - w.x, b.y - w.y);
-      if (dist < PARTY.encounterDist && this.graceT <= 0) {
+      const outlaw = w.pol.outlaw;
+      if (dist < PARTY.encounterDist && this.graceT <= 0 && !outlaw) {
         this.graceT = BANDIT.graceSeconds;
         return { type: 'bandit', bandit: b };
       }
@@ -407,7 +429,7 @@ export class World {
       let mx = b.tx - b.x;
       let my = b.ty - b.y;
       const prey = this.npcs.preyFor(b);
-      const threat = this.nearestThreat(b, weak);
+      const threat = this.nearestThreat(b, weak && !outlaw);
       if (threat) {
         // 細隊山賊避開大軍
         mx = b.x - threat.x;
@@ -417,7 +439,7 @@ export class World {
         mx = prey.x - b.x;
         my = prey.y - b.y;
         if (Math.hypot(mx, my) < NPC_RULES.contactDist) this.npcs.robbed(prey);
-      } else if (dist < BANDIT.chaseDist) {
+      } else if (dist < BANDIT.chaseDist && !outlaw) {
         mx = w.x - b.x;
         my = w.y - b.y;
       } else if (Math.hypot(mx, my) < 1) {

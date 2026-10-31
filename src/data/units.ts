@@ -429,6 +429,18 @@ for (const u of [
   troop('awakened', '覺醒者', 'infantry', 4, 120, 9, ['elite_sword'], 0xe8c04a),
   troop('kobold', '狗頭人', 'infantry', 1, 45, 2, ['spear'], 0x8a6a3a, { race: 'goblin' }),
 ]) UNITS[u.id] = u;
+// 劇場英雄：唔喺抽卡池
+const storyHero = (id: string, name: string, desc: string, role: Role, weapons: string[], hp: number, trim: number, aura: number, extra: Partial<UnitDef> = {}) =>
+  troop(id, name, role, 6, hp, 14, weapons, trim, {
+    desc, hero: true, aura, rarity: 'hero', plumeColor: trim, morale: 130, blockSkill: 0.8, blockChance: 0.7, reaction: 0.15,
+    attackCooldown: [0.7, 1.3], dodgeChance: 0.3, runSpeed: 5, ...extra,
+  });
+for (const u of [
+  storyHero('story_crow', '俠盜 白鴉', '只劫貪官', 'archer', ['hero_bow', 'hero_blade'], 200, 0xf0f0f0, 2.5),
+  storyHero('story_redbeard', '赤鬚寨主', '老山賊，賊中有義', 'infantry', ['hero_axe'], 300, 0xc0402a, 3),
+  storyHero('story_ellen', '流亡公主 艾蓮', '王室血脈，一呼百應', 'cavalry', ['hero_lance', 'hero_blade'], 230, 0xe8c0e0, 5, { horse: 'warhorse' }),
+  storyHero('story_monk', '苦行僧 玄空', '杖下度人', 'mage', ['troop_bolt', 'hero_blade'], 240, 0xe0b040, 4),
+]) UNITS[u.id] = u;
 UNITS.boss_cyclops = { ...boss('boss_cyclops', '獨眼巨人', 'giant', 'boss_club', 1100, 14, 1.3, 3.9) };
 UNITS.boss_hellking = { ...boss('boss_hellking', '深淵魔王', 'demon', 'boss_club', 1800, 22, 1.1, 4.6) };
 UNITS.boss_chimera = { ...boss('boss_chimera', '上古凶獸', 'giant', 'boss_club', 1400, 16, 1.4, 4.4) };

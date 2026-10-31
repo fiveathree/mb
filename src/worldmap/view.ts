@@ -266,6 +266,9 @@ export class WorldView {
       `行軍 ${this.world.partySpeed().toFixed(1)}`,
       `士氣 ${Math.round(w.morale)}`,
       `聲望 ${w.pol.renown}`,
+      `正義 ${w.pol.justice}`,
+      `忠誠 ${w.pol.loyalty}`,
+      ...(Object.keys(w.pol.wanted).length ? ['通緝中'] : []),
     ];
     const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　Tab 部隊　空白鍵暫停　Esc 選單';
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;

@@ -41,6 +41,7 @@ export function applyChoice(world: World, effect: string): string {
       const s = pickOne(r.soldiers.filter((x) => x.level <= 2));
       if (s) r.soldiers = r.soldiers.filter((x) => x !== s);
       morale(4);
+      world.politics.deed('mercy');
       return '走咗一個兵，其他人感激你。';
     }
     case 'settle':
@@ -61,6 +62,7 @@ export function applyChoice(world: World, effect: string): string {
       return '金幣唔夠，行商一笑離開。';
     case 'recruit':
       addSoldier(r, currentScenario().levy);
+      world.politics.deed('charity');
       return '少年成為你嘅新兵。';
     default:
       return '你繼續上路。';

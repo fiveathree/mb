@@ -1,4 +1,5 @@
 import { FACTIONS, FIEF_OWNERS, POLITICS as P, factionOf } from '../data/factions';
+import { DEEDS, HONOR, type DeedId } from '../data/honor';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
 
@@ -22,6 +23,25 @@ export interface PoliticsSave {
   threats: Threat[];
   kingdom: string | null;
   won: boolean;
+  /** 正義 */
+  justice: number;
+  /** 忠誠 */
+  loyalty: number;
+  /** 勢力 → 懸賞金 */
+  wanted: Record<string, number>;
+  /** 已淪為山賊 */
+  outlaw: boolean;
+  /** 遇過嘅劇場角色 */
+  storyMet: string[];
+}
+
+export function migratePolitics(s: PoliticsSave): PoliticsSave {
+  s.justice ??= 0;
+  s.loyalty ??= 0;
+  s.wanted ??= {};
+  s.outlaw ??= false;
+  s.storyMet ??= [];
+  return s;
 }
 
 export function newPolitics(): PoliticsSave {
@@ -29,6 +49,7 @@ export function newPolitics(): PoliticsSave {
     owners: { ...FIEF_OWNERS }, relations: Object.fromEntries(FACTIONS.map((f) => [f.id, 0])),
     wars: [['griffin', 'orcs'], ['xuan', 'jiangdong'], ['wuyi', 'chishui'], ['sylvan', 'undead']],
     rank: 'free', liege: null, renown: 0, threats: [], kingdom: null, won: false,
+    justice: 0, loyalty: 0, wanted: {}, outlaw: false, storyMet: [],
   };
 }
 
@@ -82,8 +103,58 @@ export class Politics {
     this.note(`你同${this.nameOf(f)}議和`);
   }
 
+  /** 記低善惡行為；victim 係受害勢力 */
+  deed(id: DeedId, victim?: string) {
+    const d = DEEDS[id];
+    const s = this.s;
+    const clampHonor = (v: number) => Math.max(HONOR.min, Math.min(HONOR.max, v));
+    s.justice = clampHonor(s.justice + d.justice);
+    s.loyalty = clampHonor(s.loyalty + d.loyalty);
+    if (victim && victim !== PLAYER && d.bounty) {
+      s.wanted[victim] = (s.wanted[victim] ?? 0) + d.bounty;
+      this.addRelation(victim, -15);
+      if (victim === s.liege) s.loyalty = clampHonor(s.loyalty - 20);
+    }
+    if (!s.outlaw && s.justice <= HONOR.outlawAt) {
+      s.outlaw = true;
+      this.note('惡名遠播，你已淪為山賊！');
+      if (s.rank === 'merc' || s.rank === 'vassal') {
+        this.note(`${this.nameOf(s.liege ?? '')}同你恩斷義絕`);
+        s.rank = 'free';
+        s.liege = null;
+      }
+    }
+    if (s.outlaw && s.justice > HONOR.redeemAt) {
+      s.outlaw = false;
+      this.note('你洗底做返好人');
+    }
+  }
+
+  bounty(f: string): number {
+    return this.s.wanted[f] ?? 0;
+  }
+
+  clearWanted(f: string) {
+    delete this.s.wanted[f];
+  }
+
+  /** 捐款贖罪 */
+  atone() {
+    this.s.justice = Math.min(HONOR.max, this.s.justice + HONOR.donate.justice);
+    if (this.s.outlaw && this.s.justice > HONOR.redeemAt) {
+      this.s.outlaw = false;
+      this.note('你洗底做返好人');
+    }
+  }
+
+  /** 正義同忠誠對部隊士氣嘅倍率 */
+  honorMorale(): number {
+    return 1 + this.s.loyalty * HONOR.moralePerLoyalty;
+  }
+
   canContract(f: string): boolean {
-    return this.s.rank === 'free' && this.relation(f) >= P.mercMinRelation && !this.atWar(PLAYER, f);
+    return this.s.rank === 'free' && !this.s.outlaw && !this.bounty(f)
+      && this.relation(f) >= P.mercMinRelation && !this.atWar(PLAYER, f);
   }
 
   signContract(f: string) {
@@ -94,7 +165,7 @@ export class Politics {
 
   canSwear(f: string): boolean {
     const okRank = this.s.rank === 'free' || (this.s.rank === 'merc' && this.s.liege === f);
-    return okRank && this.s.renown >= P.vassalRenown && this.relation(f) >= P.vassalMinRelation && !this.atWar(PLAYER, f);
+    return okRank && !this.s.outlaw && !this.bounty(f) && this.s.renown >= P.vassalRenown && this.relation(f) >= P.vassalMinRelation && !this.atWar(PLAYER, f);
   }
 
   swear(f: string) {
@@ -115,6 +186,7 @@ export class Politics {
     if (old) {
       this.addRelation(old, P.warRelation);
       this.s.wars.push([PLAYER, old]);
+      this.deed('betray');
     }
     this.note(`${name}建國，你登基為王！`);
   }
@@ -141,7 +213,8 @@ export class Politics {
   }
 
   dailyPay(): number {
-    return this.s.rank === 'merc' ? P.mercPay : 0;
+    if (this.s.rank !== 'merc') return 0;
+    return Math.round(P.mercPay * (this.s.loyalty >= HONOR.payLoyalty ? HONOR.payBonus : 1));
   }
 
   /** 每日檢查：領地被圍過期就失去 */

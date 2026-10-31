@@ -11,6 +11,8 @@ import {
 } from './core/roster';
 import { SLOT_COUNT, deleteSlot, exportCode, importCode, readSlots, writeSlot, type GameSave } from './core/save';
 import { ENDINGS } from './data/quests';
+import { STORY_HEROES, type StoryHero } from './data/honor';
+import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import type { ArmyEntry } from './data/battlefield';
@@ -54,6 +56,7 @@ const screens = new PlaceScreens(hud, world, roster, {
   onRaider: (n) => fightRaider(n),
   onSiege: (p, breaches) => assaultFief(p, breaches),
   onDefend: (p, by) => defendFief(p, by),
+  onHunter: (n) => fightHunter(n),
 });
 const view = new WorldView(mapCanvas, world);
 
@@ -115,21 +118,40 @@ function reopenPlace() {
   openPlace(currentPlace);
 }
 
+function showPlace(p: PlaceDef) {
+  if (p.kind === 'town') screens.town(p);
+  else if (p.kind === 'village') screens.village(p);
+  else screens.site(p);
+}
+
+/** 呢度有冇劇場角色等緊你 */
+function storyHeroAt(p: PlaceDef): StoryHero | undefined {
+  const w = world.save;
+  const s = w.pol;
+  return STORY_HEROES.find((h) => h.place === p.id
+    && !s.storyMet.includes(h.id) && !roster.soldiers.some((x) => x.unit === h.unit)
+    && s.justice >= (h.minJustice ?? -101) && s.justice <= (h.maxJustice ?? 101)
+    && s.loyalty >= (h.minLoyalty ?? -101) && s.renown >= (h.minRenown ?? 0)
+    && w.arenaWins >= (h.arenaWins ?? 0) && (!h.outlaw || s.outlaw)
+    && (!h.cleared || (w.clearedUntil[h.cleared] ?? 0) > 0));
+}
+
 function openPlace(p: PlaceDef) {
   currentPlace = p;
   view.stop();
   const done = onArrive(world, p);
   if (done.length) screens.say(done.join('　'));
   saveGame();
-  if (p.kind === 'town') screens.town(p);
-  else if (p.kind === 'village') screens.village(p);
-  else screens.site(p);
+  const hero = storyHeroAt(p);
+  if (hero) screens.storyHero(hero, () => showPlace(p));
+  else showPlace(p);
 }
 
 function moraleMult(): number {
   const { battleMin, battleMax } = MORALE_PARTY;
   const m = Math.max(0, world.save.morale - racePenalty(roster)) / 100;
-  return (battleMin + (battleMax - battleMin) * m) * (1 + skillOf(roster.hero, roster.soldiers, 'tactics') * 0.03);
+  return (battleMin + (battleMax - battleMin) * m) * (1 + skillOf(roster.hero, roster.soldiers, 'tactics') * 0.03)
+    * world.politics.honorMorale();
 }
 
 /** Esc 之後瀏覽器要隔約一秒先再鎖得滑鼠，失敗就留喺暫停畫面 */
@@ -198,8 +220,23 @@ function attackPlace(p: PlaceDef) {
   void startBattle(p.garrison!, p.garrisonLevel ?? 1, p.theme ?? 'plains', (win) => {
     if (!win) return '';
     world.markCleared(p);
-    return placeReward(p);
+    const reward = placeReward(p);
+    if (p.kind === 'lair' && world.save.pol.outlaw) {
+      world.save.pol.owners[p.id] = PLAYER;
+      return `${reward}、佔咗${p.name}做山寨！`;
+    }
+    return reward;
   }, party, crawl ? { dismount: true, firstPerson: true } : {});
+}
+
+function fightHunter(n: Npc) {
+  const pol = world.politics;
+  void startBattle(raiderArmy(n), 2, 'plains', (win) => {
+    if (!win) return '';
+    world.npcs.remove(n);
+    pol.deed('killPatrol', pol.ownerOf(n.home));
+    return '打散官兵，懸賞更高';
+  });
 }
 
 function assaultFief(p: PlaceDef, breaches: number) {
@@ -250,6 +287,7 @@ function fightRaider(n: Npc) {
   void startBattle(raiderArmy(n), n.kind === 'dragon' ? 6 : NPC_RULES.raiderLevel, n.kind === 'dragon' ? 'night' : 'plains', (win) => {
     if (!win) return '';
     world.npcs.remove(n);
+    world.politics.deed('beatRaider');
     if (n.kind === 'dragon') {
       if (!roster.hero.artifacts.includes('dragon_bone')) roster.hero.artifacts.push('dragon_bone');
       roster.gold += 3000;
@@ -326,6 +364,8 @@ battle.onEnd = (result: BattleResult) => {
   if (!arenaFight) {
     world.winMorale(result.win);
     world.politics.s.renown += result.renown;
+    if (result.retreated) world.politics.deed('retreat');
+    else if (result.win && world.politics.s.liege) world.politics.deed('serve');
   }
   arenaFight = false;
   battle.sfx.fanfare(result.win);
@@ -354,6 +394,7 @@ view.onEvent = (e) => {
     view.stop();
     if (e.type === 'bandit') screens.bandit(e.bandit);
     else if (e.type === 'npc') screens.npc(e.npc);
+    else if (e.type === 'hunted') screens.hunted(e.npc);
     else screens.story(e.event);
   }
 };
