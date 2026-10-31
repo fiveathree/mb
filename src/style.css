@@ -369,3 +369,13 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 .ng-head h2 { margin: 0; }
 .ng-head .wp { padding-top: 0; padding-bottom: 0; }
 .hero-name { width: 90px; padding: 0 4px; font-size: 13px; color: var(--gold); text-align: center; background: #1b2230; border: 1px solid var(--line); border-radius: 4px; }
+
+/* 冠位戰技 */
+#musou.ready .bar-track i { background: #ffd24a; box-shadow: 0 0 8px #ffd24a; }
+.musou-cut { position: fixed; left: 0; right: 0; top: 30%; z-index: 40; padding: 8px 0; font-size: clamp(38px, 7vw, 72px); font-weight: 800; letter-spacing: 0.12em; text-align: center; color: #fff; text-shadow: 0 0 18px var(--c), 0 0 42px var(--c); background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.72) 25%, rgba(0, 0, 0, 0.72) 75%, transparent); pointer-events: none; animation: musou-cut 1.3s ease-out forwards; }
+@keyframes musou-cut {
+  0% { opacity: 0; transform: translateX(-16%) scale(1.3); }
+  18% { opacity: 1; transform: none; }
+  78% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scale(1.08); }
+}

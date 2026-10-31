@@ -1,5 +1,6 @@
 import type { PoolId, Rarity } from './gacha';
 import { FIGURES } from './figures';
+import { CROWNS } from './crowns';
 import type { Race } from './races';
 
 export type Role = 'infantry' | 'archer' | 'cavalry' | 'mage';
@@ -64,6 +65,8 @@ export interface UnitDef {
   boss?: boolean;
   /** 最大法力 */
   mp?: number;
+  /** 冠位角色 id，有就有專屬戰技 */
+  crown?: string;
   /** 覆蓋種族膚色，五色龍用 */
   skin?: number;
   /** 額外體型倍率 */
@@ -547,6 +550,8 @@ for (const f of FIGURES) {
     mp: f.weapons[0].startsWith('sig_') ? AI_CROWN_MP : undefined,
   });
 }
+
+for (const c of CROWNS) UNITS[c.id].crown = c.id;
 
 // 每個卡池最強嗰位係 UR
 for (const id of ['hero_barn', 'hero_morvain', 'hero_asterion', 'hero_reynard', 'hero_gorak']) UNITS[id].rarity = 'ur';

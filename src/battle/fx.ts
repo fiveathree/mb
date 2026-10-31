@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX = 320;
+const MAX = 640;
 const GRAVITY = 12;
 
 interface Particle {
@@ -14,6 +14,8 @@ interface Particle {
   vz: number;
 }
 
+const RING_DENSITY = 7;
+const PILLAR_COUNT = 44;
 const BOLTS = 6;
 const BOLT_SEGMENTS = 8;
 const BOLT_TOP = 42;
@@ -80,8 +82,46 @@ export class Fx {
       y = ny;
       z = nz;
     });
+    this.flash.color.set(0xc8dcff);
     this.flash.position.set(pos.x, pos.y + 8, pos.z);
     this.flash.intensity = 260;
+  }
+
+  /** 地上一圈向外散 */
+  ring(pos: THREE.Vector3, radius: number, color: number) {
+    this.c.set(color);
+    const count = Math.round(RING_DENSITY * radius);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      this.spawn(pos.x + Math.cos(a) * radius, pos.y, pos.z + Math.sin(a) * radius, Math.cos(a) * 3, 2 + Math.random() * 3, Math.sin(a) * 3);
+    }
+    this.mesh.instanceColor!.needsUpdate = true;
+  }
+
+  /** 由地面衝上天嘅光柱 */
+  pillar(pos: THREE.Vector3, color: number, width: number) {
+    this.c.set(color);
+    for (let i = 0; i < PILLAR_COUNT; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * width;
+      this.spawn(pos.x + Math.cos(a) * r, pos.y + Math.random() * 3, pos.z + Math.sin(a) * r, 0, 10 + Math.random() * 16, 0);
+    }
+    this.mesh.instanceColor!.needsUpdate = true;
+  }
+
+  /** 招式嘅強光 */
+  flashAt(pos: THREE.Vector3, color: number) {
+    this.flash.color.set(color);
+    this.flash.position.copy(pos);
+    this.flash.intensity = 320;
+  }
+
+  private spawn(x: number, y: number, z: number, vx: number, vy: number, vz: number) {
+    const p = this.parts[this.next];
+    p.max = p.life = 0.4 + Math.random() * 0.4;
+    Object.assign(p, { x, y, z, vx, vy, vz });
+    this.mesh.setColorAt(this.next, this.c);
+    this.next = (this.next + 1) % MAX;
   }
 
   burst(pos: THREE.Vector3, color: number, count: number, speed: number) {

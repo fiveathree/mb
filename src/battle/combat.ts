@@ -3,6 +3,7 @@ import { COMBAT, FEEL, type AttackDir } from '../data/combat';
 import { COLORS, TERRAIN } from '../data/battlefield';
 import { SHIELD, SPELL_GLOW, type WeaponDef } from '../data/weapons';
 import { HORSE_RADIUS } from '../data/horses';
+import { MUSOU_RULES } from '../data/crowns';
 import { angleDiff, bearing, clamp, flatDist, rad, type Combatant, type Horse } from './entities';
 import type { Fx } from './fx';
 import type { Sfx } from './audio';
@@ -47,6 +48,8 @@ export interface CombatWorld {
 }
 
 const tmp = new Vector3();
+const MUSOU_ARMOR = 0.5;
+const MUSOU_LAUNCH = 6;
 
 export function startCharge(c: Combatant, dir: AttackDir) {
   if (c.phase !== 'idle' && c.phase !== 'block') return;
@@ -299,12 +302,21 @@ export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: V
   }
 }
 
+/** 冠位戰技命中：無視格擋，一律飛起 */
+export function musouHit(world: CombatWorld, att: Combatant, t: Combatant, raw: number, nx: number, nz: number, label: string) {
+  const final = Math.round(Math.max(raw - t.def.armor * MUSOU_ARMOR, raw * COMBAT.minDamageRatio));
+  applyDamage(world, att, t, final, nx, nz, MUSOU_LAUNCH, label);
+}
+
 function applyDamage(
   world: CombatWorld, att: Combatant, t: Combatant, final: number, nx: number, nz: number, launch: number, label: string,
 ) {
   const isPlayerAtt = att === world.player;
   const isPlayerTgt = t === world.player;
+  if (t.musouT > 0) return;
   t.hp -= final;
+  if (att.def.crown && att.musouT <= 0) att.musou = Math.min(MUSOU_RULES.max, att.musou + final * MUSOU_RULES.perDamageDealt);
+  if (t.def.crown) t.musou = Math.min(MUSOU_RULES.max, t.musou + final * MUSOU_RULES.perDamageTaken);
   const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2 + (t.horse ? 0.8 : 0), t.pos.z);
   world.fx.burst(hitPos, COLORS.blood, 6 + Math.min(16, final / 5), 3 + launch * 0.5);
 

@@ -1,3 +1,4 @@
+import { MUSOU_RULES } from '../data/crowns';
 import { Vector3 } from 'three';
 import { COMBAT, type AttackDir } from '../data/combat';
 import { BATTLEFIELD } from '../data/battlefield';
@@ -33,6 +34,7 @@ const CONTROLS: [string, string][] = [
   ['F', '上馬／下馬'],
   ['空白鍵', '跳；飛行坐騎按住爬升'],
   ['V', '戰吼（獸人、牛頭人、狼人）'],
+  ['R', '冠位戰技（氣滿）'],
   ['1 2 3 4 0', '選步弓騎法／全軍'],
   ['F1 F2 F3', '跟隨／守住／衝鋒'],
   ['F4 F5 F6', '散開／密集／停射'],
@@ -41,6 +43,8 @@ const CONTROLS: [string, string][] = [
   ['C', '叫出滑鼠游標，撳畫面返回'],
   ['Esc', '暫停／撤退'],
 ];
+
+const MUSOU_CUT_MS = 1300;
 
 export class Hud {
   private root: HTMLElement;
@@ -72,7 +76,7 @@ export class Hud {
           <div class="charge"><i></i></div>
         </div>
         <div class="panel left">
-          ${bar('hp', '生命')}${bar('mp', '法力')}${bar('horse', '戰馬')}${bar('stam', '馬力')}${bar('shield', '盾牌')}
+          ${bar('hp', '生命')}${bar('mp', '法力')}${bar('horse', '戰馬')}${bar('stam', '馬力')}${bar('shield', '盾牌')}${bar('musou', '戰技')}
         </div>
         <div class="panel right">
           <div id="speed"></div>
@@ -232,6 +236,16 @@ export class Hud {
     this.q('#next').onclick = onContinue;
   }
 
+  /** 出絕招嘅大字 */
+  musouCut(name: string, color: number) {
+    const el = document.createElement('div');
+    el.className = 'musou-cut';
+    el.textContent = name;
+    el.style.setProperty('--c', `#${color.toString(16).padStart(6, '0')}`);
+    document.body.append(el);
+    window.setTimeout(() => el.remove(), MUSOU_CUT_MS);
+  }
+
   announce(text: string, kind: 'hit' | 'kill' | 'guard' | 'hurt') {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
@@ -338,6 +352,8 @@ export class Hud {
     this.setBar('stam', h.stamina, h.def.stamina, !h.dead);
     this.setBar('shield', p.shieldHp, p.shieldMax, p.weapon.hasShield);
     this.q('#stam').classList.toggle('low', h.exhausted);
+    this.setBar('musou', p.musou, MUSOU_RULES.max, !!p.def.crown);
+    this.q('#musou').classList.toggle('ready', p.musou >= MUSOU_RULES.max);
 
     if (this.frame % MINIMAP_EVERY === 0) {
       const count = (team: number) => b.units.filter((u) => u.team === team && !u.dead && !u.routing).length;

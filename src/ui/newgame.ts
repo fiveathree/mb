@@ -5,7 +5,7 @@ import { SCENARIOS, type Scenario } from '../data/scenarios';
 import { BACKGROUND_JOB, JOBS, jobOf } from '../data/jobs';
 import { ATTR_NAME, DIFFICULTY, SKILLS, type Difficulty } from '../data/economy';
 import { UNITS } from '../data/units';
-import { crownsIn, type CrownDef } from '../data/crowns';
+import { MUSOU_STYLES, crownsIn, musouOf, type CrownDef } from '../data/crowns';
 import { HORSES } from '../data/horses';
 import { WEAPONS } from '../data/weapons';
 import { armorValue, createCrownHero, partyLimit, playerDef } from '../core/hero';
@@ -40,6 +40,7 @@ const ATTR_MAX = 20;
 function crownPanel(k: CrownDef): string {
   const h = createCrownHero(k);
   const def = playerDef(h);
+  const musou = musouOf(k.id);
   const bars = (['str', 'agi', 'int', 'cha'] as const).map((id) => `
     <div class="crown-bar"><span>${ATTR_NAME[id]}</span><i><b style="width:${(h.attrs[id] / ATTR_MAX) * 100}%"></b></i><em>${h.attrs[id]}</em></div>`).join('');
   const skills = Object.entries(k.skills).map(([id, v]) => `${SKILLS[id as keyof typeof SKILLS].name} ${v}`).join('、');
@@ -51,6 +52,7 @@ function crownPanel(k: CrownDef): string {
       <div class="crown-info">
         <div>生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, [])}</div>
         <div>專屬：${k.sig[0]}（${WEAPONS[`sig_${k.id}`].baseDamage} 傷害）</div>
+        <div>戰技：${musou.name}（${MUSOU_STYLES[musou.style].label}：${MUSOU_STYLES[musou.style].desc}）</div>
         <div>技能：${skills}</div>
         <div>坐騎：${HORSES.find((x) => x.id === k.horse)?.name}・${k.gold} 金・${k.food} 糧</div>
         <div>部隊：${army}</div>

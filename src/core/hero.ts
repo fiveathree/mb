@@ -199,6 +199,7 @@ export function playerDef(h: Hero): UnitDef {
   return {
     ...PLAYER_UNIT,
     name: h.name,
+    crown: h.crown,
     race: h.race,
     hp: HERO.hpBase + h.attrs.str * HERO.hpPerStr + sum('hp'),
     armor: armorValue(h),

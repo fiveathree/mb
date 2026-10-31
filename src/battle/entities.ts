@@ -86,6 +86,10 @@ export class Combatant {
   mp = 0;
   /** 魔法護盾剩餘秒數 */
   wardT = 0;
+  /** 冠位戰技氣量 */
+  musou = 0;
+  /** 出緊絕招，呢段時間無敵 */
+  musouT = 0;
   /** 倒下但只係受傷 */
   wounded = false;
   morale: number;

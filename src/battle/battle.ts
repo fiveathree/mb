@@ -1,3 +1,5 @@
+import { MUSOU_RULES } from '../data/crowns';
+import { startMusou, updateMusou, type MusouCast } from './musou';
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import {
@@ -133,6 +135,7 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  casts: MusouCast[] = [];
   private forest = false;
   private pendingStrikes: { owner: Combatant; w: WeaponDef; pos: THREE.Vector3; mult: number; t: number }[] = [];
   private trapCount = 0;
@@ -743,6 +746,7 @@ export class Battle implements CombatWorld {
     setRiver(!!setup.river);
     if (setup.river) this.layRiver();
     this.pendingStrikes = [];
+    this.casts = [];
     this.peaceful = !!setup.town;
     this.townHint = '';
     this.townSpots = [];
@@ -1005,6 +1009,7 @@ export class Battle implements CombatWorld {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
     this.updateStrikes(dt);
+    if (!this.peaceful) updateMusou(this, dt);
     if (this.peaceful) this.updateTown(dt);
     // 主角倒下：跟隨嘅部隊唔再等，繼續打
     else if (this.player.dead) for (const g of this.groups[0]) if (g.order === 'follow') g.order = 'charge';
@@ -1115,6 +1120,7 @@ export class Battle implements CombatWorld {
 
     if (i.pressed('KeyF')) this.toggleMount();
     if (i.pressed('KeyV')) this.warcry();
+    if (i.pressed('KeyR')) this.tryMusou();
     if (i.pressed('KeyE') && !this.peaceful) this.toggleCouch();
 
     const throttle = (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
@@ -1143,7 +1149,19 @@ export class Battle implements CombatWorld {
       }
     }
 
-    if (!p.couched) this.handleAttack();
+    if (!p.couched && p.musouT <= 0) this.handleAttack();
+  }
+
+  /** 冠位戰技：氣滿先放到 */
+  private tryMusou() {
+    const p = this.player;
+    if (!p.def.crown || this.peaceful || p.musouT > 0) return;
+    if (p.musou >= MUSOU_RULES.max) startMusou(this, p);
+    else this.hud.announce(`氣未夠 ${Math.floor(p.musou)}／${MUSOU_RULES.max}`, 'guard');
+  }
+
+  musouCut(name: string, color: number) {
+    this.hud.musouCut(name, color);
   }
 
   /** 種族戰吼 */

@@ -219,6 +219,81 @@ export const CROWNS: CrownDef[] = [
 /** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
 export const SIG_MP = { aoe: 18, bolt: 12 };
 
+export type MusouStyle = 'whirl' | 'charge' | 'rain' | 'nova' | 'thunder' | 'shadow' | 'rally';
+
+export interface MusouDef {
+  name: string;
+  style: MusouStyle;
+  color: number;
+}
+
+/** 招式手感：幾多步、每步隔幾耐、傷害倍率（底數係專屬兵器）、範圍 */
+export const MUSOU_STYLES: Record<MusouStyle, { label: string; desc: string; steps: number; every: number; mult: number; radius: number; reach: number; spread: number }> = {
+  whirl: { label: '亂舞', desc: '原地掃蕩四周', steps: 6, every: 0.2, mult: 0.7, radius: 6, reach: 0, spread: 0 },
+  charge: { label: '突進', desc: '向前直衝，撞飛沿途敵人', steps: 7, every: 0.09, mult: 0.8, radius: 3.6, reach: 3, spread: 0 },
+  rain: { label: '天降', desc: '前方一片連環轟落', steps: 14, every: 0.09, mult: 0.7, radius: 3.2, reach: 13, spread: 9 },
+  nova: { label: '爆發', desc: '三重衝擊波向外擴散', steps: 3, every: 0.35, mult: 1.2, radius: 5, reach: 0, spread: 0 },
+  thunder: { label: '落雷', desc: '連環雷劈附近敵人', steps: 8, every: 0.14, mult: 1, radius: 2.5, reach: 24, spread: 8 },
+  shadow: { label: '瞬斬', desc: '瞬移連斬，一刀一個', steps: 6, every: 0.16, mult: 1.3, radius: 2.5, reach: 18, spread: 0 },
+  rally: { label: '號令', desc: '全軍回血回士氣，同時震開身邊敵人', steps: 3, every: 0.4, mult: 0.5, radius: 7, reach: 22, spread: 0 },
+};
+
+export const MUSOU_RULES = {
+  max: 100,
+  /** 打人、被打、時間都會儲氣 */
+  perDamageDealt: 0.22,
+  perDamageTaken: 0.4,
+  perSecond: 1,
+  /** 招式前搖 */
+  windup: 0.35,
+  rallyHeal: 0.12,
+  rallyMorale: 25,
+  /** 部隊裏嘅冠位，敵人近過呢個先放 */
+  aiRange: 9,
+};
+
+/** 每位冠位嘅專屬戰技 */
+export const MUSOU: Record<string, MusouDef> = {
+  crown_lubu: { name: '天下無雙', style: 'whirl', color: 0xff3a2a },
+  crown_kongming: { name: '火計連環', style: 'rain', color: 0xff7a1a },
+  crown_caocao: { name: '魏武揮鞭', style: 'rally', color: 0x7a9aff },
+  crown_zhaoyun: { name: '七進七出', style: 'charge', color: 0xe8f0ff },
+  crown_taishici: { name: '百步連珠', style: 'rain', color: 0x9ae08a },
+  crown_cunxiao: { name: '十八騎破城', style: 'charge', color: 0xff5a4a },
+  crown_abaoji: { name: '鐵騎南下', style: 'charge', color: 0xe0c08a },
+  crown_qianliu: { name: '強弩射潮', style: 'rain', color: 0x4ac0e0 },
+  crown_caesar: { name: '我來我見我征服', style: 'rally', color: 0xffd24a },
+  crown_hannibal: { name: '坎尼之圍', style: 'nova', color: 0xc08aff },
+  crown_spartacus: { name: '破鎖狂舞', style: 'whirl', color: 0xffb84a },
+  crown_richard: { name: '獅心一擊', style: 'nova', color: 0xff8a3a },
+  crown_saladin: { name: '聖城之仁', style: 'rally', color: 0xf0e08a },
+  crown_achilles: { name: '特洛伊之怒', style: 'shadow', color: 0xffd24a },
+  crown_odysseus: { name: '十二斧穿弓', style: 'rain', color: 0x9ac0ff },
+  crown_atalanta: { name: '卡呂冬箭雨', style: 'rain', color: 0xa8e06a },
+  crown_lumen: { name: '聖光裁決', style: 'thunder', color: 0xfff0a0 },
+  crown_owl: { name: '獵魔瞬斬', style: 'shadow', color: 0xb0b0d0 },
+  crown_gareth: { name: '屠龍一閃', style: 'charge', color: 0xd0e0ff },
+  crown_meruna: { name: '星界崩壞', style: 'nova', color: 0xb08aff },
+  crown_lane: { name: '覺醒斬龍', style: 'whirl', color: 0xff9a5a },
+  crown_ira: { name: '神木庇佑', style: 'rally', color: 0x7ae08a },
+  crown_hald: { name: '龍吼崩山', style: 'nova', color: 0xbfe0ff },
+  crown_ulf: { name: '風暴龍語', style: 'thunder', color: 0xc8e0ff },
+  crown_oserin: { name: '星隕天降', style: 'rain', color: 0x8ab0ff },
+  crown_karon: { name: '煉獄焚天', style: 'nova', color: 0xff5a1a },
+  crown_wuchen: { name: '萬劍歸宗', style: 'rain', color: 0xa8f0f8 },
+  crown_xuehe: { name: '血河倒流', style: 'shadow', color: 0xe02a3a },
+  fig_fallen: { name: '霜魂寒獄', style: 'nova', color: 0x9ad8ff },
+  fig_warchief: { name: '雷霆戰歌', style: 'thunder', color: 0xa0e0ff },
+  fig_marshal: { name: '軌道炮擊', style: 'rain', color: 0xffd080 },
+  fig_prelate: { name: '靈能風暴', style: 'thunder', color: 0x6ae0f0 },
+  fig_treelord: { name: '萬木復甦', style: 'rally', color: 0x7ad06a },
+  fig_windranger: { name: '疾風連射', style: 'rain', color: 0x9af08a },
+  fig_alchemist: { name: '熾礦核爆', style: 'nova', color: 0xff9a3a },
+  fig_pethunter: { name: '靈犬突襲', style: 'shadow', color: 0xe0b06a },
+};
+export const musouOf = (id: string) => MUSOU[id];
+export const sigIdOf = (id: string) => `sig_${id}`;
+
 export const crownOf = (id?: string) => CROWNS.find((c) => c.id === id);
 export const GRAND_CROWNS = CROWNS.filter((c) => c.grand);
 /** 大混戰揀到領軍嗰十五位，其他劇本揀自己嗰幾位 */
