@@ -429,6 +429,19 @@ UNITS.boss_witch = {
   scale: 1.25, trimColor: 0x6a1a7a, plumeColor: 0xc040e0, skin: 0xf0d8e0,
 };
 UNITS.boss_warlord = { ...boss('boss_warlord', '割據梟雄', 'human', 'boss_club', 1500, 18, 0.9, 4.6), scale: 1.25, trimColor: 0x8a2a1a, plumeColor: 0xd9b24a, horse: undefined };
+UNITS.boss_frost = {
+  ...boss('boss_frost', '霜冠魔王', 'undead', 'frost_nova', 2800, 20, 0.9, 4.4), role: 'mage', weapons: ['frost_nova', 'lich_bolt', 'boss_club'],
+  scale: 1.6, trimColor: 0x6ab8e8, plumeColor: 0xa0e0ff,
+};
+UNITS.boss_hive = {
+  ...boss('boss_hive', '母巢之后', 'swarm', 'acid_spit', 2600, 16, 1.2, 4.2), role: 'mage', weapons: ['acid_spit', 'psi_bolt', 'boss_club'],
+  scale: 2, trimColor: 0x8a3a9a, plumeColor: 0xc060e0,
+};
+UNITS.boss_ancient = { ...boss('boss_ancient', '暮影遠古巨魔', 'demon', 'boss_club', 2400, 20, 1.2, 4.2), scale: 1.8, trimColor: 0x4a2a6a, plumeColor: 0x8a4ae0 };
+UNITS.boss_ember = {
+  ...boss('boss_ember', '熾礦魔心', 'golem', 'ember_blast', 2200, 18, 1.1, 3.4), role: 'mage', weapons: ['ember_blast', 'boss_fist'],
+  trimColor: 0xe05a1a, plumeColor: 0xff8a2c, skin: 0x8a3a1a,
+};
 /** 離巢巨龍輪流係五色之一 */
 export const DRAGON_BREEDS = ['boss_dragon', 'boss_dragon_white', 'boss_dragon_blue', 'boss_dragon_green', 'boss_dragon_black'];
 
@@ -463,6 +476,26 @@ for (const u of [
   troop('griffin_rider', '獅鷲騎士', 'cavalry', 5, 130, 11, ['elite_lance', 'cavalry_sword'], 0xb08a4a, { pool: 'fair', horse: 'griffin_mount', plumeColor: 0xd9b24a, desc: '由天上撲落嚟' }),
   troop('pegasus_knight', '天馬騎士', 'cavalry', 4, 100, 7, ['cavalry_sword'], 0xe8ecf4, { pool: 'fair', horse: 'pegasus', plumeColor: 0x8fc8ff, desc: '快得留唔低影' }),
   troop('lord_knight', '領主', 'cavalry', 6, 240, 16, ['elite_lance', 'hero_blade'], 0xd9b24a, { horse: 'warhorse', hero: true, aura: 3, plumeColor: 0xf2c14e, morale: 130 }),
+  // 人魔霜亂
+  troop('paladin', '聖光騎士', 'infantry', 4, 150, 14, ['elite_sword'], 0xe8d890, { desc: '以聖光守護同袍' }),
+  troop('ghoul', '食屍鬼', 'infantry', 2, 70, 2, ['infantry_axe'], 0x6a7a5a, { race: 'undead', runSpeed: 5, desc: '成群湧上' }),
+  troop('stitched', '縫合巨屍', 'infantry', 4, 240, 6, ['elite_axe'], 0x7a8a6a, { race: 'giant', scale: 0.6, walkSpeed: 1.7, runSpeed: 3.2, desc: '由屍塊縫成' }),
+  // 星海三族
+  troop('marine_trooper', '鋼甲步兵', 'archer', 2, 75, 7, ['gauss_rifle', 'short_sword'], 0x4a6a9a, { desc: '人類嘅標準步兵' }),
+  troop('flame_trooper', '噴火兵', 'infantry', 3, 110, 10, ['troop_fire', 'short_sword'], 0xc05a2a, { desc: '貼身一片火海' }),
+  troop('walker_mech', '重裝機甲', 'archer', 5, 220, 18, ['heavy_cannon', 'infantry_sword'], 0x7a8290, { scale: 1.5, walkSpeed: 1.8, runSpeed: 3.2, desc: '會行嘅炮台' }),
+  troop('swarmling', '蟲群幼獸', 'infantry', 1, 40, 1, ['short_sword'], 0x6a3a7a, { race: 'swarm', runSpeed: 6, desc: '多到數唔晒' }),
+  troop('acid_spitter', '酸液蟲', 'archer', 2, 65, 3, ['acid_spit', 'short_sword'], 0x7ac04a, { race: 'swarm', desc: '遠距離噴酸' }),
+  troop('swarm_brute', '甲殼巨蟲', 'infantry', 4, 200, 14, ['elite_axe'], 0x5a2a6a, { race: 'swarm', scale: 1.5, desc: '蟲群嘅破城錘' }),
+  troop('psi_zealot', '靈能戰士', 'infantry', 3, 120, 9, ['elite_sword'], 0xd9b24a, { race: 'psionic', desc: '手臂伸出能量刃' }),
+  troop('psi_stalker', '靈能追獵者', 'archer', 4, 110, 8, ['psi_bolt', 'short_sword'], 0x4ac0d0, { race: 'psionic', runSpeed: 5.2, desc: '瞬間閃現' }),
+  // 遠古對決
+  troop('lane_creep', '線上小兵', 'infantry', 1, 55, 2, ['infantry_sword'], 0x8a8a6a, { desc: '一波接一波' }),
+  troop('lane_caster', '遠程小兵', 'archer', 1, 40, 1, ['troop_fire', 'short_sword'], 0x6a8aa0, { desc: '企後面放火球' }),
+  troop('ancient_guard', '遠古守衛', 'infantry', 4, 190, 13, ['elite_axe'], 0x4a8a5a, { race: 'treant', desc: '守住水晶' }),
+  // 礦燈鎮
+  troop('ember_miner', '魔化礦工', 'infantry', 2, 80, 4, ['infantry_axe'], 0xc05a2a, { desc: '眼入面有熾礦嘅火' }),
+  troop('tomb_spider', '洞穴巨蛛', 'infantry', 2, 60, 3, ['spear'], 0x3a3a2a, { race: 'lizard', runSpeed: 5.4, desc: '由天花板跌落嚟' }),
   troop('huscarl', '北地親衛', 'infantry', 3, 110, 9, ['infantry_axe'], 0x9ab8d0, { race: 'nord', desc: '雪原上嘅重斧戰士' }),
   troop('darkelf_blade', '影刃', 'infantry', 3, 85, 6, ['elite_sword'], 0x4a3a6a, { race: 'darkelf', pool: 'fair', runSpeed: 5.2, desc: '由樹影入面出手' }),
   troop('slime', '史萊姆', 'infantry', 1, 55, 1, ['short_sword'], 0x4fb8e8, { race: 'slime', pool: 'beast', desc: '軟綿綿，斬極都仲喺度' }),

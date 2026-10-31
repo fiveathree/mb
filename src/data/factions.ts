@@ -242,7 +242,7 @@ export const ARTIFACTS: ArtifactDef[] = [
 /** 主角開局 */
 export type PlayableRace =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon'
-  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy' | 'centaur' | 'darkelf' | 'ogre' | 'nord';
+  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy' | 'centaur' | 'darkelf' | 'ogre' | 'nord' | 'psionic';
 
 export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>; spell?: string; friend?: string; foe?: string }> = {
   human: { name: '人類', desc: '平均，起步多 2 技能點', attrs: { cha: 1 } },
@@ -267,6 +267,7 @@ export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs:
   darkelf: { name: '黑暗精靈', desc: '敏智各 +1，夜視，起步雷擊', attrs: { agi: 1, int: 1 }, spell: 'lightning', friend: 'darkelves', foe: 'sylvan' },
   ogre: { name: '食人魔', desc: '力量 +4、智力 −1，好大食', attrs: { str: 4, int: -1 }, friend: 'monsters', foe: 'griffin' },
   nord: { name: '北地人', desc: '力量 +2，耐寒，會戰吼', attrs: { str: 2 }, friend: 'northmen' },
+  psionic: { name: '靈能族', desc: '智力 +2、敏捷 +1，起步雷擊，唔騎馬', attrs: { int: 2, agi: 1 }, spell: 'lightning' },
 };
 
 export interface StartOption {

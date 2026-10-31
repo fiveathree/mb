@@ -30,6 +30,8 @@ export interface StoryEvent {
   needMen?: number;
   /** 只喺魔法劇本出現 */
   magic?: boolean;
+  /** 只喺呢個劇本出現 */
+  scenario?: string;
 }
 
 export const EVENTS: StoryEvent[] = [
@@ -52,6 +54,38 @@ export const EVENTS: StoryEvent[] = [
   {
     id: 'peddler', title: '神秘行商', text: '有個披斗篷嘅行商話有好貨，收你 800 金換一張招募令。',
     choices: [{ label: '買', effect: 'ticket' }, { label: '唔信佢', effect: 'none' }],
+  },
+  {
+    id: 'plaguegrain', scenario: 'frostwar', title: '染疫糧車', text: '一架糧車入面嘅麥發黑。王子話要燒村，村民喊住求你。',
+    choices: [{ label: '燒咗糧，救得幾多得幾多', effect: 'renown' }, { label: '放過村民，自己收低部分糧', effect: 'food' }],
+  },
+  {
+    id: 'hordeoath', scenario: 'frostwar', title: '戰歌之盟', text: '獸人斥候放低斧頭：「屍潮面前，冇人類同獸人之分。」',
+    choices: [{ label: '握手結盟', effect: 'prophecy' }, { label: '唔信佢', effect: 'none' }],
+  },
+  {
+    id: 'distress', scenario: 'starwar', title: '求救訊號', text: '殖民站傳嚟斷續訊號，背景有好多爪刮金屬嘅聲。',
+    choices: [{ label: '派隊支援', effect: 'renown' }, { label: '搜刮物資', effect: 'gold' }],
+  },
+  {
+    id: 'psivision', scenario: 'starwar', title: '靈能幻象', text: '一個金色身影喺你腦入面講：「星區將燃，選擇你嘅陣營。」',
+    choices: [{ label: '接受試煉', effect: 'prophecy' }, { label: '當係幻覺', effect: 'none' }],
+  },
+  {
+    id: 'firstblood', scenario: 'ancients', title: '第一滴血', text: '河道傳嚟宣告：有人拎咗第一滴血，全軍士氣大振。',
+    choices: [{ label: '乘勝追擊', effect: 'renown' }, { label: '回泉水補給', effect: 'food' }],
+  },
+  {
+    id: 'deepbeast', scenario: 'ancients', title: '遠古巨獸甦醒', text: '河邊洞穴傳出震動，打低佢可以攞到復活神物。',
+    choices: [{ label: '帶隊去打', effect: 'prophecy' }, { label: '讓畀對面', effect: 'none' }],
+  },
+  {
+    id: 'minecollapse', scenario: 'emberdeep', title: '礦坑塌陷', text: '礦工話第三層塌咗，下面傳嚟紅光同低語。',
+    choices: [{ label: '救人', effect: 'renown' }, { label: '撿走散落嘅熾礦', effect: 'gold' }],
+  },
+  {
+    id: 'petfood', scenario: 'emberdeep', title: '餵魚變身', text: '行商話餵隻狗食條怪魚，佢會變成魔狼三十秒。',
+    choices: [{ label: '買條試下', effect: 'gold' }, { label: '唔好玩', effect: 'none' }],
   },
   {
     id: 'wyrmshadow', magic: true, title: '龍影掠空', text: '巨大黑影掠過頭頂，村民話預言中吞食龍魂嘅人就快出現，全部人望住你。',

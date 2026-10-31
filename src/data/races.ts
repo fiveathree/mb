@@ -1,7 +1,7 @@
 export type Race =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'goblin' | 'undead' | 'lizard' | 'minotaur' | 'dragonkin'
   | 'beastkin' | 'halfling' | 'demon' | 'golem' | 'giant' | 'dragon'
-  | 'centaur' | 'harpy' | 'merfolk' | 'vampire' | 'werewolf' | 'treant' | 'fairy' | 'darkelf' | 'ogre' | 'slime' | 'nord';
+  | 'centaur' | 'harpy' | 'merfolk' | 'vampire' | 'werewolf' | 'treant' | 'fairy' | 'darkelf' | 'ogre' | 'slime' | 'nord' | 'swarm' | 'psionic';
 
 export type RaceLook = 'plain' | 'ears' | 'tusks' | 'skull' | 'bull' | 'snout' | 'dragon' | 'wings' | 'antlers' | 'fins' | 'blob';
 
@@ -56,6 +56,8 @@ export const RACES: Record<Race, RaceDef> = {
   ogre: { name: '食人魔', skin: 0x8a7a4a, scale: 1.5, look: 'tusks', food: 2.8, wage: 1.3, noRide: true, warcry: WARCRY },
   slime: { name: '史萊姆', skin: 0x4fb8e8, scale: 0.9, look: 'blob', food: 0.2, wage: 0.4, noRide: true },
   nord: { name: '北地人', skin: 0xe8c8a8, scale: 1.06, look: 'plain', food: 1.2, wage: 1, warcry: WARCRY },
+  swarm: { name: '蟲族', skin: 0x6a3a7a, scale: 0.95, look: 'snout', food: 0.5, wage: 0.4, noRide: true, nightVision: true },
+  psionic: { name: '靈能族', skin: 0xc8a860, scale: 1.12, look: 'plain', food: 0.6, wage: 1.6, noRide: true },
 };
 
 /** 組團消耗 */

@@ -2,6 +2,7 @@ import type { ArmyEntry } from './battlefield';
 import { FACTIONS } from './factions';
 import type { Culture } from './formations';
 import { NPC } from './economy';
+import { figuresFor } from './figures';
 import { BIOMES, MAP, PLACES } from './world';
 
 export interface Scenario {
@@ -22,6 +23,8 @@ export interface Scenario {
   boss?: { unit: string; lair: string; desc: string };
   /** 天上飛過嘅生物 */
   sky?: string[];
+  /** 只出現呢個劇本專屬人物 */
+  ownFigures?: boolean;
 }
 
 const army = (...list: [string, number][]): ArmyEntry[] => list.map(([unit, count]) => ({ unit, count }));
@@ -130,6 +133,53 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['sword_cultivator', 6], ['dao_guard', 14], ['archer', 6]), army(['demon_grunt', 8], ['goblin_spear', 12], ['necromancer', 3])],
     boss: { unit: 'boss_heavenly', lair: '渡劫崖', desc: '九天雷劫之下，老魔等待飛昇。' },
   },
+  {
+    id: 'frostwar', ownFigures: true, sky: ['griffin', 'wyvern', 'bird'], name: '人魔霜亂', desc: '王子墮入霜魂，屍潮席捲大陸，人類同獸人被迫聯手', cultures: ['west', 'magic'], levy: 'footman',
+    mercs: ['footman', 'archer', 'paladin', 'orc_warrior', 'elf_longbow'],
+    realms: [
+      ['銀翼王國', '銀翼城'], ['鐵爐山國', '深爐堡'], ['高塔法師領', '星穹城'], ['聖光騎士團', '聖光堡'], ['戰歌部族', '碎骨要塞'], ['雷蹄氏族', '雷崖'],
+      ['暗矛巨魔', '暗矛寨'], ['金曦王庭', '金曦塔'], ['月影林民', '月井谷'], ['地精商盟', '齒輪港'], ['天罰屍潮', '霜冠堡'], ['亡骸議會', '死靈都'],
+      ['冰爪巨人', '冰爪嶺'], ['燃焰軍團', '魔火裂隙'], ['潮汐海妖', '潮汐宮'],
+    ],
+    camps: [army(['footman', 12], ['archer', 8], ['paladin', 4]), army(['ghoul', 16], ['skeleton_archer', 6], ['stitched', 3])],
+    boss: { unit: 'boss_frost', lair: '霜冠王座', desc: '墮落王子坐喺冰封王座上，等緊你。' },
+  },
+  {
+    id: 'starwar', sky: ['dropship', 'swarmflyer'], name: '星海三族', desc: '人類殖民者、噬星蟲群同遠古靈能族爭奪星區', cultures: ['west'], levy: 'marine_trooper', ownFigures: true,
+    mercs: ['marine_trooper', 'flame_trooper', 'psi_zealot', 'psi_stalker', 'walker_mech'],
+    realms: [
+      ['銀河聯邦', '首都星港'], ['礦星殖民地', '煤渣站'], ['叛軍同盟', '自由基地'], ['傭兵公會', '霓虹城'], ['鋼鐵軍團', '鋼壘'], ['靈能聖殿', '金輝聖城'],
+      ['流亡遠星者', '暗影方舟'], ['守望議會', '星環殿'], ['原住民', '石碑谷'], ['科研艦隊', '零號實驗室'], ['蟲巢主腦', '母巢'], ['噬星蟲群', '酸液巢'],
+      ['掠奪海盜', '黑市站'], ['機械叛軍', '機核'], ['飛蟲群', '孢子塔'],
+    ],
+    camps: [
+      army(['marine_trooper', 16], ['flame_trooper', 6], ['walker_mech', 3]), army(['psi_zealot', 12], ['psi_stalker', 8]),
+      army(['swarmling', 22], ['acid_spitter', 8], ['swarm_brute', 3]),
+    ],
+    boss: { unit: 'boss_hive', lair: '主巢深淵', desc: '蟲群意志嘅中心，整個星球都喺佢嘅脈搏入面。' },
+  },
+  {
+    id: 'ancients', ownFigures: true, sky: ['bird', 'wyvern'], name: '遠古對決', desc: '晨曦聖所同暮影深淵各守一塊水晶，英雄沿三條大路廝殺', cultures: ['west', 'magic'], levy: 'lane_creep',
+    mercs: ['lane_creep', 'lane_caster', 'ancient_guard', 'elf_mage', 'minotaur_guard'],
+    realms: [
+      ['晨曦聖所', '曦光水晶'], ['林間守衛', '古樹壘'], ['河道商會', '河心集'], ['天空聖女', '雲頂台'], ['賞金獵人會', '賞金鎮'], ['風行遊俠', '疾風谷'],
+      ['戰鼓巨魔', '戰鼓山'], ['森林先知', '萬木林'], ['暮影深淵', '暮影水晶'], ['瘟疫教團', '腐沼'], ['骷髏王庭', '白骨殿'], ['噬魂影裔', '噬魂崖'],
+      ['血魔祭司', '血祭台'], ['寒霜法師', '寒霜塔'], ['中立野怪', '遠古營地'],
+    ],
+    camps: [army(['lane_creep', 14], ['lane_caster', 8], ['ancient_guard', 3]), army(['lane_creep', 14], ['necromancer', 3], ['demon_grunt', 6])],
+    boss: { unit: 'boss_ancient', lair: '暮影水晶深處', desc: '打爆佢，呢場千年對決先有結果。' },
+  },
+  {
+    id: 'emberdeep', ownFigures: true, sky: ['bird', 'demonbat'], name: '礦燈鎮傳說', desc: '小鎮礦坑愈掘愈深，熾礦力量令礦工發狂，冒險者同寵物落坑尋寶', cultures: ['west', 'magic'], levy: 'footman',
+    mercs: ['footman', 'archer', 'axeman', 'elf_mage', 'fairy'],
+    realms: [
+      ['礦燈鎮', '礦燈鎮'], ['鐵匠公會', '錘鎮'], ['冒險者營地', '火把營'], ['煉金師會', '藥瓶巷'], ['獵寶團', '寶匣村'], ['皇城', '皇都'],
+      ['沙漠商幫', '黃沙驛'], ['森林巫師', '迷霧林'], ['地精礦幫', '地精坑'], ['矮人遺族', '舊爐堡'], ['骷髏礦魂', '廢礦'], ['蜘蛛巢', '絲網洞'],
+      ['熾礦邪教', '熾礦聖堂'], ['石像守衛', '古遺跡'], ['魔化礦工', '深坑'],
+    ],
+    camps: [army(['footman', 12], ['archer', 8], ['axeman', 4]), army(['ember_miner', 14], ['tomb_spider', 8], ['skeleton', 6])],
+    boss: { unit: 'boss_ember', lair: '熾礦之心', desc: '礦坑最深處，一塊會呼吸嘅巨大熾礦。' },
+  },
 ];
 
 export const scenarioOf = (id: string): Scenario => SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
@@ -152,6 +202,8 @@ let current: Scenario = SCENARIOS[0];
 export const currentScenario = () => current;
 /** 有魔法嘅劇本先有奇幻內容 */
 export const isMagic = () => current.cultures.includes('magic');
+/** 呢個劇本有邊啲人物 */
+export const currentFigures = () => figuresFor(isMagic(), current.id, !!current.ownFigures);
 
 /** 將劇本套用落勢力同地點 */
 export function applyScenario(id: string) {

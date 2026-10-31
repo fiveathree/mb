@@ -1,6 +1,6 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
-import { GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, figuresFor, type RoutineStep } from '../data/figures';
-import { isMagic } from '../data/scenarios';
+import { GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
+import { currentFigures, isMagic } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
@@ -106,7 +106,7 @@ export class NpcSystem {
     while (count('patrol') < NPC.patrol.max) this.spawn('patrol', towns[count('patrol') % towns.length]);
     while (count('fisher') < NPC.fisher.max) this.spawn('fisher', pick(villages));
     while (count('miner') < NPC.miner.max) this.spawn('miner', pick(villages));
-    for (const f of figuresFor(isMagic())) {
+    for (const f of currentFigures()) {
       if (this.save.pol.storyMet.includes(f.id) || list.some((n) => n.figure === f.id)) continue;
       const n = this.spawn('figure', placeOf(f.home));
       n.figure = f.id;

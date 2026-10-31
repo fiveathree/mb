@@ -32,6 +32,8 @@ export interface FigureDef {
   price: number;
   /** 要幾多聲望先肯跟你 */
   renown: number;
+  /** 只喺呢個劇本出現 */
+  scenario?: string;
   routine: RoutineStep[];
 }
 
@@ -47,6 +49,56 @@ export const ROUTINES: Record<'fisher' | 'miner', RoutineStep[]> = {
 
 /** 有名有姓嘅人物：各有生活，喺大地圖行嚟行去，撞到或者喺佢落腳嘅城市可以招請 */
 export const FIGURES: FigureDef[] = [
+  {
+    id: 'fig_fallen', name: '霜魂王子 亞瑟倫', desc: '為救子民而墮落嘅王儲', rarity: 'ur', role: 'infantry', tier: 6, hp: 380, armor: 18, weapons: ['hero_blade'],
+    color: 0x6ab8e8, race: 'undead', aura: 4, home: 'griffon', price: 9000, renown: 45, scenario: 'frostwar',
+    routine: [{ job: '喺雪原招募亡者', go: 'forest', wait: 12, grow: true }, { job: '返王城質問父王', go: 'home', wait: 10 }, { job: '追查屍疫源頭', go: 'town', wait: 9, grow: true }],
+  },
+  {
+    id: 'fig_warchief', name: '戰歌酋長 薩爾加', desc: '帶族人走出奴役', rarity: 'hero', role: 'infantry', tier: 6, hp: 330, armor: 14, weapons: ['hero_axe'],
+    color: 0x5f8a45, race: 'orc', aura: 4, home: 'linjiang', price: 4000, renown: 25, scenario: 'frostwar',
+    routine: [{ job: '召集部族會盟', go: 'home', wait: 10, grow: true }, { job: '入山尋訪薩滿', go: 'mine', wait: 10, grow: true }, { job: '同人類談判', go: 'town', wait: 8 }],
+  },
+  {
+    id: 'fig_marshal', name: '鋼鐵元帥 雷諾斯', desc: '老兵不死，只係再上一次戰場', rarity: 'hero', role: 'archer', tier: 6, hp: 280, armor: 16, weapons: ['gauss_rifle', 'hero_blade'],
+    color: 0x4a6a9a, aura: 4, home: 'griffon', price: 4000, renown: 25, scenario: 'starwar',
+    routine: [{ job: '巡視星港防線', go: 'town', wait: 9, grow: true }, { job: '喺基地練兵', go: 'home', wait: 10, grow: true }],
+  },
+  {
+    id: 'fig_prelate', name: '靈能大主教 塞琳娜', desc: '聽得到全族嘅聲音', rarity: 'ur', role: 'mage', tier: 6, hp: 300, armor: 14, weapons: ['psi_bolt', 'hero_blade'],
+    color: 0xd9b24a, race: 'psionic', aura: 5, home: 'wuyi', price: 9000, renown: 45, scenario: 'starwar',
+    routine: [{ job: '喺聖殿冥想', go: 'home', wait: 14, grow: true }, { job: '搜尋遠古遺跡', go: 'mine', wait: 12, grow: true }, { job: '號令遠星艦隊', go: 'town', wait: 8 }],
+  },
+  {
+    id: 'fig_broodqueen', name: '蟲后使者 卡瑞絲', desc: '曾經係人，而家係蟲群把聲', rarity: 'hero', role: 'mage', tier: 6, hp: 290, armor: 12, weapons: ['acid_spit', 'hero_blade'],
+    color: 0x8a3a9a, race: 'swarm', aura: 3, home: 'blackfang', price: 4200, renown: 30, scenario: 'starwar',
+    routine: [{ job: '孵化新蟲巢', go: 'forest', wait: 12, grow: true }, { job: '潛入殖民地', go: 'town', wait: 9, grow: true }],
+  },
+  {
+    id: 'fig_hook', name: '瘟鉤屠夫', desc: '一鉤拉你過去，就冇得返轉頭', rarity: 'hero', role: 'infantry', tier: 6, hp: 360, armor: 12, weapons: ['hero_axe'],
+    color: 0x7a8a6a, aura: 2, home: 'spire', price: 3500, renown: 20, scenario: 'ancients',
+    routine: [{ job: '喺河道埋伏落單嘅人', go: 'water', wait: 10, grow: true }, { job: '返暮影深淵補給', go: 'home', wait: 8 }],
+  },
+  {
+    id: 'fig_windranger', name: '疾風射手 蘿娜', desc: '箭比風快', rarity: 'hero', role: 'archer', tier: 6, hp: 230, armor: 8, weapons: ['hero_bow', 'hero_blade'],
+    color: 0x7fd06a, aura: 3, home: 'songglade', price: 3500, renown: 20, scenario: 'ancients',
+    routine: [{ job: '喺森林走位打野', go: 'forest', wait: 9, grow: true }, { job: '去河心集買裝備', go: 'town', wait: 7 }],
+  },
+  {
+    id: 'fig_treelord', name: '古樹之王', desc: '守住水晶一千年', rarity: 'ur', role: 'infantry', tier: 6, hp: 460, armor: 18, weapons: ['hero_axe'],
+    color: 0x4f7a3a, race: 'treant', aura: 5, home: 'griffon', price: 8500, renown: 40, scenario: 'ancients',
+    routine: [{ job: '坐鎮水晶', go: 'home', wait: 16, grow: true }, { job: '喚醒森林', go: 'forest', wait: 12, grow: true }],
+  },
+  {
+    id: 'fig_alchemist', name: '煉金師 維拉', desc: '被熾礦改造過嘅身體，隨時會爆', rarity: 'hero', role: 'mage', tier: 5, hp: 240, armor: 8, weapons: ['ember_blast', 'hero_blade'],
+    color: 0xe07a2a, aura: 3, home: 'griffon', price: 3000, renown: 15, scenario: 'emberdeep',
+    routine: [{ job: '落礦坑收集熾礦', go: 'mine', wait: 12, grow: true }, { job: '返藥瓶巷煉藥', go: 'town', wait: 9 }],
+  },
+  {
+    id: 'fig_pethunter', name: '獵寶人 阿卡同佢隻狼犬', desc: '佢隻狗比佢更識搵寶', rarity: 'special', role: 'archer', tier: 4, hp: 170, armor: 7, weapons: ['elite_bow', 'infantry_sword'],
+    color: 0x8a6a3a, aura: 2, home: 'linjiang', price: 1200, renown: 5, scenario: 'emberdeep',
+    routine: [{ job: '帶狗入林搵寶', go: 'forest', wait: 9, grow: true }, { job: '入鎮賣戰利品', go: 'town', wait: 7 }],
+  },
   {
     id: 'fig_hunter', name: '老獵人 鐵箭伯', desc: '一輩子喺林入面過', rarity: 'fine', role: 'archer', tier: 3, hp: 95, armor: 4, weapons: ['elite_bow', 'short_sword'],
     color: 0x7a5a30, aura: 1, home: 'moonleaf', price: 600, renown: 0, routine: [hunt, sellAtTown, hunt, rest],
@@ -127,6 +179,16 @@ export interface Favor {
 
 /** 人物專屬委託：做完招請半價 */
 export const FAVORS: Record<string, Favor> = {
+  fig_fallen: { title: '清剿三夥屍潮前哨', kind: 'bandits', need: 3 },
+  fig_warchief: { title: '將和約送去臨江', kind: 'letter', target: 'linjiang' },
+  fig_marshal: { title: '運 30 補給去前線基地', kind: 'grain', food: 30, target: 'griffon' },
+  fig_prelate: { title: '清除兩個蟲群據點', kind: 'bandits', need: 2 },
+  fig_broodqueen: { title: '將孢子樣本送去黑牙堡', kind: 'letter', target: 'blackfang' },
+  fig_hook: { title: '幫手清走河道上兩夥人', kind: 'bandits', need: 2 },
+  fig_windranger: { title: '將戰報送去林歌谷', kind: 'letter', target: 'songglade' },
+  fig_treelord: { title: '運 40 糧去水晶前線', kind: 'grain', food: 40, target: 'griffon' },
+  fig_alchemist: { title: '運 20 糧去鎮上煉藥房', kind: 'grain', food: 20, target: 'griffon' },
+  fig_pethunter: { title: '幫阿卡趕走搶寶山賊', kind: 'bandits', need: 1 },
   fig_hunter: { title: '趕走林中山賊，還鐵箭伯清靜', kind: 'bandits', need: 1 },
   fig_fisher: { title: '運 20 糧去臨江城，救濟漁村', kind: 'grain', food: 20, target: 'linjiang' },
   fig_miner: { title: '將礦脈圖送去鐵砧山城', kind: 'letter', target: 'anvilhold' },
@@ -156,7 +218,9 @@ export const figureOf = (id: string) => FIGURES.find((f) => f.id === id);
 
 /** 只喺有魔法嘅劇本出現 */
 const MAGIC_FIGURES = ['fig_immortal', 'fig_vampire', 'fig_assassin', 'fig_slimelord'];
-export const figuresFor = (magic: boolean) => FIGURES.filter((f) => magic || !MAGIC_FIGURES.includes(f.id));
+export const figuresFor = (magic: boolean, scenario: string, ownOnly: boolean) => FIGURES.filter((f) => (
+  f.scenario ? f.scenario === scenario : !ownOnly && (magic || !MAGIC_FIGURES.includes(f.id))
+));
 
 /** 招請價：愈修練愈貴 */
 export const figurePrice = (f: FigureDef, growth: number, favored = false) => Math.round(f.price * (1 + growth * 0.08) * (favored ? FAVOR_DISCOUNT : 1));

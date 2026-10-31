@@ -8,7 +8,7 @@ import type { World } from '../worldmap/world';
 export function rollEvent(world: World, day: number): StoryEvent | null {
   if (day < EVENT_RULES.firstDay || Math.random() > EVENT_RULES.chance) return null;
   const men = world.roster.soldiers.length;
-  const list = EVENTS.filter((e) => men >= (e.needMen ?? 0) && (!e.magic || isMagic()));
+  const list = EVENTS.filter((e) => men >= (e.needMen ?? 0) && (!e.magic || isMagic()) && (!e.scenario || e.scenario === currentScenario().id));
   return list[Math.floor(Math.random() * list.length)] ?? null;
 }
 

@@ -51,6 +51,8 @@ export const SKY_FAUNA: Record<string, SkyFauna> = {
   wyvern: { name: '雙足飛龍', color: '#3f7a5a', wing: 60, speed: 110, flap: 3.5, alt: [170, 300], flock: 1 },
   demonbat: { name: '魔蝠', color: '#5a1a2c', wing: 34, speed: 130, flap: 10, alt: [90, 190], flock: 5 },
   phoenix: { name: '火鳳凰', color: '#f0702a', wing: 56, speed: 150, flap: 3, alt: [190, 320], flock: 1 },
+  dropship: { name: '運輸艦', color: '#5a6a80', wing: 60, speed: 150, flap: 0, alt: [200, 320], flock: 1 },
+  swarmflyer: { name: '飛蟲', color: '#6a3a7a', wing: 26, speed: 130, flap: 11, alt: [100, 200], flock: 6 },
   dragon: { name: '巨龍', color: '#a82a1e', wing: 96, speed: 95, flap: 2.2, alt: [220, 360], flock: 1 },
 };
 
