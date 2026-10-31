@@ -21,6 +21,7 @@ import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
 import { Sfx } from './audio';
 import { Fliers } from './fliers';
+import { settings } from '../core/settings';
 import { buildTown, type TownSpot } from './town';
 import { Batches } from './batch';
 import {
@@ -154,7 +155,7 @@ export class Battle implements CombatWorld {
   /** 教學用：每幀回呼 */
   onTick: ((b: Battle) => void) | null = null;
   private slowFrames = 0;
-  private quality = 2;
+  quality = 2;
   private shadowTick = false;
   /** 顯示用鏡頭角度，追住 camYaw／camPitch，令滑鼠數據唔均都順 */
   private viewYaw = 0;
@@ -981,11 +982,17 @@ export class Battle implements CombatWorld {
     this.slowFrames++;
     if (this.slowFrames < QUALITY.patience || this.quality === 0) return;
     this.slowFrames = 0;
-    this.quality--;
-    if (this.quality === 1) this.renderer.setPixelRatio(1);
-    else {
-      this.renderer.shadowMap.enabled = false;
-      this.sun.castShadow = false;
+    this.setQuality(this.quality - 1);
+  }
+
+  /** 2 高、1 中（解像度 1）、0 低（再冇影） */
+  setQuality(level: number) {
+    this.quality = level;
+    this.renderer.setPixelRatio(level === 2 ? Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio) : 1);
+    const shadows = level > 0;
+    if (this.renderer.shadowMap.enabled !== shadows) {
+      this.renderer.shadowMap.enabled = shadows;
+      this.sun.castShadow = shadows;
       this.scene.traverse((o) => {
         const m = (o as THREE.Mesh).material as THREE.Material | undefined;
         if (m) m.needsUpdate = true;
@@ -1089,8 +1096,9 @@ export class Battle implements CombatWorld {
     if (i.pressed('KeyM')) this.sfx.muted = !this.sfx.muted;
     if (i.pressed('KeyC')) this.onCursorKey?.();
 
-    this.camYaw -= i.mouseDx * CAMERA.mouseSensitivity;
-    this.camPitch = clamp(this.camPitch + i.mouseDy * CAMERA.mouseSensitivity, CAMERA.minPitch, CAMERA.maxPitch);
+    const look = CAMERA.mouseSensitivity * settings.sensitivity;
+    this.camYaw -= i.mouseDx * look;
+    this.camPitch = clamp(this.camPitch + i.mouseDy * look * (settings.invertY ? -1 : 1), CAMERA.minPitch, CAMERA.maxPitch);
 
     if (p.dead) return;
     this.handleCommands();

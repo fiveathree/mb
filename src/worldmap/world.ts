@@ -1,6 +1,6 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MAP_SCALE, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
-import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, type Difficulty, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
@@ -70,6 +70,7 @@ export interface WorldSave {
   arenaUntil: Record<string, number>;
   arenaWins: number;
   mapVersion?: number;
+  difficulty?: Difficulty;
   /** 大墳墓打到第幾層 */
   tombFloor: number;
   nextWitch: number;

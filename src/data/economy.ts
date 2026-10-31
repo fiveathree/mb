@@ -288,6 +288,14 @@ export const EXPEDITION = {
   loseChance: 0.05,
 };
 
+/** 難度：敵方等級、人數、金幣收入 */
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export const DIFFICULTY: Record<Difficulty, { name: string; level: number; count: number; gold: number }> = {
+  easy: { name: '輕鬆', level: -1, count: 0.75, gold: 1.3 },
+  normal: { name: '標準', level: 0, count: 1, gold: 1 },
+  hard: { name: '困難', level: 1, count: 1.3, gold: 0.8 },
+};
+
 // ── 競技場 ──
 export const ARENA = {
   /** 每勝一場升一級難度 */

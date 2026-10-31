@@ -128,6 +128,37 @@ export const JOB_TITLES: Record<string, [string, string, string]> = {
 };
 export const jobTitle = (id: string, level: number) => JOB_TITLES[id][level >= 10 ? 2 : level >= 5 ? 1 : 0];
 
+/** 成就：由現況判斷，唔使另外存 */
+export interface AchieveState {
+  wins: number;
+  gold: number;
+  fiefs: number;
+  king: boolean;
+  won: boolean;
+  tomb: number;
+  quests: number;
+  careers: number;
+  artifacts: number;
+  figures: number;
+  level: number;
+  lords: number;
+}
+
+export const ACHIEVEMENTS: { name: string; desc: string; done: (s: AchieveState) => boolean }[] = [
+  { name: '初試啼聲', desc: '打贏 10 場', done: (s) => s.wins >= 10 },
+  { name: '百戰之師', desc: '打贏 100 場', done: (s) => s.wins >= 100 },
+  { name: '腰纏萬貫', desc: '身家 5 萬金', done: (s) => s.gold >= 50000 },
+  { name: '割據一方', desc: '佔 3 塊領地', done: (s) => s.fiefs >= 3 },
+  { name: '自立為王', desc: '稱王', done: (s) => s.king },
+  { name: '天下一統', desc: '統一大陸', done: (s) => s.won },
+  { name: '掘墓人', desc: '打穿十層墳墓', done: (s) => s.tomb >= 10 },
+  { name: '有求必應', desc: '完成 20 個任務', done: (s) => s.quests >= 20 },
+  { name: '一技之長', desc: '一行職業登頂', done: (s) => s.careers >= 1 },
+  { name: '三百六十行', desc: '三行職業登頂', done: (s) => s.careers >= 3 },
+  { name: '神器收藏家', desc: '收集 3 件神器', done: (s) => s.artifacts >= 3 },
+  { name: '群英薈萃', desc: '招請 3 位人物', done: (s) => s.figures >= 3 },
+];
+
 /** 做工小遊戲：指針來回，撳中綠區同紅心收成多啲 */
 export const WORK_GAME = {
   period: 1100,

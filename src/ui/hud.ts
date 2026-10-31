@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { COMBAT, type AttackDir } from '../data/combat';
 import { BATTLEFIELD } from '../data/battlefield';
 import { rankTag, type BattleProgress } from '../core/roster';
+import { saveSettings, settings } from '../core/settings';
 import { ROLE_LABEL, TEAM_NAMES } from '../data/units';
 import { mirrorDir } from '../battle/combat';
 import { flatDist, rad, type Combatant } from '../battle/entities';
@@ -118,7 +119,54 @@ export class Hud {
     return `<div class="controls">${CONTROLS.map(([k, v]) => `<div><kbd>${k}</kbd><span>${v}</span></div>`).join('')}</div>`;
   }
 
-  showPause(onResume: () => void, onRetreat: () => void, message = '') {
+  /** 設定：改完即時生效 */
+  showSettings(onChange: () => void, onBack: () => void) {
+    const q = ['低', '中', '高'];
+    this.showScreen(`
+      <div class="card">
+        <h2>設定</h2>
+        <label class="set">滑鼠靈敏度 <b id="senV"></b><input type="range" id="sen" min="0.3" max="2.5" step="0.05" value="${settings.sensitivity}" /></label>
+        <label class="set">音量 <b id="volV"></b><input type="range" id="vol" min="0" max="1" step="0.05" value="${settings.volume}" /></label>
+        <div class="set">畫質 <span class="row">${q.map((t, i) => `<button class="wp ${i === settings.quality ? 'on' : ''}" data-q="${i}">${t}</button>`).join('')}</span></div>
+        <label class="set">上下反轉 <input type="checkbox" id="inv" ${settings.invertY ? 'checked' : ''} /></label>
+        <p class="sub">幀數唔夠就揀中或者低。靈敏度 1 係預設。</p>
+        <div class="row"><button class="go" id="setBack">返回</button></div>
+      </div>`);
+    const sen = this.q('#sen') as HTMLInputElement;
+    const vol = this.q('#vol') as HTMLInputElement;
+    const label = () => {
+      this.q('#senV').textContent = settings.sensitivity.toFixed(2);
+      this.q('#volV').textContent = `${Math.round(settings.volume * 100)}%`;
+    };
+    const changed = () => {
+      saveSettings();
+      label();
+      onChange();
+    };
+    label();
+    sen.oninput = () => {
+      settings.sensitivity = Number(sen.value);
+      changed();
+    };
+    vol.oninput = () => {
+      settings.volume = Number(vol.value);
+      changed();
+    };
+    (this.q('#inv') as HTMLInputElement).onchange = (e) => {
+      settings.invertY = (e.target as HTMLInputElement).checked;
+      changed();
+    };
+    this.screen.querySelectorAll<HTMLElement>('[data-q]').forEach((el) => {
+      el.onclick = () => {
+        settings.quality = Number(el.dataset.q);
+        this.screen.querySelectorAll('[data-q]').forEach((x) => x.classList.toggle('on', x === el));
+        changed();
+      };
+    });
+    this.q('#setBack').onclick = onBack;
+  }
+
+  showPause(onResume: () => void, onRetreat: () => void, message = '', onSettings?: () => void) {
     this.showScreen(`
       <div class="card">
         <h2>暫停</h2>
@@ -126,9 +174,11 @@ export class Hud {
         ${this.controlsHtml()}
         <div class="row">
           <button class="go" id="resume">繼續</button>
+          <button class="alt" id="pauseSet">設定</button>
           <button class="alt" id="retreat">撤退</button>
         </div>
       </div>`);
+    this.q('#pauseSet').onclick = () => onSettings?.();
     this.q('#resume').onclick = onResume;
     this.q('#retreat').onclick = onRetreat;
   }

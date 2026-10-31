@@ -17,7 +17,8 @@ import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
-import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
+import { ARENA, ARMORS, CAPTIVE, DIFFICULTY, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
+import { settings } from './core/settings';
 import { CALAMITY, TOMB } from './data/tomb';
 import { HORSES, HORSE_RANK, MOUNT_REWARD } from './data/horses';
 import { CAMPAIGN, POOLS, RARITY } from './data/gacha';
@@ -42,6 +43,7 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
+if (settings.quality !== battle.quality) battle.setQuality(settings.quality);
 
 let slot = 0;
 let roster: Roster = newRoster();
@@ -270,11 +272,14 @@ async function startBattle(
   screens.walking = false;
   view.stop();
   const h = roster.hero;
+  const hard = DIFFICULTY[world.save.difficulty ?? 'normal'];
+  const scaled = enemy.map((e) => (UNITS[e.unit].boss || UNITS[e.unit].hero ? e : { ...e, count: Math.max(1, Math.round(e.count * hard.count)) }));
   const launch = async (formations: FormationCheck[]) => {
     battle.sfx.unlock();
     hud.hideScreen();
     battle.start({
-      playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
+      playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy: arenaFight ? enemy : scaled,
+      enemyLevel: Math.max(1, enemyLevel + (arenaFight ? 0 : hard.level)), theme, moraleMult: moraleMult(), ...extra,
       dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky, river: !extra.firstPerson && !extra.breaches && nearWater(),
       formations, enemyCultures: arenaFight ? [] : currentScenario().cultures,
     });
@@ -557,8 +562,13 @@ function showAutoResult(win: boolean, p: BattleProgress, loot: string) {
   document.getElementById('next')!.onclick = backToMap;
 }
 
+function applySettings() {
+  battle.sfx.setVolume(settings.volume);
+  if (battle.quality !== settings.quality) battle.setQuality(settings.quality);
+}
+
 function showPause(message = '') {
-  hud.showPause(() => void resume(), () => battle.retreat(), message);
+  hud.showPause(() => void resume(), () => battle.retreat(), message, () => hud.showSettings(applySettings, () => showPause()));
 }
 
 function pause() {
@@ -612,7 +622,7 @@ battle.onEnd = (result: BattleResult) => {
   battle.active = false;
   releaseMouse();
   const loot = !arenaFight && !tutorial && result.win ? rollLoot() : '';
-  const gold = arenaFight ? 0 : Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
+  const gold = arenaFight ? 0 : Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio) * DIFFICULTY[world.save.difficulty ?? 'normal'].gold);
   const progress = applyBattle(roster, result.outcomes, gold, result.win);
   if (!arenaFight) {
     world.winMorale(result.win);
@@ -746,9 +756,10 @@ async function showMenu() {
       <h1>鐵騎風雲</h1>
       <p class="sub">由無名傭兵開始，帶隊遊走裂天大陸，攻城闖迷宮，招募四方豪傑。</p>
       ${Array.from({ length: SLOT_COUNT }, (_, i) => line(i)).join('')}
-      <div class="row"><button class="alt" id="tut">教學關</button></div>
+      <div class="row"><button class="alt" id="tut">教學關</button><button class="alt" id="menuSet">設定</button></div>
     </div>`);
   document.getElementById('tut')!.onclick = () => void startTutorial();
+  document.getElementById('menuSet')!.onclick = () => hud.showSettings(applySettings, () => void showMenu());
   document.querySelectorAll<HTMLElement>('#screen [data-exp]').forEach((el) => {
     el.onclick = () => void exportCode(slots[Number(el.dataset.exp)]!).then(showSaveCode);
   });
@@ -783,7 +794,9 @@ async function showMenu() {
           r.hero.horses = ['hoverbike'];
           r.hero.horse = 'hoverbike';
         }
+        if (c.job) r.hero.job = c.job;
         const w = newWorld();
+        w.difficulty = c.difficulty;
         w.scenario = c.scenario.id;
         w.food = bg.food;
         w.pol.renown = Math.max(0, bg.renown ?? 0);

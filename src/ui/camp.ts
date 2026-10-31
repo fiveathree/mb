@@ -1,7 +1,7 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
-import { CAREER_ENDING, JOBS, JOB_RULES, JOB_TITLES, WORK_GAME, WORK_PLACE, jobOf, jobTitle, type WorkDef } from '../data/jobs';
+import { ACHIEVEMENTS, CAREER_ENDING, JOBS, JOB_RULES, JOB_TITLES, WORK_GAME, WORK_PLACE, jobOf, jobTitle, type AchieveState, type WorkDef } from '../data/jobs';
 import { dayOf } from '../worldmap/world';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
@@ -412,9 +412,17 @@ export class Camp {
       const where = n && near ? `${near.name}一帶：${n.job}` : '已入隊';
       return `<div class="codex-row ${n ? '' : 'own'}">${tag(f.rarity)} ${f.name}<small>${where}</small></div>`;
     }).join('');
+    const pol = this.world.politics;
+    const state: AchieveState = {
+      wins: this.roster.wins, gold: this.roster.gold, fiefs: pol.fiefsOf(PLAYER).length, king: pol.s.rank === 'king', won: pol.s.won, tomb: w.tombFloor,
+      quests: w.questsDone, careers: hero.careers.length, artifacts: hero.artifacts.length, level: hero.level, lords: pol.s.lords.length,
+      figures: w.pol.storyMet.filter((x) => x.startsWith('fig_')).length,
+    };
+    const feats = ACHIEVEMENTS.map((a) => `<span class="feat ${a.done(state) ? 'own' : ''}" title="${a.desc}">${a.name}</span>`).join('');
     return `<div class="codex">
       <div><div class="pick-title">坐騎</div>${mounts}</div>
-      <div><div class="pick-title">人物（要行近先見到）</div>${figures}</div>
+      <div><div class="pick-title">人物（要行近先見到）</div>${figures}
+        <div class="pick-title">成就（${ACHIEVEMENTS.filter((a) => a.done(state)).length}／${ACHIEVEMENTS.length}）</div><div class="feats">${feats}</div></div>
     </div>`;
   }
 

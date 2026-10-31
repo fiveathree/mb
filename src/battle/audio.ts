@@ -1,16 +1,25 @@
 import { DRUMS, MUSIC } from '../data/battlefield';
+import { settings } from '../core/settings';
 
 /** 全部音效都係 WebAudio 即時合成，唔用音檔 */
 export class Sfx {
   private drumTimer = 0;
   private musicTimer = 0;
   private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   muted = false;
+
+  setVolume(v: number) {
+    if (this.master) this.master.gain.value = v;
+  }
 
   unlock() {
     if (!this.ctx) {
       this.ctx = new AudioContext();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = settings.volume;
+      this.master.connect(this.ctx.destination);
       const len = this.ctx.sampleRate;
       this.noise = this.ctx.createBuffer(1, len, len);
       const d = this.noise.getChannelData(0);
@@ -31,7 +40,7 @@ export class Sfx {
     const g = ctx.createGain();
     g.gain.setValueAtTime(gain, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    src.connect(f).connect(g).connect(ctx.destination);
+    src.connect(f).connect(g).connect(this.master!);
     src.start(0, Math.random() * 0.8, dur);
   }
 
@@ -45,7 +54,7 @@ export class Sfx {
     const g = ctx.createGain();
     g.gain.setValueAtTime(gain, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(this.master!);
     o.start();
     o.stop(ctx.currentTime + dur);
   }
@@ -107,7 +116,7 @@ export class Sfx {
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + 0.08);
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(this.master!);
     o.start();
     o.stop(ctx.currentTime + dur);
   }
