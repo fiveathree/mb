@@ -916,6 +916,8 @@ export class Battle implements CombatWorld {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
     if (this.peaceful) this.updateTown(dt);
+    // 主角倒下：跟隨嘅部隊唔再等，繼續打
+    else if (this.player.dead) for (const g of this.groups[0]) if (g.order === 'follow') g.order = 'charge';
     if (this.dungeon) this.updateTraps(dt);
     if (this.siege && !this.dungeon) {
       this.updateSiege(dt);
