@@ -288,6 +288,11 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   };
   const [legL, kneeL] = leg(0.13);
   const [legR, kneeR] = leg(-0.13);
+  // 半人馬冇人腳
+  if (def.race === 'centaur') {
+    legL.scale.setScalar(0.001);
+    legR.scale.setScalar(0.001);
+  }
 
   // 頭頂標記：英雄用金色
   const marker = new THREE.Group();

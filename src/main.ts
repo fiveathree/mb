@@ -28,6 +28,8 @@ import { WorldView } from './worldmap/view';
 import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type WorldSave } from './worldmap/world';
 
 const FORMATION_MIN_TROOPS = 4;
+/** 附近幾多格森林就算森林戰 */
+const FOREST_TILES = 6;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
@@ -231,6 +233,21 @@ function rollLoot(): string {
   return out.length ? `戰利品：${out.join('、')}` : '';
 }
 
+/** 野戰場景：夜晚、或者大地圖腳下係森林 */
+function fieldTheme(): BattleTheme {
+  if (isNight(world.save)) return 'night';
+  const { x, y } = world.save;
+  let trees = 0;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const tx = Math.round(x) + dx;
+      const ty = Math.round(y) + dy;
+      if (world.terrain.inside(tx, ty) && world.terrain.at(tx, ty) === 'forest') trees++;
+    }
+  }
+  return trees >= FOREST_TILES ? 'forest' : 'plains';
+}
+
 function placeReward(p: PlaceDef): string {
   const out: string[] = [];
   if (p.gold) {
@@ -266,7 +283,7 @@ function attackPlace(p: PlaceDef) {
 
 function fightHunter(n: Npc) {
   const pol = world.politics;
-  void startBattle(raiderArmy(n), 2, 'plains', (win) => {
+  void startBattle(raiderArmy(n), 2, fieldTheme(), (win) => {
     if (!win) return '';
     world.npcs.remove(n);
     pol.deed('killPatrol', pol.ownerOf(n.home));
@@ -312,7 +329,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
     showAutoResult(res.win, progress, loot);
     return;
   }
-  void startBattle(army, b.level, isNight(world.save) ? 'night' : 'plains', (win) => {
+  void startBattle(army, b.level, fieldTheme(), (win) => {
     if (win) {
       world.removeBandit(b);
       onBanditBeaten(world);
@@ -322,7 +339,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
 }
 
 function fightRaider(n: Npc) {
-  void startBattle(raiderArmy(n), n.kind === 'dragon' ? 6 : NPC_RULES.raiderLevel, n.kind === 'dragon' ? 'night' : 'plains', (win) => {
+  void startBattle(raiderArmy(n), n.kind === 'dragon' ? 6 : NPC_RULES.raiderLevel, n.kind === 'dragon' ? 'night' : fieldTheme(), (win) => {
     if (!win) return '';
     world.npcs.remove(n);
     world.politics.deed('beatRaider');

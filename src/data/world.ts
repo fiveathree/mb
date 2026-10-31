@@ -159,7 +159,7 @@ export const SHOP = {
 };
 
 export type PlaceKind = 'town' | 'village' | 'castle' | 'dungeon' | 'maze' | 'lair';
-export type BattleTheme = 'plains' | 'night' | 'fort' | 'crypt' | 'maze';
+export type BattleTheme = 'plains' | 'night' | 'fort' | 'crypt' | 'maze' | 'forest';
 
 export interface PlaceDef {
   id: string;
@@ -183,10 +183,6 @@ export interface PlaceDef {
   /** 攻破掉落神器 */
   artifact?: string;
 }
-
-export const PLACE_ICON: Record<PlaceKind, string> = {
-  town: '城', village: '村', castle: '堡', dungeon: '墓', maze: '迷', lair: '賊',
-};
 
 export const PLACES: PlaceDef[] = [
   { id: 'griffon', name: '獅鷲城', kind: 'town', x: 30, y: 30, desc: '西境王都，糧足兵精。' },
@@ -254,6 +250,7 @@ export const PLACES: PlaceDef[] = [
 export const THEMES: Record<BattleTheme, { sky: number; fog: number; near: number; far: number; light: number; ground: number }> = {
   plains: { sky: 0x9fc4dc, fog: 0xbcd3dc, near: 90, far: 330, light: 1, ground: 0xffffff },
   night: { sky: 0x1b2438, fog: 0x232d44, near: 45, far: 190, light: 0.42, ground: 0xffffff },
+  forest: { sky: 0x8fb4a8, fog: 0x9dbcae, near: 50, far: 200, light: 0.75, ground: 0xc8e0b8 },
   fort: { sky: 0xc7a98a, fog: 0xc7ab8e, near: 70, far: 280, light: 0.85, ground: 0xffffff },
   // 地底：草地染成灰石色
   crypt: { sky: 0x0e0d14, fog: 0x161520, near: 25, far: 90, light: 0.62, ground: 0x6a6470 },

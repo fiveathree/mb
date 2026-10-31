@@ -56,8 +56,8 @@ function buildGround(): THREE.Mesh {
   return mesh;
 }
 
-function placeInstances(
-  scene: THREE.Scene,
+export function placeInstances(
+  scene: THREE.Object3D,
   geo: THREE.BufferGeometry,
   color: number,
   items: { x: number; y: number; z: number; s: number; r: number }[],
@@ -74,6 +74,15 @@ function placeInstances(
   });
   mesh.castShadow = castShadow;
   scene.add(mesh);
+}
+
+export function placeTrees(parent: THREE.Object3D, trees: { x: number; y: number; z: number; s: number; r: number }[]) {
+  const trunk = new THREE.CylinderGeometry(0.2, 0.32, 2.2, 5).translate(0, 1.1, 0);
+  const crownA = new THREE.ConeGeometry(1.9, 4.2, 6).translate(0, 4, 0);
+  const crownB = new THREE.ConeGeometry(1.4, 3.1, 6).translate(0, 6, 0);
+  placeInstances(parent, trunk, COLORS.trunk, trees);
+  placeInstances(parent, crownA, COLORS.leaf, trees);
+  placeInstances(parent, crownB, COLORS.leafAlt, trees);
 }
 
 /** 建立地形同景物，回傳碰撞用障礙物 */
@@ -97,12 +106,7 @@ export function buildTerrain(scene: THREE.Scene): Obstacle[] {
     if (inner) obstacles.push({ x, z, r: 0.7 * s });
   }
 
-  const trunk = new THREE.CylinderGeometry(0.2, 0.32, 2.2, 5).translate(0, 1.1, 0);
-  const crownA = new THREE.ConeGeometry(1.9, 4.2, 6).translate(0, 4, 0);
-  const crownB = new THREE.ConeGeometry(1.4, 3.1, 6).translate(0, 6, 0);
-  placeInstances(scene, trunk, COLORS.trunk, trees);
-  placeInstances(scene, crownA, COLORS.leaf, trees);
-  placeInstances(scene, crownB, COLORS.leafAlt, trees);
+  placeTrees(scene, trees);
 
   const rocks: { x: number; y: number; z: number; s: number; r: number }[] = [];
   for (let i = 0; i < F.rockCount; i++) {

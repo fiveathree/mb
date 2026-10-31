@@ -35,6 +35,9 @@ export const MUSIC = {
   decay: 1.6,
 };
 
+/** 森林戰場：多樹，騎兵衝唔起 */
+export const FOREST = { trees: 90, spreadX: 100, spreadZ: 95, cavalryMult: 0.7, treeRadius: 0.9 };
+
 /** 陣形 */
 export const FORMATION = {
   /** 我軍步兵中心，敵軍鏡像 */

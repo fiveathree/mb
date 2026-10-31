@@ -1,4 +1,4 @@
-import { MAP, MAP_VIEW, PARTY, PLACES, PLACE_ICON, type PlaceDef } from '../data/world';
+import { MAP, MAP_VIEW, PARTY, PLACES, type PlaceDef, type PlaceKind } from '../data/world';
 import { NPC, NPC_RULES } from '../data/economy';
 import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
@@ -442,7 +442,7 @@ export class WorldView {
     const pol = this.world.politics;
     const owner = pol.ownerOf(p.id);
     const color = owner === PLAYER ? '#f2c14e' : factionOf(owner ?? '')?.color;
-    const size = Math.max(0.45, Math.min(1.4, q.s));
+    const size = Math.max(0.7, Math.min(1.5, q.s * 1.3));
     const r = (p.kind === 'town' ? 15 : 12) * size;
     const lift = 16 * size;
     const y = q.y - lift;
@@ -458,19 +458,45 @@ export class WorldView {
     g.stroke();
     g.fillStyle = color ?? (open ? '#7a2a2a' : '#555');
     g.strokeStyle = pol.s.threats.some((t) => t.place === p.id) ? '#ff3a2a' : '#fff4dc';
-    g.beginPath();
-    g.arc(q.x, y, r, 0, Math.PI * 2);
+    this.drawBuilding(p.kind, q.x, y, r);
     g.fill();
     g.stroke();
-    g.fillStyle = '#fff4dc';
-    g.font = `bold ${Math.round(13 * size)}px "Microsoft JhengHei", sans-serif`;
-    g.fillText(PLACE_ICON[p.kind], q.x, y);
     if (q.s < LABEL_MIN_SCALE) return;
     g.font = '12px "Microsoft JhengHei", sans-serif';
     g.lineWidth = 3;
     g.strokeStyle = 'rgba(12,15,22,.8)';
     g.strokeText(p.name, q.x, y + r + 9);
     g.fillText(p.name, q.x, y + r + 9);
+  }
+
+  /** 地點建築輪廓，由中心點畫 */
+  private drawBuilding(kind: PlaceKind, x: number, y: number, r: number) {
+    const g = this.g;
+    const poly = (points: [number, number][]) => {
+      points.forEach(([a, b], i) => (i ? g.lineTo(x + a * r, y + b * r) : g.moveTo(x + a * r, y + b * r)));
+      g.closePath();
+    };
+    g.beginPath();
+    switch (kind) {
+      case 'town':
+        // 三座塔加城牆
+        poly([[-1.2, 1], [-1.2, -0.7], [-0.75, -0.7], [-0.75, -0.2], [-0.3, -0.2], [-0.3, -1.1], [0.3, -1.1], [0.3, -0.2], [0.75, -0.2], [0.75, -0.7], [1.2, -0.7], [1.2, 1]]);
+        break;
+      case 'castle':
+        poly([[-0.8, 1], [-0.8, -1], [-0.45, -1], [-0.45, -0.7], [-0.15, -0.7], [-0.15, -1], [0.15, -1], [0.15, -0.7], [0.45, -0.7], [0.45, -1], [0.8, -1], [0.8, 1]]);
+        break;
+      case 'village':
+        poly([[-1, 1], [-1, 0], [-1.25, 0], [-0.45, -0.8], [0.3, 0], [0.05, 0], [0.05, 1]]);
+        poly([[0.15, 1], [0.15, 0.2], [0, 0.2], [0.6, -0.4], [1.2, 0.2], [1.05, 0.2], [1.05, 1]]);
+        break;
+      case 'lair':
+        poly([[-1.1, 1], [0, -1], [1.1, 1], [0.3, 1], [0, 0.3], [-0.3, 1]]);
+        break;
+      default:
+        // 地下城同迷宮：石拱門
+        poly([[-1, 1], [-1, -0.2], [-0.6, -0.9], [0.6, -0.9], [1, -0.2], [1, 1], [0.4, 1], [0.4, 0], [-0.4, 0], [-0.4, 1]]);
+        break;
+    }
   }
 
   private drawBar() {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
-import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
+import { BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
 import { DUNGEON, SIEGE } from '../data/factions';
 import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
@@ -31,7 +31,7 @@ import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
-import { buildTerrain, heightAt, type Obstacle } from './terrain';
+import { buildTerrain, heightAt, placeTrees, type Obstacle } from './terrain';
 import type { Hud } from '../ui/hud';
 
 const JUMP_SPEED = 5.5;
@@ -119,6 +119,7 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  private forest = false;
   private rockT = 0;
   private traps: { x: number; z: number; cd: number }[] = [];
   private rockSide = 0;
@@ -256,6 +257,18 @@ export class Battle implements CombatWorld {
     mesh.castShadow = true;
     this.wall.add(mesh);
     this.obstacles = [...this.obstacles, ...solid.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 森林戰場：樹擋路，騎兵慢 */
+  private plantForest() {
+    const { trees, spreadX, spreadZ, treeRadius } = FOREST;
+    const list = Array.from({ length: trees }, () => {
+      const x = (Math.random() - 0.5) * spreadX * 2;
+      const z = (Math.random() - 0.5) * spreadZ * 2;
+      return { x, y: heightAt(x, z), z, s: 0.8 + Math.random() * 0.7, r: Math.random() * 6 };
+    });
+    placeTrees(this.wall, list);
+    this.obstacles = [...this.obstacles, ...list.map((t) => ({ x: t.x, z: t.z, r: treeRadius * t.s }))];
   }
 
   /** 地下城地板陷阱：稍微睇得出，唔留心就中 */
@@ -437,7 +450,13 @@ export class Battle implements CombatWorld {
     return c;
   }
 
-  private createHorse(def: HorseDef, rider: Combatant): Horse {
+  private createHorse(base: HorseDef, rider: Combatant): Horse {
+    const mult = this.forest ? FOREST.cavalryMult : 1;
+    const def: HorseDef = {
+      ...base, trotSpeed: base.trotSpeed * mult, gallopSpeed: base.gallopSpeed * mult,
+      // 半人馬：下身同上身同色
+      color: rider.def.race === 'centaur' ? RACES.centaur.skin : base.color,
+    };
     const h = new Horse(def, buildHorse(def, rider.team, this.batches));
     h.pos.copy(rider.pos);
     h.heading = rider.yaw;
@@ -470,6 +489,8 @@ export class Battle implements CombatWorld {
     this.sfx.drums(true, () => this.running);
 
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
+    this.forest = setup.theme === 'forest';
+    if (this.forest) this.plantForest();
     this.firstPerson = !!setup.firstPerson;
     this.batches.reset();
     this.projectiles.reset();
