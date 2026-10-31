@@ -29,7 +29,7 @@ export interface CombatWorld {
   projectiles: Projectiles;
   stats: BattleStats;
   freeze(seconds: number): void;
-  slowMo(): void;
+  slowMo(seconds?: number): void;
   shake(amount: number): void;
   announce(text: string, kind: 'hit' | 'kill' | 'guard' | 'hurt'): void;
   onUnitDown(t: Combatant, by: Combatant): void;
@@ -135,7 +135,7 @@ function sweepWindow(w: WeaponDef, dir: AttackDir, p0: number, p1: number): [num
 
 function checkSweep(c: Combatant, world: CombatWorld, p0: number, p1: number) {
   const w = c.weapon;
-  if (c.hitThisSwing.size >= w.cleave) return;
+  if (c.musouT > 0 || c.hitThisSwing.size >= w.cleave) return;
   const win = sweepWindow(w, c.dir, p0, p1);
   if (!win) return;
   const padBase = rad(COMBAT.sweepPadDeg + (c.horse ? COMBAT.mountedSweepPadDeg : 0));
@@ -303,9 +303,11 @@ export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: V
 }
 
 /** 冠位戰技命中：無視格擋，一律飛起 */
-export function musouHit(world: CombatWorld, att: Combatant, t: Combatant, raw: number, nx: number, nz: number, label: string) {
+export function musouHit(world: CombatWorld, att: Combatant, t: Combatant, raw: number, nx: number, nz: number): number {
+  if (t.musouT > 0) return 0;
   const final = Math.round(Math.max(raw - t.def.armor * MUSOU_ARMOR, raw * COMBAT.minDamageRatio));
-  applyDamage(world, att, t, final, nx, nz, MUSOU_LAUNCH, label);
+  applyDamage(world, att, t, final, nx, nz, MUSOU_LAUNCH, '');
+  return final;
 }
 
 function applyDamage(
@@ -314,6 +316,8 @@ function applyDamage(
   const isPlayerAtt = att === world.player;
   const isPlayerTgt = t === world.player;
   if (t.musouT > 0) return;
+  // 絕招自己計節奏，唔逐下停頓
+  const feel = isPlayerAtt && att.musouT <= 0;
   t.hp -= final;
   if (att.def.crown && att.musouT <= 0) att.musou = Math.min(MUSOU_RULES.max, att.musou + final * MUSOU_RULES.perDamageDealt);
   if (t.def.crown) t.musou = Math.min(MUSOU_RULES.max, t.musou + final * MUSOU_RULES.perDamageTaken);
@@ -334,7 +338,7 @@ function applyDamage(
 
   if (killed) {
     kill(world, t, att);
-    if (isPlayerAtt) {
+    if (feel) {
       world.sfx.hit(true);
       world.freeze(FEEL.killHitStop);
       world.shake(FEEL.shakeOnKill);
@@ -349,7 +353,7 @@ function applyDamage(
       world.announce(`受傷 −${final}`, 'hurt');
     } else {
       stagger(t, COMBAT.hitStagger + launch * 0.06);
-      if (isPlayerAtt) {
+      if (feel) {
         world.sfx.hit(false);
         world.freeze(FEEL.hitStop);
         world.shake(FEEL.shakeOnHit);

@@ -137,6 +137,8 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  /** 絕招鏡頭 0 到 1 */
+  private musouCam = 0;
   casts: MusouCast[] = [];
   private forest = false;
   private pendingStrikes: { owner: Combatant; w: WeaponDef; pos: THREE.Vector3; mult: number; t: number }[] = [];
@@ -771,6 +773,7 @@ export class Battle implements CombatWorld {
     this.freezeT = this.slowT = this.shakeAmt = 0;
     this.moraleT = this.thinkT = this.slotT = this.followT = 0;
     this.warcryT = 0;
+    this.musouCam = 0;
     this.rockT = SIEGE.rockEvery;
     this.camYaw = this.viewYaw = setup.defend ? Math.PI : 0;
     this.camPitch = this.viewPitch = 0.16;
@@ -860,8 +863,8 @@ export class Battle implements CombatWorld {
   freeze(s: number) {
     this.freezeT = Math.max(this.freezeT, s);
   }
-  slowMo() {
-    this.slowT = FEEL.slowMo.duration;
+  slowMo(seconds: number = FEEL.slowMo.duration) {
+    this.slowT = seconds;
   }
   shake(a: number) {
     this.shakeAmt = Math.max(this.shakeAmt, a);
@@ -951,7 +954,7 @@ export class Battle implements CombatWorld {
     this.tickCommand(dt);
 
     for (const u of this.units) {
-      if (u !== p && !u.dead) updateAi(u, dt, this);
+      if (u !== p && !u.dead && u.musouT <= 0) updateAi(u, dt, this);
     }
     for (const h of this.horses) {
       const turned = updateHorse(h, dt, this.obstacles);
@@ -1125,10 +1128,12 @@ export class Battle implements CombatWorld {
     if (i.pressed('KeyR')) this.tryMusou();
     if (i.pressed('KeyE') && !this.peaceful) this.toggleCouch();
 
-    const throttle = (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
-    const strafe = (i.down('KeyA') ? 1 : 0) - (i.down('KeyD') ? 1 : 0);
+    // 出招期間鎖走位，招式自己帶位移
+    const locked = p.musouT > 0;
+    const throttle = locked ? 0 : (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
+    const strafe = locked ? 0 : (i.down('KeyA') ? 1 : 0) - (i.down('KeyD') ? 1 : 0);
     const sprint = i.down('ShiftLeft') || i.down('ShiftRight');
-    const jump = i.pressed('Space');
+    const jump = i.pressed('Space') && !locked;
 
     if (p.horse) {
       Object.assign(p.horse.ctl, { throttle, turn: strafe, sprint, jump, climb: i.down('Space') });
@@ -1144,7 +1149,7 @@ export class Battle implements CombatWorld {
       const step = 22 * dt;
       p.vel.x = moveToward(p.vel.x, (mx / len) * speed, step);
       p.vel.z = moveToward(p.vel.z, (mz / len) * speed, step);
-      p.yaw += angleDiff(this.camYaw, p.yaw) * (1 - Math.exp(-14 * dt));
+      if (!locked) p.yaw += angleDiff(this.camYaw, p.yaw) * (1 - Math.exp(-14 * dt));
       if (jump) {
         p.vy = JUMP_SPEED * (RACES[p.def.race ?? 'human'].jump ?? 1);
         p.grounded = false;
@@ -1499,7 +1504,8 @@ export class Battle implements CombatWorld {
       this.sun.position.set(p.pos.x + 50, p.pos.y + 90, p.pos.z + 30);
       return;
     }
-    const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1);
+    this.musouCam += ((p.musouT > 0 ? 1 : 0) - this.musouCam) * (1 - Math.exp(-6 * dt));
+    const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1) * (1 + CAMERA.musouZoom * this.musouCam);
     const height = h ? CAMERA.heightMounted : CAMERA.heightOnFoot;
     const yaw = this.viewYaw;
     const cp = Math.cos(this.viewPitch);
@@ -1524,7 +1530,7 @@ export class Battle implements CombatWorld {
     this.camera.lookAt(pos.x + fx * 12 + rx * CAMERA.shoulderOffset, fy - sp * 12 + 0.2, pos.z + fz * 12 + rz * CAMERA.shoulderOffset);
 
     const speedRatio = h ? clamp(h.speed / h.def.gallopSpeed, 0, 1) : 0;
-    const fov = CAMERA.baseFov + CAMERA.speedFovBoost * speedRatio * speedRatio - (aiming ? CAMERA.aimFovDrop * p.charge : 0);
+    const fov = CAMERA.baseFov + CAMERA.speedFovBoost * speedRatio * speedRatio - (aiming ? CAMERA.aimFovDrop * p.charge : 0) + CAMERA.musouFov * this.musouCam;
     this.camera.fov += (fov - this.camera.fov) * (1 - Math.exp(-5 * dt));
     this.camera.updateProjectionMatrix();
 

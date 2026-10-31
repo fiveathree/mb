@@ -245,7 +245,16 @@ export const MUSOU_RULES = {
   perDamageTaken: 0.4,
   perSecond: 1,
   /** 招式前搖 */
-  windup: 0.35,
+  windup: 0.22,
+  /** 開招慢鏡（真實秒） */
+  startSlow: 0.3,
+  /** 收招：最後一下嘅慢鏡、震動 */
+  finishSlow: 0.16,
+  finishShake: 0.6,
+  /** 每步嘅震動 */
+  stepShake: 0.2,
+  /** 亂舞自轉（弧度／秒） */
+  spin: 15,
   rallyHeal: 0.12,
   rallyMorale: 25,
   /** 部隊裏嘅冠位，敵人近過呢個先放 */

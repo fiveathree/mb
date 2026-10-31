@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { MUSOU_RULES, MUSOU_STYLES, musouOf, sigId, type MusouDef } from '../data/crowns';
 import { WEAPONS } from '../data/weapons';
-import { musouHit, type CombatWorld } from './combat';
+import { mirrorDir, musouHit, type CombatWorld } from './combat';
 import { flatDist, type Combatant } from './entities';
 
 /** 發緊嘅絕招 */
@@ -10,6 +10,8 @@ export interface MusouCast {
   def: MusouDef;
   t: number;
   step: number;
+  hits: number;
+  damage: number;
 }
 
 export interface MusouWorld extends CombatWorld {
@@ -37,7 +39,18 @@ function hit(w: MusouWorld, cast: MusouCast, t: Combatant, x: number, z: number,
   const weapon = WEAPONS[sigId({ id: c.def.crown! })];
   const power = weapon.spell ? c.def.spellMult ?? 1 : c.def.damageMult ?? 1;
   const d = Math.max(Math.hypot(t.pos.x - x, t.pos.z - z), 0.01);
-  musouHit(w, c, t, weapon.baseDamage * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d, def.name);
+  const dealt = musouHit(w, c, t, weapon.baseDamage * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d);
+  if (!dealt) return;
+  cast.hits++;
+  cast.damage += dealt;
+}
+
+/** 近戰招每步揮一下，法系同弓唔使 */
+function swing(c: Combatant) {
+  if (!c.weapon.swingTime) return;
+  c.dir = mirrorDir(c.dir);
+  c.phase = 'swing';
+  c.phaseT = 0;
 }
 
 function moveTo(w: MusouWorld, c: Combatant, x: number, z: number) {
@@ -56,6 +69,8 @@ function run(w: MusouWorld, cast: MusouCast) {
   const s = MUSOU_STYLES[def.style];
   const [fx, fz] = forward(w, c);
   const at = (x: number, z: number, y = c.pos.y + 0.3) => tmp.set(x, y, z);
+  const before = cast.hits;
+  if (def.style === 'whirl' || def.style === 'charge' || def.style === 'shadow') swing(c);
   switch (def.style) {
     case 'whirl':
       w.fx.ring(at(c.pos.x, c.pos.z, c.pos.y + 1), s.radius, def.color);
@@ -76,7 +91,6 @@ function run(w: MusouWorld, cast: MusouCast) {
       if (w.wallBlocks(c.pos.x, c.pos.z, x, z, c.pos.y + 1)) break;
       w.fx.pillar(at(x, z), def.color, 4);
       for (const t of foes(w, c, x, z, s.radius)) hit(w, cast, t, x, z);
-      w.shake(0.1);
       break;
     }
     case 'nova': {
@@ -85,7 +99,6 @@ function run(w: MusouWorld, cast: MusouCast) {
       w.fx.flashAt(at(c.pos.x, c.pos.z, c.pos.y + 6), def.color);
       w.sfx.boom();
       for (const t of foes(w, c, c.pos.x, c.pos.z, radius)) hit(w, cast, t, c.pos.x, c.pos.z);
-      w.shake(0.35);
       break;
     }
     case 'thunder': {
@@ -119,6 +132,20 @@ function run(w: MusouWorld, cast: MusouCast) {
       for (const t of foes(w, c, c.pos.x, c.pos.z, s.radius)) hit(w, cast, t, c.pos.x, c.pos.z);
       break;
   }
+  // 打中先有反饋，每步一下，唔理中幾多個
+  if (cast.hits === before || c !== w.player) return;
+  w.sfx.hit(true);
+  w.shake(MUSOU_RULES.stepShake);
+  w.announce(`${cast.hits} 連擊`, 'hit');
+}
+
+/** 收招：有打中人先有重擊感 */
+function finish(w: MusouWorld, cast: MusouCast) {
+  if (cast.c !== w.player || !cast.hits) return;
+  w.slowMo(MUSOU_RULES.finishSlow);
+  w.shake(MUSOU_RULES.finishShake);
+  w.sfx.boom();
+  w.announce(`${cast.def.name}：${cast.hits} 連擊，${cast.damage} 傷害`, 'kill');
 }
 
 /** 出招時間：招式打完先解除無敵 */
@@ -131,7 +158,15 @@ export function startMusou(w: MusouWorld, c: Combatant) {
   const def = musouOf(c.def.crown!);
   c.musou = 0;
   c.musouT = castTime(def);
-  w.casts.push({ c, def, t: -MUSOU_RULES.windup, step: 0 });
+  // 打斷手上動作，專心出招
+  c.phase = 'idle';
+  c.charge = 0;
+  c.releaseQueued = false;
+  c.couched = false;
+  c.musouReady = false;
+  c.vel.x = 0;
+  c.vel.z = 0;
+  w.casts.push({ c, def, t: -MUSOU_RULES.windup, step: 0, hits: 0, damage: 0 });
   tmp.set(c.pos.x, c.pos.y, c.pos.z);
   w.fx.pillar(tmp, def.color, 5);
   w.fx.ring(tmp, 3, def.color);
@@ -139,7 +174,7 @@ export function startMusou(w: MusouWorld, c: Combatant) {
   w.sfx.boom();
   w.shake(0.5);
   if (c === w.player) {
-    w.slowMo();
+    w.slowMo(MUSOU_RULES.startSlow);
     w.musouCut(def.name, def.color);
   } else w.announce(`${c.def.name}：${def.name}！`, 'guard');
 }
@@ -149,6 +184,11 @@ export function updateMusou(w: MusouWorld, dt: number) {
     if (u.dead || !u.def.crown) continue;
     u.musouT = Math.max(0, u.musouT - dt);
     if (u.musouT <= 0) u.musou = Math.min(MUSOU_RULES.max, u.musou + MUSOU_RULES.perSecond * dt);
+    if (u === w.player && u.musou >= MUSOU_RULES.max && !u.musouReady) {
+      u.musouReady = true;
+      w.sfx.ui();
+      w.announce('戰技已滿！撳 R', 'kill');
+    }
     // 部隊入面嘅冠位：氣滿又有敵人埋身就自己放
     if (u !== w.player && u.musou >= MUSOU_RULES.max && foes(w, u, u.pos.x, u.pos.z, MUSOU_RULES.aiRange).length) startMusou(w, u);
   }
@@ -159,6 +199,9 @@ export function updateMusou(w: MusouWorld, dt: number) {
       run(w, cast);
       cast.step++;
     }
-    if (cast.step >= s.steps || cast.c.dead) w.casts.splice(w.casts.indexOf(cast), 1);
+    if (cast.def.style === 'whirl' && !cast.c.horse) cast.c.yaw += MUSOU_RULES.spin * dt;
+    if (cast.step < s.steps && !cast.c.dead) continue;
+    w.casts.splice(w.casts.indexOf(cast), 1);
+    finish(w, cast);
   }
 }

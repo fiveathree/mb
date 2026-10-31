@@ -129,6 +129,9 @@ export const CAMERA = {
   heightOnFoot: 1.75,
   shoulderOffset: 0.55,
   baseFov: 68,
+  /** 出絕招時鏡頭拉遠、FOV 加闊 */
+  musouZoom: 0.32,
+  musouFov: 10,
   /** 全速時 FOV 增加量 */
   speedFovBoost: 16,
   /** 騎馬轉彎時鏡頭跟轉嘅比例（0 = 完全獨立，1 = 完全跟馬） */

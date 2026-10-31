@@ -90,6 +90,8 @@ export class Combatant {
   musou = 0;
   /** 出緊絕招，呢段時間無敵 */
   musouT = 0;
+  /** 已經提示過氣滿 */
+  musouReady = false;
   /** 倒下但只係受傷 */
   wounded = false;
   morale: number;
