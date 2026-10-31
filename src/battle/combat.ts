@@ -142,7 +142,8 @@ function checkSweep(c: Combatant, world: CombatWorld, p0: number, p1: number) {
   for (const t of world.units) {
     if (t.team === c.team || t.dead || c.hitThisSwing.has(t)) continue;
     const dx = t.pos.x - c.pos.x;
-    if (dx > 6 || dx < -6) continue;
+    const reachX = 6 + t.def.radius;
+    if (dx > reachX || dx < -reachX) continue;
     const targetRadius = t.horse ? HORSE_RADIUS : t.def.radius;
     const d = flatDist(c.pos, t.pos) - targetRadius;
     if (d > w.reach) continue;
@@ -327,7 +328,7 @@ function applyDamage(
   if (isPlayerAtt) world.stats.bestHit = Math.max(world.stats.bestHit, final);
   const killed = t.hp <= 0;
 
-  if (!isPlayerTgt && !t.horse) {
+  if (!isPlayerTgt && !t.horse && !t.def.colossal) {
     t.vel.x = nx * launch;
     t.vel.z = nz * launch;
     if (launch > 4) {
@@ -352,7 +353,7 @@ function applyDamage(
       world.shake(FEEL.shakeOnHurt);
       world.announce(`受傷 −${final}`, 'hurt');
     } else {
-      stagger(t, COMBAT.hitStagger + launch * 0.06);
+      if (!t.def.colossal) stagger(t, COMBAT.hitStagger + launch * 0.06);
       if (feel) {
         world.sfx.hit(false);
         world.freeze(FEEL.hitStop);
@@ -364,6 +365,13 @@ function applyDamage(
 }
 
 function kill(world: CombatWorld, t: Combatant, att: Combatant) {
+  if (t.def.colossal) {
+    // 巨神倒下：全場震動
+    world.shake(1);
+    world.slowMo(1.2);
+    world.sfx.boom();
+    world.fx.ring(tmp.set(t.pos.x, t.pos.y + 0.5, t.pos.z), 22, COLORS.dust);
+  }
   t.dead = true;
   t.deadT = 0;
   t.phase = 'idle';

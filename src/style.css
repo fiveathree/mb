@@ -464,3 +464,11 @@ kbd { background: linear-gradient(180deg, #4a3a2a, #2a2018); border: 1px solid r
 .codex.wide-list { align-content: start; gap: 2px 14px; }
 .sc-list { grid-template-columns: repeat(8, 1fr); }
 .sc-list .wp { font-size: 12px; }
+
+/* 巨神血條 */
+#bossbar { position: absolute; top: 44px; left: 50%; width: min(620px, 72%); transform: translateX(-50%); text-align: center; }
+#bossbar b { display: block; margin-bottom: 3px; font-family: var(--serif); font-size: 18px; letter-spacing: 6px; color: #ffe0a0; text-shadow: 0 2px 4px #000; }
+#bossbar span { display: block; height: 12px; background: #120d0a; border: 1px solid rgba(214, 176, 104, 0.6); box-shadow: 0 0 0 1px #000; }
+#bossbar i { display: block; height: 100%; transform-origin: left; background: linear-gradient(180deg, #ff6a4a, #8a1a12); }
+.sc-list { grid-template-columns: repeat(9, 1fr); gap: 2px; }
+.sc-list .wp { font-size: 11px; padding-left: 0; padding-right: 0; white-space: nowrap; }

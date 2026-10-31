@@ -285,3 +285,138 @@ export function partyIcon(color: string, wagon = false): HTMLCanvasElement {
     flag(g, 36, 44, color, 1.15);
   });
 }
+
+/** 崩塌後嘅頹垣敗瓦 */
+export function ruinIcon(color: string): HTMLCanvasElement {
+  return sprite(`ruin:${color}`, (g) => {
+    g.strokeStyle = INK;
+    g.lineWidth = 2;
+    g.fillStyle = '#3a3230';
+    g.beginPath();
+    g.ellipse(48, 82, 40, 9, 0, 0, Math.PI * 2);
+    g.fill();
+    // 斷牆
+    for (const [x, h, w] of [[16, 30, 12], [38, 18, 16], [60, 38, 13], [76, 16, 10]] as const) {
+      g.fillStyle = STONE_DARK;
+      g.beginPath();
+      g.moveTo(x, 84);
+      g.lineTo(x, 84 - h);
+      g.lineTo(x + w * 0.4, 84 - h + 7);
+      g.lineTo(x + w * 0.7, 84 - h + 2);
+      g.lineTo(x + w, 84 - h + 11);
+      g.lineTo(x + w, 84);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+    g.fillStyle = '#6a5a4c';
+    for (let i = 0; i < 12; i++) g.fillRect(14 + (i * 37) % 68, 76 + (i * 13) % 9, 7, 5);
+    g.fillStyle = color;
+    g.globalAlpha = 0.8;
+    g.fillRect(46, 74, 12, 5);
+    g.globalAlpha = 1;
+    g.fillStyle = '#ff7a2a';
+    for (const x of [28, 52, 70]) {
+      g.beginPath();
+      g.arc(x, 78, 3, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+}
+
+/** 災厄本體 */
+export function calamityIcon(kind: string): HTMLCanvasElement {
+  return sprite(`doom:${kind}`, (g) => {
+    g.lineJoin = 'round';
+    if (kind === 'titan') {
+      const aura = g.createRadialGradient(48, 44, 6, 48, 44, 46);
+      aura.addColorStop(0, 'rgba(255,200,110,.5)');
+      aura.addColorStop(1, 'rgba(255,120,60,0)');
+      g.fillStyle = aura;
+      g.fillRect(0, 0, 96, 96);
+      g.fillStyle = '#1c1416';
+      g.beginPath();
+      g.moveTo(34, 94);
+      g.lineTo(36, 58);
+      g.lineTo(18, 66);
+      g.lineTo(12, 40);
+      g.lineTo(32, 28);
+      g.lineTo(40, 24);
+      g.lineTo(38, 12);
+      g.lineTo(30, 2);
+      g.lineTo(44, 10);
+      g.lineTo(52, 10);
+      g.lineTo(66, 2);
+      g.lineTo(58, 12);
+      g.lineTo(56, 24);
+      g.lineTo(64, 28);
+      g.lineTo(84, 40);
+      g.lineTo(78, 66);
+      g.lineTo(60, 58);
+      g.lineTo(62, 94);
+      g.lineTo(50, 94);
+      g.lineTo(48, 66);
+      g.lineTo(46, 94);
+      g.closePath();
+      g.fill();
+      g.fillStyle = '#ffb03a';
+      g.fillRect(41, 15, 5, 3);
+      g.fillRect(50, 15, 5, 3);
+      return;
+    }
+    if (kind === 'witch') {
+      const aura = g.createRadialGradient(48, 46, 4, 48, 46, 46);
+      aura.addColorStop(0, 'rgba(210,90,250,.8)');
+      aura.addColorStop(1, 'rgba(120,30,200,0)');
+      g.fillStyle = aura;
+      g.fillRect(0, 0, 96, 96);
+      g.fillStyle = '#20102c';
+      g.beginPath();
+      g.moveTo(48, 14);
+      g.lineTo(60, 40);
+      g.lineTo(70, 84);
+      g.lineTo(26, 84);
+      g.lineTo(36, 40);
+      g.closePath();
+      g.fill();
+      g.fillStyle = '#e8a0ff';
+      g.beginPath();
+      g.arc(48, 34, 5, 0, Math.PI * 2);
+      g.fill();
+      return;
+    }
+    // 巨龍同飛龍
+    const body = kind === 'wyrm' ? '#2a1a4a' : '#7a1e18';
+    const web = kind === 'wyrm' ? '#4a2a7a' : '#a8342a';
+    g.fillStyle = web;
+    for (const s of [1, -1]) {
+      g.beginPath();
+      g.moveTo(48, 44);
+      g.lineTo(48 + s * 46, 16);
+      g.lineTo(48 + s * 38, 44);
+      g.lineTo(48 + s * 28, 40);
+      g.lineTo(48 + s * 22, 58);
+      g.closePath();
+      g.fill();
+    }
+    g.fillStyle = body;
+    g.beginPath();
+    g.ellipse(48, 50, 11, 24, 0, 0, Math.PI * 2);
+    g.fill();
+    g.beginPath();
+    g.moveTo(42, 34);
+    g.lineTo(48, 12);
+    g.lineTo(54, 34);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(44, 70);
+    g.lineTo(48, 94);
+    g.lineTo(52, 70);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#ffb03a';
+    g.fillRect(45, 18, 2, 2);
+    g.fillRect(49, 18, 2, 2);
+  });
+}

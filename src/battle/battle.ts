@@ -1,5 +1,6 @@
 import { MUSOU_RULES } from '../data/crowns';
 import { startMusou, updateMusou, type MusouCast } from './musou';
+import { updateColossus } from './colossus';
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import {
@@ -975,7 +976,9 @@ export class Battle implements CombatWorld {
     this.tickCommand(dt);
 
     for (const u of this.units) {
-      if (u !== p && !u.dead && u.musouT <= 0) updateAi(u, dt, this);
+      if (u === p || u.dead || u.musouT > 0) continue;
+      if (u.def.colossal) updateColossus(u, dt, this);
+      else updateAi(u, dt, this);
     }
     for (const h of this.horses) {
       const turned = updateHorse(h, dt, this.obstacles);
@@ -1350,6 +1353,8 @@ export class Battle implements CombatWorld {
           a.pos.z = h.pos.z + (dz / d) * min;
         }
       }
+      // 巨神一腳踩過，樹同石擋唔住
+      if (a.def.colossal) continue;
       for (const o of this.obstacles) {
         const min = o.r + a.def.radius;
         const dx = a.pos.x - o.x;

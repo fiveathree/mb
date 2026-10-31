@@ -14,6 +14,7 @@ interface Particle {
   vz: number;
 }
 
+const WARNS = 14;
 const RING_DENSITY = 7;
 const PILLAR_COUNT = 44;
 const BOLTS = 6;
@@ -33,6 +34,8 @@ export class Fx {
   private mesh: THREE.InstancedMesh;
   private parts: Particle[] = [];
   private next = 0;
+  private warns: { mesh: THREE.Mesh; life: number; max: number; radius: number }[] = [];
+  private nextWarn = 0;
   private m = new THREE.Matrix4();
   private c = new THREE.Color();
 
@@ -47,6 +50,14 @@ export class Fx {
     }
     scene.add(this.mesh);
     scene.add(this.flash);
+    const disc = new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2);
+    for (let i = 0; i < WARNS; i++) {
+      const mesh = new THREE.Mesh(disc, new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, depthTest: false, depthWrite: false, fog: false }));
+      mesh.visible = false;
+      mesh.renderOrder = 2;
+      scene.add(mesh);
+      this.warns.push({ mesh, life: 0, max: 1, radius: 1 });
+    }
     const geo = new THREE.BoxGeometry(0.28, 1, 0.28);
     const mat = new THREE.MeshBasicMaterial({ color: 0xe8f0ff });
     for (let i = 0; i < BOLTS; i++) {
@@ -109,6 +120,16 @@ export class Fx {
     this.mesh.instanceColor!.needsUpdate = true;
   }
 
+  /** 地上紅圈：超巨型敵人出招預兆，縮到邊先落 */
+  warn(pos: THREE.Vector3, radius: number, life: number) {
+    const w = this.warns[this.nextWarn];
+    this.nextWarn = (this.nextWarn + 1) % WARNS;
+    w.mesh.position.set(pos.x, pos.y + 0.4, pos.z);
+    w.mesh.visible = true;
+    w.radius = radius;
+    w.life = w.max = life;
+  }
+
   /** 招式嘅強光 */
   flashAt(pos: THREE.Vector3, color: number) {
     this.flash.color.set(color);
@@ -144,6 +165,14 @@ export class Fx {
   }
 
   update(dt: number) {
+    for (const w of this.warns) {
+      if (w.life <= 0) continue;
+      w.life -= dt;
+      if (w.life <= 0) w.mesh.visible = false;
+      const k = 1 - w.life / w.max;
+      w.mesh.scale.setScalar(w.radius * (0.3 + 0.7 * k));
+      (w.mesh.material as THREE.MeshBasicMaterial).opacity = 0.2 + 0.4 * k;
+    }
     this.flash.intensity *= Math.exp(-14 * dt);
     for (const b of this.bolts) {
       if (b.life <= 0) continue;

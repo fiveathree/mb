@@ -2,6 +2,7 @@ import type { ArmyEntry } from './battlefield';
 import { FACTIONS } from './factions';
 import type { Culture } from './formations';
 import { NPC } from './economy';
+import { CALAMITY } from './tomb';
 import type { TicketPool } from './gacha';
 import type { PlayableRace } from './factions';
 import { GRAND_CROWNS, crownOf, shortName, type CrownDef } from './crowns';
@@ -25,6 +26,8 @@ export interface Scenario {
   mercs: string[];
   /** 龍巢嘅 Boss 同地名 */
   boss?: { unit: string; lair: string; desc: string };
+  /** 喺大地圖行走嘅巨神 */
+  titan?: { unit: string; name: string };
   /** 天上飛過嘅生物 */
   sky?: string[];
   /** 只出現呢個劇本專屬人物 */
@@ -213,6 +216,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     camps: [army(['tian_bing', 14], ['tian_archer', 6], ['tian_jiang', 3]), army(['demon_grunt', 12], ['ye_cha', 5], ['lei_bu', 2])],
     boss: { unit: 'boss_chaos', lair: '混沌深淵', desc: '三界未開之前就存在嘅魔祖，要將天地打返成一團混沌。' },
+    titan: { unit: 'boss_asura', name: '阿修羅王' },
   },
   {
     id: 'xiyou', ownFigures: true, sky: ['crane','immortal','demonbat'], name: '西遊取經', desc: '師徒四人西行，一路妖魔要食唐僧肉，八十一難等緊你', cultures: ['east','magic'], levy: 'dao_guard',
@@ -329,6 +333,76 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['styx_guard', 12], ['skeleton', 10], ['wang_hun', 4]), army(['jackal_guard', 8], ['grave_knight', 5], ['necromancer', 3])],
     boss: { unit: 'boss_kronos', lair: '塔爾塔羅斯深淵', desc: '被囚嘅泰坦撼動牢籠，冥府諸神都要停戰。' },
   },
+  {
+    id: 'shenmo', ownFigures: true, sky: ['phoenix','demonbat','dragon'], name: '神魔大戰', desc: '諸神同萬魔決戰，滅世魔神踏遍大陸，一腳落地就係一座城', cultures: ['west','magic'], levy: 'tian_bing',
+    mercs: ['tian_bing','tian_archer','tian_jiang','demon_grunt','ye_cha','lei_bu'],
+    realms: [
+      ['光輝神國', '神王殿'],
+      ['戰神聖殿', '戰神山'],
+      ['智慧神殿', '星輝城'],
+      ['雷霆神域', '雷霆峰'],
+      ['海神王國', '潮汐宮'],
+      ['豐饒神域', '金穗城'],
+      ['凡人聯盟', '自由城'],
+      ['晨星騎士團', '晨星堡'],
+      ['魔王軍', '魔王城'],
+      ['血魔族', '血月城'],
+      ['骸骨魔域', '萬骨城'],
+      ['影魔議會', '影之塔'],
+      ['炎魔熔爐', '熔岩城'],
+      ['寒獄魔域', '冰獄'],
+      ['虛空裂隙', '虛空門'],
+    ],
+    camps: [army(['tian_bing', 12], ['tian_archer', 6], ['tian_jiang', 4]), army(['demon_grunt', 12], ['ye_cha', 6], ['demon_cultist', 3])],
+    boss: { unit: 'boss_voidgod', lair: '虛空王座', desc: '諸神同萬魔之上，仲有一位主宰。' },
+    titan: { unit: 'boss_demongod', name: '滅世魔神' },
+  },
+  {
+    id: 'maoshan', ownFigures: true, sky: ['demonbat','crane'], name: '茅山驅魔', desc: '月黑風高，殭屍出棺，百鬼夜行，道長帶住徒弟開壇作法', cultures: ['east','magic'], levy: 'dao_tong',
+    mercs: ['dao_tong','dao_zhang','dao_guard','archer'],
+    realms: [
+      ['茅山派', '茅山'],
+      ['龍虎山', '天師府'],
+      ['任家鎮', '任家鎮'],
+      ['甘田鎮', '甘田鎮'],
+      ['蘭若寺', '蘭若寺'],
+      ['義莊', '義莊'],
+      ['鎮江督軍府', '督軍府'],
+      ['省城', '省城'],
+      ['湘西趕屍人', '辰州'],
+      ['苗疆蠱寨', '蠱寨'],
+      ['亂葬崗', '亂葬崗'],
+      ['古墓僵族', '千年古墓'],
+      ['黑山老妖', '黑山'],
+      ['百鬼窟', '百鬼窟'],
+      ['妖狐洞', '狐仙洞'],
+    ],
+    camps: [army(['dao_tong', 12], ['dao_zhang', 4], ['dao_guard', 8]), army(['jiangshi', 16], ['nv_gui', 6], ['gui_zu', 6])],
+    boss: { unit: 'boss_jiangwang', lair: '千年僵王墓', desc: '封印咗千年嘅殭屍王開棺，月光都照唔入去。' },
+  },
+  {
+    id: 'biocity', ownFigures: true, sky: ['bird'], name: '喪屍危城', desc: '生化公司病毒外洩，全城喪屍化，特勤探員殺出一條血路', cultures: ['west'], levy: 'marine_trooper',
+    mercs: ['marine_trooper','flame_trooper','walker_mech'],
+    realms: [
+      ['特勤總部', '行動基地'],
+      ['警察局', '中央警局'],
+      ['市政廳', '市政廳'],
+      ['大學', '醫學院'],
+      ['港口區', '碼頭'],
+      ['工業區', '化工廠'],
+      ['倖存者營地', '地鐵站'],
+      ['軍方封鎖線', '封鎖線'],
+      ['醫院區', '總醫院'],
+      ['商場區', '購物中心'],
+      ['生化公司', '總部大樓'],
+      ['地下實驗室', '地下研究所'],
+      ['下水道', '下水道'],
+      ['污染區', '隔離區'],
+      ['爆心地帶', '爆心'],
+    ],
+    camps: [army(['marine_trooper', 12], ['flame_trooper', 5]), army(['zombie', 18], ['zombie_runner', 8], ['zombie_brute', 2])],
+    boss: { unit: 'boss_mutant', lair: '地下研究所', desc: '實驗失控，培養槽入面嘅嘢爬咗出嚟。' },
+  },
 ];
 
 // 歷史劇本：只得人類同人類卡池
@@ -336,6 +410,7 @@ for (const id of ['threekingdoms', 'fivedynasties', 'rome', 'crusade']) {
   Object.assign(SCENARIOS.find((s) => s.id === id)!, { races: ['human', 'nord'], pools: ['human'] });
 }
 Object.assign(SCENARIOS.find((s) => s.id === 'starwar')!, { races: ['human', 'psionic'], pools: ['human'], scifi: true });
+Object.assign(SCENARIOS.find((s) => s.id === 'biocity')!, { races: ['human'], pools: ['human'], scifi: true });
 
 export const scenarioOf = (id: string): Scenario => SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
 
@@ -393,6 +468,10 @@ export function applyScenario(id: string, crownId?: string) {
     if (fen) fen.name = '蘆葦村';
   }
   NPC.raider.name = magic ? '獸人掠奪隊' : '流寇掠奪隊';
+  if (current.titan) {
+    NPC.titan.name = current.titan.name;
+    CALAMITY.titan.unit = current.titan.unit;
+  }
   const { realms, camps, boss } = current;
   if (realms) {
     realms.forEach(([faction, place], i) => {

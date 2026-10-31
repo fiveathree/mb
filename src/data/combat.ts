@@ -121,7 +121,7 @@ export const FEEL = {
 /** 第三身鏡頭 */
 export const CAMERA = {
   mouseSensitivity: 0.0024,
-  minPitch: -0.45,
+  minPitch: -0.75,
   maxPitch: 0.9,
   distanceMounted: 6.2,
   distanceOnFoot: 4,

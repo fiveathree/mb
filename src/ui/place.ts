@@ -826,6 +826,7 @@ export class PlaceScreens {
         break;
       case 'dragon':
       case 'witch':
+      case 'titan':
       case 'wyrm':
         h.fight = () => this.act.onRaider(n);
         body = `<p class="sub">討伐${NPC[n.kind].name}可以得到神器同大量金幣。</p><button class="go" id="fight">討伐</button>`;

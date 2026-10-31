@@ -1,6 +1,8 @@
 import type { PoolId, Rarity } from './gacha';
 import { FIGURES } from './figures';
 import { CROWNS } from './crowns';
+import { COLOSSI, COLOSSUS } from './colossus';
+import { RACES } from './races';
 import type { Race } from './races';
 
 export type Role = 'infantry' | 'archer' | 'cavalry' | 'mage';
@@ -65,6 +67,8 @@ export interface UnitDef {
   boss?: boolean;
   /** 最大法力 */
   mp?: number;
+  /** 超巨型：用專屬招式 AI，地圖上會崩城 */
+  colossal?: boolean;
   /** 冠位角色 id，有就有專屬戰技 */
   crown?: string;
   /** 覆蓋種族膚色，五色龍用 */
@@ -535,6 +539,12 @@ UNITS.boss_gonggong = { ...boss('boss_gonggong', '水神共工', 'giant', 'boss_
 UNITS.boss_blood = { ...boss('boss_blood', '血池魔君', 'demon', 'boss_club', 1700, 20, 1.1, 4.7) };
 UNITS.boss_kronos = { ...boss('boss_kronos', '泰坦克羅諾斯', 'giant', 'boss_club', 2000, 24, 1.4, 4.4) };
 
+UNITS.boss_asura = { ...boss('boss_asura', '阿修羅王', 'demon', 'boss_club', 2000, 22, 1.2, 4.8) };
+UNITS.boss_demongod = { ...boss('boss_demongod', '滅世魔神', 'demon', 'boss_club', 2200, 24, 1.3, 4.6) };
+UNITS.boss_voidgod = { ...boss('boss_voidgod', '虛空主宰', 'demon', 'boss_fist', 2100, 22, 1.2, 4.8) };
+UNITS.boss_jiangwang = { ...boss('boss_jiangwang', '千年殭屍王', 'undead', 'boss_fist', 1500, 20, 1, 4.4) };
+UNITS.boss_mutant = { ...boss('boss_mutant', '終極突變體', 'giant', 'boss_fist', 1400, 18, 1.2, 5) };
+
 // 神話劇本兵種
 for (const u of [
   troop('tian_bing', '天兵', 'infantry', 2, 80, 8, ['infantry_sword'], 0xe8c860),
@@ -553,6 +563,13 @@ for (const u of [
   troop('wang_hun', '亡魂', 'mage', 3, 60, 2, ['troop_bolt', 'short_sword'], 0x8aa8c8, { race: 'undead' }),
   troop('styx_guard', '冥河衛', 'infantry', 3, 110, 12, ['elite_spear'], 0x2a3a5a, { race: 'undead' }),
   troop('jackal_guard', '胡狼衛', 'infantry', 4, 135, 10, ['elite_sword'], 0xc8a040, { race: 'beastkin' }),
+  troop('dao_tong', '道童', 'infantry', 2, 70, 4, ['infantry_sword'], 0xe8d8a0),
+  troop('dao_zhang', '道長', 'mage', 4, 100, 5, ['troop_bolt', 'infantry_sword'], 0xd8c048),
+  troop('jiangshi', '殭屍', 'infantry', 2, 90, 6, ['infantry_axe'], 0x2a3a5a, { race: 'undead', runSpeed: 3.2, morale: 200 }),
+  troop('nv_gui', '女鬼', 'mage', 3, 60, 2, ['troop_bolt', 'short_sword'], 0xe8e8f0, { race: 'undead', morale: 200 }),
+  troop('zombie', '喪屍', 'infantry', 1, 50, 1, ['infantry_axe'], 0x5a6a4a, { race: 'undead', runSpeed: 2.6, morale: 300 }),
+  troop('zombie_runner', '狂奔喪屍', 'infantry', 2, 45, 1, ['infantry_axe'], 0x6a4a3a, { race: 'undead', runSpeed: 6, morale: 300 }),
+  troop('zombie_brute', '突變巨屍', 'infantry', 5, 260, 12, ['elite_axe'], 0x7a3a4a, { race: 'undead', scale: 1.7, radius: 0.8, morale: 300 }),
 ]) UNITS[u.id] = u;
 
 // 酒館同伴
@@ -578,6 +595,15 @@ for (const f of FIGURES) {
 }
 
 for (const c of CROWNS) UNITS[c.id].crown = c.id;
+
+// 超巨型：scale 由目標身高反推，連種族體型同英雄加成
+for (const [id, c] of Object.entries(COLOSSI)) {
+  const u = UNITS[id];
+  u.colossal = true;
+  u.scale = c.height / (1.9 * RACES[u.race ?? 'human'].scale * 1.14);
+  u.radius = c.radius;
+  u.hp = Math.round(u.hp * COLOSSUS.hpMult);
+}
 
 // 每個卡池最強嗰位係 UR
 for (const id of ['hero_barn', 'hero_morvain', 'hero_asterion', 'hero_reynard', 'hero_gorak']) UNITS[id].rarity = 'ur';

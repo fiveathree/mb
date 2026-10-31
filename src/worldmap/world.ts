@@ -11,6 +11,7 @@ import { NpcSystem, type Npc } from './npcs';
 import { SCENARIOS } from '../data/scenarios';
 import { UNITS } from '../data/units';
 import { CALAMITY } from '../data/tomb';
+import { SCAR_DAYS, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
 import { CAMPAIGN } from '../data/gacha';
 import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
@@ -31,6 +32,23 @@ export interface BanditParty {
   /** 遊走目標 */
   tx: number;
   ty: number;
+}
+
+export interface Scar {
+  x: number;
+  y: number;
+  r: number;
+  kind: StrikeKind;
+  until: number;
+}
+
+export interface Blast {
+  kind: StrikeKind;
+  x: number;
+  y: number;
+  r: number;
+  t: number;
+  places: string[];
 }
 
 export interface WorldSave {
@@ -63,6 +81,11 @@ export interface WorldSave {
   cargo: Record<GoodId, number>;
   /** 村莊 → 第幾日先修復 */
   burnedUntil: Record<string, number>;
+  /** 廢墟：第幾日先重建 */
+  ruins: Record<string, number>;
+  /** 大地圖上嘅焦土 */
+  scars: Scar[];
+  nextTitan: number;
   nextRaid: number;
   /** 城鎮 → 作坊 id */
   workshops: Record<string, string>;
@@ -130,6 +153,9 @@ export function migrateWorld(w: WorldSave): WorldSave {
     w.treasury[id] ??= baseGold(id);
   }
   w.burnedUntil ??= {};
+  w.ruins ??= {};
+  w.scars ??= [];
+  w.nextTitan ??= CALAMITY.titan.firstDay;
   w.nextRaid ??= 4;
   w.workshops ??= {};
   w.arenaUntil ??= {};
@@ -199,6 +225,8 @@ export class World {
   private chasing: number | null = null;
   private rechase = 0;
   private pendingStory: StoryEvent | null = null;
+  /** 播緊嘅滅世攻擊畫面，唔入存檔 */
+  blasts: Blast[] = [];
   private hunterGrace = 0;
   readonly npcs: NpcSystem;
   readonly politics: Politics;
@@ -209,6 +237,7 @@ export class World {
     this.politics = new Politics(save.pol, (t) => this.note(t));
     this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
     this.npcs.onDoom = (id) => this.politics.doom(id, dayOf(this.save));
+    this.npcs.onStrike = (kind, place) => this.strike(kind, place);
     this.npcs.onRaid = (b) => {
       this.removeBandit(b);
       this.save.expeditionKills = (this.save.expeditionKills ?? 0) + 1;
@@ -335,6 +364,25 @@ export class World {
       }
     }
     return `${work.label}：${got.join('、')}`;
+  }
+
+  /** 滅世攻擊：範圍內城鎮崩塌，留低焦土，部隊喺範圍入面都會中 */
+  strike(kind: StrikeKind, place: PlaceDef) {
+    const w = this.save;
+    const rule = STRIKES[kind];
+    const until = dayOf(w) + SCAR_DAYS;
+    const hit = PLACES.filter((p) => !p.gone && p.kind !== 'dungeon' && p.kind !== 'maze' && Math.hypot(p.x - place.x, p.y - place.y) <= rule.radius);
+    for (const p of hit) {
+      w.ruins[p.id] = until;
+      w.burnedUntil[p.id] = Math.max(w.burnedUntil[p.id] ?? 0, until);
+    }
+    w.scars.push({ x: place.x, y: place.y, r: rule.radius, kind, until });
+    this.blasts.push({ kind, x: place.x, y: place.y, r: rule.radius, t: 0, places: hit.map((p) => p.id) });
+    this.note(`${rule.name}落喺${place.name}，${hit.length} 處城鎮崩塌！`);
+    if (Math.hypot(w.x - place.x, w.y - place.y) > rule.radius) return;
+    w.morale = Math.max(0, w.morale - STRIKE_MORALE);
+    for (const s of this.roster.soldiers.slice(0, STRIKE_HURT)) s.hurtDays = Math.max(s.hurtDays, SCAR_DAYS / 4);
+    this.note('你嘅部隊被波及！');
   }
 
   /** 彈一段故事，下次行軍時顯示 */

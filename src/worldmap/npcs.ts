@@ -1,9 +1,10 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
 import { GROWTH_CHANCE, MILESTONES, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
-import { currentFigures, isMagic } from '../data/scenarios';
+import { currentFigures, currentScenario, isMagic } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
+import type { StrikeKind } from '../data/colossus';
 import { DRAGON_BREEDS } from '../data/units';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
@@ -46,7 +47,7 @@ function nearestTown(p: PlaceDef): PlaceDef {
 
 export function raiderArmy(n: Npc): ArmyEntry[] {
   if (n.kind === 'dragon') return [{ unit: DRAGON_BREEDS[n.id % DRAGON_BREEDS.length], count: 1 }];
-  if (n.kind === 'witch' || n.kind === 'wyrm') return [{ unit: CALAMITY[n.kind].unit, count: 1 }];
+  if (n.kind === 'witch' || n.kind === 'wyrm' || n.kind === 'titan') return [{ unit: CALAMITY[n.kind].unit, count: 1 }];
   if (n.kind === 'patrol') {
     return [
       { unit: 'footman', count: Math.ceil(n.size * 0.6) }, { unit: 'archer', count: Math.ceil(n.size * 0.25) },
@@ -62,6 +63,8 @@ export class NpcSystem {
   private bandits: BanditParty[] | null = null;
   /** 災厄毀城，由世界交畀政治系統處理 */
   onDoom: ((place: string) => void) | null = null;
+  /** 滅世攻擊落地：世界畫面要顯示 */
+  onStrike: ((kind: StrikeKind, place: PlaceDef) => void) | null = null;
   /** 遠征隊打到山賊 */
   onRaid: ((b: BanditParty) => void) | null = null;
 
@@ -124,10 +127,11 @@ export class NpcSystem {
       this.save.nextDragon = this.day() + NPC_RULES.dragonEveryDays;
       this.note('巨龍離巢！全大陸震動');
     }
-    for (const kind of ['witch', 'wyrm'] as const) {
+    for (const kind of ['witch', 'wyrm', 'titan'] as const) {
       if (!isMagic()) break;
+      if (kind === 'titan' && !currentScenario().titan) continue;
       const rule = CALAMITY[kind];
-      const key = kind === 'witch' ? 'nextWitch' : 'nextWyrm';
+      const key = kind === 'witch' ? 'nextWitch' : kind === 'wyrm' ? 'nextWyrm' : 'nextTitan';
       if (this.day() < this.save[key] || count(kind) >= NPC[kind].max) continue;
       this.spawn(kind, placeOf(rule.home));
       this.save[key] = this.day() + rule.everyDays;
@@ -294,12 +298,13 @@ export class NpcSystem {
       case 'raider':
       case 'dragon':
       case 'witch':
+      case 'titan':
       case 'wyrm': {
         if (n.done) {
           this.setTrip(n, home, `返去${home.name}`);
         } else {
           // 災厄連城鎮都會打
-          const to = pick(n.kind === 'witch' || n.kind === 'wyrm' ? [...villages, ...towns] : villages);
+          const to = pick(n.kind === 'witch' || n.kind === 'wyrm' || n.kind === 'titan' ? [...villages, ...towns] : villages);
           this.setTrip(n, to, `正要毀滅${to.name}`);
         }
         break;
@@ -339,14 +344,16 @@ export class NpcSystem {
       case 'raider':
       case 'dragon':
       case 'witch':
+      case 'titan':
       case 'wyrm':
         if (place && (place.kind === 'village' || place.kind === 'town') && !n.done) {
-          const doom = n.kind === 'witch' || n.kind === 'wyrm' ? CALAMITY[n.kind] : null;
+          const doom = n.kind === 'witch' || n.kind === 'wyrm' || n.kind === 'titan' ? CALAMITY[n.kind] : null;
           this.save.burnedUntil[place.id] = this.day() + NPC_RULES.burnedDays * (doom?.burnMult ?? 1);
           if (doom) {
             this.save.treasury[place.id] = 0;
             this.onDoom?.(place.id);
           }
+          if (n.kind !== 'raider') this.onStrike?.(n.kind, place);
           n.done = true;
           this.note(`${place.name}被${NPC[n.kind].name}${doom?.verb ?? '洗劫'}！`);
           n.wait = 3;
@@ -477,7 +484,7 @@ export class NpcSystem {
     let best: Npc | null = null;
     let bestD: number = NPC_RULES.banditPreySight;
     for (const n of this.save.npcs) {
-      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition', 'lord', 'figure'].includes(n.kind)) continue;
+      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'titan', 'expedition', 'lord', 'figure'].includes(n.kind)) continue;
       const d = Math.hypot(n.x - b.x, n.y - b.y);
       if (d < bestD) {
         bestD = d;

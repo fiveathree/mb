@@ -75,6 +75,7 @@ export class Hud {
           ${DIRS.map((d) => `<i class="dir ${d}" data-dir="${d}"></i>`).join('')}
           <div class="charge"><i></i></div>
         </div>
+        <div id="bossbar" hidden><b id="bossname"></b><span><i id="bossfill"></i></span></div>
         <div class="panel left">
           ${bar('hp', '生命')}${bar('mp', '法力')}${bar('horse', '戰馬')}${bar('stam', '馬力')}${bar('shield', '盾牌')}${bar('musou', '戰技')}
         </div>
@@ -324,7 +325,7 @@ export class Hud {
   /** 英雄名牌跟住頭頂 */
   private drawNametags(b: Battle) {
     const box = this.q('#nametags');
-    const heroes = b.units.filter((u) => u.def.hero && !u.dead);
+    const heroes = b.units.filter((u) => u.def.hero && !u.dead && !u.def.colossal);
     while (box.children.length < heroes.length) box.appendChild(document.createElement('span'));
     [...box.children].forEach((node, i) => {
       const el = node as HTMLElement;
@@ -353,6 +354,13 @@ export class Hud {
     this.setBar('shield', p.shieldHp, p.shieldMax, p.weapon.hasShield);
     this.q('#stam').classList.toggle('low', h.exhausted);
     this.setBar('musou', p.musou, MUSOU_RULES.max, !!p.def.crown);
+    const giant = b.units.find((u) => u.def.colossal && !u.dead);
+    const gbar = this.q('#bossbar');
+    gbar.hidden = !giant;
+    if (giant) {
+      this.setText('#bossname', giant.def.name);
+      this.q('#bossfill').style.transform = `scaleX(${Math.max(0, giant.hp / giant.def.hp)})`;
+    }
     this.q('#musou').classList.toggle('ready', p.musou >= MUSOU_RULES.max);
 
     if (this.frame % MINIMAP_EVERY === 0) {

@@ -406,7 +406,8 @@ function placeReward(p: PlaceDef): string {
 }
 
 function attackPlace(p: PlaceDef) {
-  const crawl = p.kind === 'dungeon' || p.kind === 'maze';
+  // 巨神塞唔落地下城，喺外面開闊地打
+  const crawl = (p.kind === 'dungeon' || p.kind === 'maze') && !p.garrison!.some((e) => UNITS[e.unit].colossal);
   const party = crawl ? deployment(roster).slice(0, DUNGEON.partySize) : deployment(roster);
   void startBattle(p.garrison!, p.garrisonLevel ?? 1, p.theme ?? 'plains', (win) => {
     if (!win) return '';
@@ -493,7 +494,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
   });
 }
 
-function fightCalamity(n: Npc, kind: 'witch' | 'wyrm') {
+function fightCalamity(n: Npc, kind: 'witch' | 'wyrm' | 'titan') {
   const rule = CALAMITY[kind];
   void startBattle(raiderArmy(n), rule.level, 'night', (win) => {
     if (!win) return '';
@@ -509,7 +510,7 @@ function fightCalamity(n: Npc, kind: 'witch' | 'wyrm') {
 }
 
 function fightRaider(n: Npc) {
-  if (n.kind === 'witch' || n.kind === 'wyrm') {
+  if (n.kind === 'witch' || n.kind === 'wyrm' || n.kind === 'titan') {
     fightCalamity(n, n.kind);
     return;
   }

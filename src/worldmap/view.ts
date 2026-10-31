@@ -8,9 +8,10 @@ import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { partyFood, partyWage } from '../core/roster';
-import { placeIcon, partyIcon } from './icons';
+import { calamityIcon, placeIcon, partyIcon, ruinIcon } from './icons';
+import { STRIKES } from '../data/colossus';
 import { Sky, type Projected } from './sky';
-import { dayOf, hourOf, isNight, isOpen, type World, type WorldEvent } from './world';
+import { dayOf, hourOf, isNight, isOpen, type Blast, type World, type WorldEvent } from './world';
 
 const PX = MAP.tilePx;
 const PAN_SPEED = 620;
@@ -25,6 +26,11 @@ const LABEL_MIN_SCALE = 0.34;
 const DEFAULT_SKY = ['bird'];
 /** 行咗幾多格就重新計預覽路線 */
 const PREVIEW_REPLAN = 3;
+/** 滅世攻擊：光柱落地要幾耐，整段畫面幾長，城崩塌幾耐 */
+const IMPACT = 1;
+const BLAST_LIFE = 5;
+const COLLAPSE = 1.8;
+const CALAMITY_PX = { dragon: 70, witch: 60, wyrm: 104, titan: 170 } as Record<string, number>;
 
 const dotRadius = (men: number) => Math.min(PARTY.dotMax, PARTY.dotBase + Math.sqrt(men) * PARTY.dotPerRootMan);
 
@@ -371,6 +377,9 @@ export class WorldView {
     this.focusX = Math.max(0, Math.min(this.focusX, this.base.width));
     this.focusY = Math.max(0, Math.min(this.focusY, this.base.height));
     this.zoomNow += (this.zoomGoal - this.zoomNow) * (1 - Math.exp(-12 * dt));
+    const { blasts } = this.world;
+    for (const b of blasts) b.t += dt;
+    this.world.blasts = blasts.filter((b) => b.t < BLAST_LIFE);
     this.sky.update(dt, currentScenario().sky ?? DEFAULT_SKY, this.focusX, this.focusY);
   }
 
@@ -408,7 +417,9 @@ export class WorldView {
 
   private draw() {
     const g = this.g;
-    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    // 落地一刻成個畫面震
+    const shake = this.world.blasts.reduce((s, b) => Math.max(s, b.t > IMPACT ? Math.max(0, 1 - (b.t - IMPACT) / 1.4) : 0), 0) * 9;
+    g.setTransform(this.dpr, 0, 0, this.dpr, (Math.random() - 0.5) * shake * this.dpr, (Math.random() - 0.5) * shake * this.dpr);
     const w = this.world.save;
     const width = this.W;
     const height = this.H;
@@ -421,6 +432,7 @@ export class WorldView {
     this.sky.drawHaze(g, width, horizon, height, hour);
 
     const at = (x: number, y: number) => this.project(x * PX, y * PX);
+    this.drawScars(at);
     const me = at(w.x, w.y);
 
     // 行軍路線
@@ -466,6 +478,7 @@ export class WorldView {
       .filter((o): o is { p: PlaceDef; q: Projected } => !!o.q && o.q.y > horizon && o.q.y < height + 40)
       .sort((a, b) => a.q.s - b.q.s);
     for (const { p, q } of places) this.drawPlace(p, q);
+    for (const b of this.world.blasts) this.drawBlast(b, at);
 
     // 夜晚同視野：地面上嘅橢圓
     if (me) {
@@ -504,10 +517,16 @@ export class WorldView {
     g.font = `700 14px ${FONT}`;
     for (const n of w.npcs) {
       const dist = Math.hypot(n.x - w.x, n.y - w.y);
-      if (dist > this.world.vision) continue;
+      const huge = CALAMITY_PX[n.kind];
+      // 災厄大到全大陸都見到，唔受視野限制
+      if (dist > this.world.vision && !huge) continue;
       const q = at(n.x, n.y);
       if (!q) continue;
       const def = NPC[n.kind];
+      if (huge) {
+        this.drawCalamity(n.kind, q, huge, `${def.name}：${n.job}`);
+        continue;
+      }
       const radius = dotRadius(n.size) * Math.max(0.5, q.s);
       this.drawParty(q, radius, def.color, n.kind === 'caravan');
       if (dist < NPC_RULES.labelDist && q.s > LABEL_MIN_SCALE) {
@@ -541,6 +560,109 @@ export class WorldView {
     g.strokeText(label, me.x, me.y - radius * 3.7);
     g.fillStyle = '#ffe9a8';
     g.fillText(label, me.x, me.y - radius * 3.7);
+  }
+
+  /** 焦土：貼住地面，近大遠細 */
+  private drawScars(at: (x: number, y: number) => Projected | null) {
+    const g = this.g;
+    const w = this.world.save;
+    const day = dayOf(w);
+    w.scars = w.scars.filter((s) => s.until > day);
+    for (const s of w.scars) {
+      const q = at(s.x, s.y);
+      if (!q) continue;
+      const rx = s.r * PX * q.s;
+      g.save();
+      g.translate(q.x, q.y);
+      g.scale(1, MAP_VIEW.depth * 0.7);
+      const grad = g.createRadialGradient(0, 0, rx * 0.1, 0, 0, rx);
+      const c = STRIKES[s.kind].scar;
+      grad.addColorStop(0, `${c}f0`);
+      grad.addColorStop(0.7, `${c}a8`);
+      grad.addColorStop(1, `${c}00`);
+      g.fillStyle = grad;
+      g.beginPath();
+      g.arc(0, 0, rx, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
+  }
+
+  /** 廢墟冒煙 */
+  private drawSmoke(x: number, y: number, r: number) {
+    const g = this.g;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < 4; i++) {
+      const k = (t * 0.35 + i * 0.25) % 1;
+      g.fillStyle = `rgba(40,36,36,${0.4 * (1 - k)})`;
+      g.beginPath();
+      g.arc(x + Math.sin(t + i) * r * 0.2 + k * r * 0.5, y - r * 0.5 - k * r * 1.7, r * (0.18 + k * 0.32), 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+
+  /** 滅世攻擊：光柱由天而降，落地後衝擊波擴散到真實波及範圍 */
+  private drawBlast(b: Blast, at: (x: number, y: number) => Projected | null) {
+    const q = at(b.x, b.y);
+    if (!q) return;
+    const g = this.g;
+    const color = STRIKES[b.kind].color;
+    const rx = b.r * PX * q.s;
+    const flat = MAP_VIEW.depth * 0.7;
+    if (b.t < IMPACT + 0.5) {
+      const k = Math.min(1, b.t / IMPACT);
+      const width = (10 + rx * 0.16) * (b.t > IMPACT ? 1 - (b.t - IMPACT) / 0.5 : k);
+      const grad = g.createLinearGradient(0, 0, 0, q.y);
+      grad.addColorStop(0, `${color}00`);
+      grad.addColorStop(1, color);
+      g.fillStyle = grad;
+      g.fillRect(q.x - width / 2, 0, width, q.y * k);
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      g.fillRect(q.x - width / 6, 0, width / 3, q.y * k);
+    }
+    // 預告圈：落地前已經見到會波及邊度
+    g.save();
+    g.translate(q.x, q.y);
+    g.scale(1, flat);
+    const wave = b.t < IMPACT ? 1 : Math.min(1, (b.t - IMPACT) / 1.1);
+    const fade = b.t < IMPACT ? 0.8 : Math.max(0, 1 - (b.t - IMPACT) / (BLAST_LIFE - IMPACT));
+    g.globalAlpha = fade;
+    g.strokeStyle = color;
+    g.lineWidth = b.t < IMPACT ? 2 : 7;
+    g.setLineDash(b.t < IMPACT ? [10, 8] : []);
+    g.beginPath();
+    g.arc(0, 0, rx * (b.t < IMPACT ? 1 : wave), 0, Math.PI * 2);
+    g.stroke();
+    g.setLineDash([]);
+    if (b.t >= IMPACT) {
+      const grad = g.createRadialGradient(0, 0, 0, 0, 0, rx * wave);
+      grad.addColorStop(0, `${color}c0`);
+      grad.addColorStop(1, `${color}00`);
+      g.fillStyle = grad;
+      g.beginPath();
+      g.arc(0, 0, rx * wave, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+
+  /** 災厄本體：比城鎮仲大，一眼見到 */
+  private drawCalamity(kind: string, q: Projected, px: number, label: string) {
+    const g = this.g;
+    const size = px * Math.max(0.5, Math.min(1.6, q.s * 1.4));
+    const air = kind === 'titan' ? 0 : size * 0.3 + Math.sin(performance.now() / 300) * 3;
+    g.fillStyle = 'rgba(8,10,16,.45)';
+    g.beginPath();
+    g.ellipse(q.x, q.y, size * 0.4, size * 0.13, 0, 0, Math.PI * 2);
+    g.fill();
+    g.drawImage(calamityIcon(kind), q.x - size / 2, q.y - size * 0.95 - air, size, size);
+    if (q.s < LABEL_MIN_SCALE) return;
+    g.lineWidth = 5;
+    g.lineJoin = 'round';
+    g.strokeStyle = OUTLINE;
+    g.strokeText(label, q.x, q.y - size - air - 6);
+    g.fillStyle = '#ffb0a0';
+    g.fillText(label, q.x, q.y - size - air - 6);
   }
 
   /** 部隊圖示：腳踏喺地面位置，有影 */
@@ -578,8 +700,28 @@ export class WorldView {
     const tone = color ?? (open ? '#7a2a2a' : '#555555');
     const icon = placeIcon(p.monster ? 'monster' : p.kind, tone);
     const d = r * 2;
+    const save = this.world.save;
+    const ruined = (save.ruins[p.id] ?? 0) > dayOf(save);
+    const blast = this.world.blasts.find((b) => b.places.includes(p.id));
+    const fall = blast ? (blast.t - IMPACT) / COLLAPSE : 1;
     g.globalAlpha = open ? 1 : 0.72;
-    g.drawImage(icon, q.x - d / 2, y - d * 0.88, d, d);
+    if (blast && fall < 0) {
+      g.drawImage(icon, q.x - d / 2, y - d * 0.88, d, d);
+    } else {
+      if (ruined) {
+        g.drawImage(ruinIcon(tone), q.x - d / 2, y - d * 0.88, d, d);
+        this.drawSmoke(q.x, y, r);
+      } else g.drawImage(icon, q.x - d / 2, y - d * 0.88, d, d);
+      if (blast && fall < 1) {
+        // 城塔一路震一路沉落地
+        g.save();
+        g.beginPath();
+        g.rect(q.x - d, y - d * 1.2, d * 2, d * 1.2);
+        g.clip();
+        g.drawImage(icon, q.x - d / 2 + (Math.random() - 0.5) * 5, y - d * 0.88 + d * fall * fall, d, d);
+        g.restore();
+      }
+    }
     g.globalAlpha = 1;
     if (q.s < LABEL_MIN_SCALE) return;
     g.font = `700 15px ${FONT}`;

@@ -191,7 +191,7 @@ export class Projectiles {
               s.live = false;
               break;
             }
-          } else if (dist < Math.max(R.hitRadius, t.def.radius) && y > 0 && y < HUMAN_HEIGHT * (t.def.boss ? 2.5 : 1)) {
+          } else if (dist < Math.max(R.hitRadius, t.def.radius) && y > 0 && y < HUMAN_HEIGHT * (t.def.colossal ? (t.def.scale ?? 1) * 3 : t.def.boss ? 2.5 : 1)) {
             s.live = false;
             if (s.weapon!.spell?.aoe) explode(world, s.owner!, s.weapon!, s.pos, s.mult);
             else shotHit(world, s.owner!, t, s.weapon!, s.mult, y / HUMAN_HEIGHT, false, s.vel.x, s.vel.z);

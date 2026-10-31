@@ -1,3 +1,4 @@
+import type { GiantState } from './colossus';
 import { Vector3 } from 'three';
 import type { AttackDir } from '../data/combat';
 import type { HorseDef } from '../data/horses';
@@ -90,6 +91,8 @@ export class Combatant {
   musou = 0;
   /** 出緊絕招，呢段時間無敵 */
   musouT = 0;
+  /** 超巨型敵人嘅招式狀態 */
+  giant: GiantState | null = null;
   /** 已經提示過氣滿 */
   musouReady = false;
   /** 倒下但只係受傷 */

@@ -318,7 +318,7 @@ export const ARENA = {
 };
 
 // ── 大地圖 NPC ──
-export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon' | 'witch' | 'wyrm' | 'expedition' | 'lord' | 'figure' | 'fisher' | 'miner';
+export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon' | 'witch' | 'wyrm' | 'titan' | 'expedition' | 'lord' | 'figure' | 'fisher' | 'miner';
 
 export const NPC: Record<NpcKind, { name: string; max: number; size: [number, number]; speed: number; color: string }> = {
   caravan: { name: '商隊', max: 4, size: [5, 9], speed: 3, color: '#e8b84a' },
@@ -330,6 +330,7 @@ export const NPC: Record<NpcKind, { name: string; max: number; size: [number, nu
   dragon: { name: '巨龍', max: 1, size: [1, 1], speed: 7, color: '#ff4020' },
   witch: { name: '滅國魔女', max: 1, size: [1, 1], speed: 5, color: '#c040e0' },
   wyrm: { name: '滅世飛龍', max: 1, size: [1, 1], speed: 8, color: '#7a4ae0' },
+  titan: { name: '滅世巨神', max: 1, size: [1, 1], speed: 3, color: '#ffe08a' },
   figure: { name: '人物', max: 99, size: [1, 1], speed: 4.2, color: '#ffd34d' },
   fisher: { name: '漁民', max: 3, size: [1, 2], speed: 2.8, color: '#7ac8e8' },
   miner: { name: '礦工', max: 3, size: [2, 3], speed: 2.6, color: '#b0a090' },

@@ -403,8 +403,12 @@ function buildHelmet(torso: THREE.Group, def: UnitDef, color: number, crest: 'pl
 export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
   ctx = { batches, parts: [], gate: null };
   const style = TEAM_STYLES[team];
-  const bodyColor = def.civilian ? def.trimColor : style.body;
   const race = RACES[def.race ?? 'human'];
+  // 巨神唔著軍服：皮膚當身體，配暗鐵
+  const titanSkin = def.skin ?? race.skin;
+  const bodyColor = def.colossal ? titanSkin : def.civilian ? def.trimColor : style.body;
+  const iron = def.colossal ? 0x2c2630 : COLORS.steel;
+  const legColor = def.colossal ? titanSkin : style.legs;
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
   root.scale.setScalar(race.scale * (def.hero ? 1.14 : 1) * (def.scale ?? 1));
@@ -417,23 +421,36 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
 
   const torso = new THREE.Group();
   hips.add(torso);
-  torso.add(torsoPart(0.5, 0.66, 0.31, armored ? COLORS.steel : bodyColor, 0.3, armored));
+  torso.add(torsoPart(0.5, 0.66, 0.31, armored ? iron : bodyColor, 0.3, armored));
   // 罩袍同腰帶：隊色喺呢度
   if (armored) torso.add(torsoPart(0.44, 0.5, 0.33, bodyColor, 0.22));
   const belt = cyl(0.2, 0.2, 0.07, 10, LEATHER);
   belt.position.y = 0.04;
   belt.scale.z *= 0.72;
   torso.add(belt, dot(0.08, 0.07, 0.04, GOLD_TRIM, 0, 0.04, 0.14, true));
-  const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, robed ? bodyColor : def.trimColor);
+  const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, def.colossal ? 0x2c2630 : robed ? bodyColor : def.trimColor);
   skirt.position.y = robed ? -0.42 : -0.16;
   skirt.scale.z *= 0.74;
   torso.add(skirt);
   if (def.race === 'centaur') skirt.scale.setScalar(0.001);
-  for (const s of [1, -1]) torso.add(ell(0.19, 0.15, 0.2, armored ? COLORS.steel : bodyColor, s * 0.27, 0.56, 0, armored));
+  for (const s of [1, -1]) torso.add(ell(0.19, 0.15, 0.2, armored ? iron : bodyColor, s * 0.27, 0.56, 0, armored));
 
   buildHead(torso, def, skin, race.look);
   addRaceFeatures(torso, race.look, skin);
-  if (race.look !== 'bull' && !def.civilian) buildHelmet(torso, def, style.helmet, style.crest, def.plumeColor ?? style.crestColor);
+  if (def.colossal) {
+    // 發光眼同角冠，遠遠都見到
+    for (const s of [1, -1]) {
+      torso.add(dot(0.05, 0.035, 0.03, 0xffb03a, s * 0.055, 0.85, 0.125));
+      const horn = cone(0.06, 0.5, 7, 0x1c1618);
+      horn.position.set(s * 0.16, 1.08, -0.02);
+      horn.rotation.z = -s * 0.4;
+      torso.add(horn);
+      const spike = cone(0.07, 0.34, 6, 0x1c1618);
+      spike.position.set(s * 0.32, 0.72, 0);
+      spike.rotation.z = -s * 0.5;
+      torso.add(spike);
+    }
+  } else if (race.look !== 'bull' && !def.civilian) buildHelmet(torso, def, style.helmet, style.crest, def.plumeColor ?? style.crestColor);
 
   // 背旗：只有英雄同精銳，遠處認得出邊個帶隊
   if (!def.civilian && (def.hero || def.tier >= 5)) {
@@ -458,8 +475,8 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
     const a = new THREE.Group();
     a.rotation.order = 'YXZ';
     a.position.set(x, 0.57, 0);
-    const fore = armored ? COLORS.steel : skin;
-    a.add(limb(0.072, 0.06, 0.26, bodyColor, 0, -0.14, 0), ell(0.095, 0.095, 0.095, armored ? COLORS.steel : bodyColor, 0, -0.29, 0, armored));
+    const fore = armored ? iron : skin;
+    a.add(limb(0.072, 0.06, 0.26, bodyColor, 0, -0.14, 0), ell(0.095, 0.095, 0.095, armored ? iron : bodyColor, 0, -0.29, 0, armored));
     a.add(limb(0.056, 0.045, 0.22, fore, 0, -0.41, 0, armored), ell(0.09, 0.1, 0.09, armored ? 0x55504a : skin, 0, -0.55, 0));
     return a;
   };
@@ -480,11 +497,11 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   ctx.gate = shield;
   const face = cyl(0.42, 0.42, 0.04, 14, style.shield);
   face.rotation.z = Math.PI / 2;
-  const rim = part('ring', () => new THREE.TorusGeometry(1, 0.05, 5, 16), COLORS.steel, 0.42, 0.42, 0.42);
+  const rim = part('ring', () => new THREE.TorusGeometry(1, 0.05, 5, 16), iron, 0.42, 0.42, 0.42);
   rim.rotation.y = Math.PI / 2;
   const inner = cyl(0.26, 0.26, 0.045, 14, def.trimColor);
   inner.rotation.z = Math.PI / 2;
-  const boss = ell(0.08, 0.22, 0.22, COLORS.steel, 0.03, 0, 0, true);
+  const boss = ell(0.08, 0.22, 0.22, iron, 0.03, 0, 0, true);
   shield.add(face, rim, inner, boss);
   ctx.gate = null;
   shield.position.set(0.08, -0.42, 0);
@@ -501,10 +518,10 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const leg = (x: number) => {
     const upper = new THREE.Group();
     upper.position.set(x, 0, 0);
-    upper.add(limb(0.1, 0.075, 0.36, style.legs, 0, -0.22, 0));
+    upper.add(limb(0.1, 0.075, 0.36, legColor, 0, -0.22, 0));
     const knee = new THREE.Group();
     knee.position.y = -0.44;
-    const shin = armored ? COLORS.steel : LEATHER;
+    const shin = armored ? iron : LEATHER;
     knee.add(ell(0.12, 0.12, 0.13, shin, 0, 0, 0.01, armored), limb(0.07, 0.056, 0.32, shin, 0, -0.2, 0, armored), ell(0.13, 0.09, 0.27, 0x2c2622, 0, -0.45, 0.05));
     upper.add(knee);
     hips.add(upper);
@@ -728,7 +745,8 @@ export function syncHuman(c: Combatant, dt: number) {
     r.root.rotation.y = c.yaw;
     r.root.rotation.z = 0;
     const speed = Math.hypot(c.vel.x, c.vel.z);
-    c.walkPhase += speed * WALK_PHASE_PER_METER * dt;
+    // 巨神步幅大，腳郁得慢先有重量感
+    c.walkPhase += (speed * WALK_PHASE_PER_METER * dt) / (c.def.colossal ? (c.def.scale ?? 1) * 1.6 : 1);
     const amp = clamp(speed / 3, 0, 1) * 0.7;
     const s = Math.sin(c.walkPhase);
     r.legL.rotation.set(s * amp, 0, 0);
@@ -743,7 +761,7 @@ export function syncHuman(c: Combatant, dt: number) {
     // 龍係側身瞓低，唔係好似人咁向後跌
     r.root.rotation.z = (Math.PI / 2) * clamp(c.deadT / 0.9, 0, 1);
   } else if (c.dead) {
-    const fall = clamp(c.deadT / 0.5, 0, 1);
+    const fall = clamp(c.deadT / (c.def.colossal ? 2.6 : 0.5), 0, 1);
     r.root.rotation.x = c.spin * c.deadT * (c.grounded ? 0 : 1) + (-Math.PI / 2) * fall * fall;
     r.root.position.y = c.pos.y + 0.18 * fall;
   } else if (c.phase === 'stagger') {
@@ -778,7 +796,7 @@ export function syncHuman(c: Combatant, dt: number) {
     r.legL.rotation.set(-0.6 + s * 0.5, 0, 0);
     r.legR.rotation.set(-0.6 - s * 0.5, 0, 0);
   }
-  r.marker.visible = !c.dead && !c.def.civilian;
+  r.marker.visible = !c.dead && !c.def.civilian && !c.def.colossal;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
   flushParts(r.root, r.parts);
 }

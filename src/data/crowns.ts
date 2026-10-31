@@ -359,6 +359,61 @@ export const CROWNS: CrownDef[] = [
     attrs: [6, 12, 17, 18], skills: { tactics: 6, leadership: 5, medicine: 3 }, sig: ['金豎琴', 'psi_bolt', 14], extra: ['heal', 'sword'], horse: 'hunter', armor: LIGHT,
     army: [['wang_hun', 5], ['styx_guard', 8]], gold: 3000, food: 120, home: 'anvilhold', color: 0xf2e08a,
   },
+  {
+    id: 'crown_helion', cls: '統率', name: '光耀神王 赫利昂', scenario: 'shenmo', desc: '諸神之首，一手托住晨光', race: 'human',
+    attrs: [14, 11, 16, 17], skills: { leadership: 8, magic: 5 }, sig: ['晨曦神槍', 'hero_lance', 16], extra: ['lightning', 'ward'], horse: 'griffin_mount', armor: HEAVY,
+    army: [['tian_jiang', 6], ['tian_bing', 14]], gold: 4500, food: 150, home: 'griffon', color: 0xffe8a0,
+  },
+  {
+    id: 'crown_ares', cls: '武力', name: '戰神 雷戈斯', scenario: 'shenmo', desc: '未敗過一場，亦未停過一場', race: 'human',
+    attrs: [19, 14, 8, 11], skills: { ironskin: 7, tactics: 3 }, sig: ['裂天戰斧', 'hero_axe', 14], extra: ['sword'], horse: 'warhorse', armor: HEAVY,
+    army: [['jin_jia', 3], ['tian_bing', 12]], gold: 2500, food: 120, home: 'ironhelm_keep', color: 0xe0542c,
+  },
+  {
+    id: 'crown_modis', cls: '暗影', name: '暗皇 莫迪斯', scenario: 'shenmo', desc: '魔王軍之主，連影都怕佢', race: 'demon',
+    attrs: [16, 15, 16, 12], skills: { magic: 6, ironskin: 3 }, sig: ['噬光魔劍', 'hero_blade', 16], extra: ['fireball', 'ward'], horse: 'nightmare', armor: HEAVY,
+    army: [['demon_grunt', 12], ['ye_cha', 6]], gold: 3000, food: 80, home: 'songglade', color: 0x7a2ae0,
+  },
+  {
+    id: 'crown_lilis', cls: '魔導', name: '魔后 莉絲', scenario: 'shenmo', desc: '一曲可以令神族叛變', race: 'demon',
+    attrs: [7, 15, 19, 16], skills: { magic: 8, trade: 3 }, sig: ['深淵魔焰', 'lich_fire', 14], extra: ['heal', 'ward'], horse: 'dire_wolf', armor: LIGHT,
+    army: [['demon_cultist', 5], ['demon_grunt', 8]], gold: 3500, food: 80, home: 'anvilhold', color: 0xe84a8a,
+  },
+  {
+    id: 'crown_daoling', cls: '魔導', name: '張天師', scenario: 'maoshan', desc: '龍虎山祖師，五雷正法鎮百鬼', race: 'human',
+    attrs: [8, 10, 19, 16], skills: { magic: 8, leadership: 4, medicine: 3 }, sig: ['五雷法印', 'lich_bolt', 14], extra: ['heal', 'ward'], horse: 'hunter', armor: LIGHT,
+    army: [['dao_zhang', 6], ['dao_tong', 10]], gold: 3500, food: 130, home: 'ironhelm_keep', color: 0xf2d870,
+  },
+  {
+    id: 'crown_shouyi', cls: '智略', name: '茅山掌教 守一子', scenario: 'maoshan', desc: '一字眉一身正氣，黃符糯米樣樣齊', race: 'human',
+    attrs: [12, 13, 16, 13], skills: { magic: 6, tactics: 5, medicine: 4 }, sig: ['桃木法劍', 'flying_sword', 12], extra: ['heal', 'sword'], horse: 'hunter', armor: LIGHT,
+    army: [['dao_tong', 12], ['dao_zhang', 4]], gold: 2500, food: 120, home: 'griffon', color: 0xe8d048,
+  },
+  {
+    id: 'crown_yanchixia', cls: '武力', name: '燕赤霞', scenario: 'maoshan', desc: '蘭若寺斬妖嘅劍客', race: 'human',
+    attrs: [15, 15, 13, 9], skills: { ironskin: 4, magic: 4 }, sig: ['斬妖神劍', 'flying_sword', 16], extra: ['sword', 'ward'], horse: 'hunter', armor: MEDIUM,
+    army: [['dao_guard', 10], ['dao_tong', 6]], gold: 1800, food: 100, home: 'linjiang', color: 0x8ad0e0,
+  },
+  {
+    id: 'crown_xiaoqian', cls: '暗影', name: '聶小倩', scenario: 'maoshan', desc: '蘭若寺女鬼，心地比人仲好', race: 'undead',
+    attrs: [5, 18, 16, 15], skills: { magic: 6, trade: 2 }, sig: ['幽魂魅影', 'lich_bolt', 10], extra: ['heal'], horse: 'hunter', armor: LIGHT,
+    army: [['nv_gui', 6], ['gui_zu', 8]], gold: 2000, food: 60, home: 'linjiang', color: 0xe8e8ff,
+  },
+  {
+    id: 'crown_leijie', cls: '武力', name: '特勤探員 雷傑', scenario: 'biocity', desc: '第一日返工就撞正全城喪屍', race: 'human',
+    attrs: [13, 15, 11, 12], skills: { archery: 7, riding: 3, ironskin: 3 }, sig: ['專用手槍', 'gauss_rifle', 14], extra: ['sword'], horse: 'hoverbike', armor: MEDIUM,
+    army: [['marine_trooper', 12], ['flame_trooper', 4]], gold: 3000, food: 120, home: 'griffon', color: 0x3a4a5a,
+  },
+  {
+    id: 'crown_tiege', cls: '統率', name: '傭兵隊長 鐵鷹', scenario: 'biocity', desc: '收錢辦事，但唔會丟低隊友', race: 'human',
+    attrs: [14, 12, 12, 15], skills: { leadership: 7, tactics: 5, archery: 3 }, sig: ['重型機槍', 'gauss_rifle', 18], extra: ['sword'], horse: 'hoverbike', armor: HEAVY,
+    army: [['marine_trooper', 14], ['walker_mech', 2]], gold: 3500, food: 130, home: 'xuan_city', color: 0x6a6a4a,
+  },
+  {
+    id: 'crown_wendy', cls: '智略', name: '生化學家 溫蒂', scenario: 'biocity', desc: '份解藥只有佢識調', race: 'human',
+    attrs: [6, 14, 19, 13], skills: { medicine: 8, tactics: 4, trade: 3 }, sig: ['麻醉狙擊槍', 'gauss_rifle', 12], extra: ['heal', 'sword'], horse: 'hoverbike', armor: LIGHT,
+    army: [['marine_trooper', 10], ['flame_trooper', 3]], gold: 4000, food: 120, home: 'linjiang', color: 0xe8e8e0,
+  },
 ];
 
 /** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
@@ -478,6 +533,17 @@ export const MUSOU: Record<string, MusouDef> = {
   crown_persephone: { name: '四季輪迴', style: 'rally', color: 0xe87ab0 },
   crown_anubis: { name: '秤心審判', style: 'shadow', color: 0xe8c84a },
   crown_orpheus: { name: '冥府之歌', style: 'rally', color: 0xf8e8a0 },
+  crown_helion: { name: '晨曦審判', style: 'thunder', color: 0xfff0a0 },
+  crown_ares: { name: '裂天一斧', style: 'nova', color: 0xff6a2a },
+  crown_modis: { name: '噬光瞬殺', style: 'shadow', color: 0x9a4af0 },
+  crown_lilis: { name: '深淵魅歌', style: 'rain', color: 0xf05aa0 },
+  crown_daoling: { name: '五雷正法', style: 'thunder', color: 0xffe88a },
+  crown_shouyi: { name: '八卦鎮屍', style: 'rally', color: 0xf8e080 },
+  crown_yanchixia: { name: '劍氣縱橫', style: 'whirl', color: 0xa8e8f8 },
+  crown_xiaoqian: { name: '幽魂纏身', style: 'shadow', color: 0xd8e0ff },
+  crown_leijie: { name: '連環速射', style: 'rain', color: 0xffd080 },
+  crown_tiege: { name: '火力全開', style: 'whirl', color: 0xff9a3a },
+  crown_wendy: { name: '血清爆發', style: 'rally', color: 0x8af0a0 },
 };
 export const musouOf = (id: string) => MUSOU[id];
 
