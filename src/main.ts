@@ -24,12 +24,14 @@ import { Camp } from './ui/camp';
 import { Hud } from './ui/hud';
 import { PlaceScreens } from './ui/place';
 import { raiderArmy, type Npc } from './worldmap/npcs';
+import type { Tile } from './worldmap/terrain';
 import { WorldView } from './worldmap/view';
 import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type WorldSave } from './worldmap/world';
 
 const FORMATION_MIN_TROOPS = 4;
-/** 附近幾多格森林就算森林戰 */
-const FOREST_TILES = 6;
+/** 附近幾多格同類地形就用嗰種戰場 */
+const BIOME_TILES = 6;
+const TILE_THEME: Partial<Record<Tile, BattleTheme>> = { forest: 'forest', snow: 'snow', sand: 'desert', swamp: 'swamp', ash: 'ash' };
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
@@ -234,19 +236,21 @@ function rollLoot(): string {
   return out.length ? `戰利品：${out.join('、')}` : '';
 }
 
-/** 野戰場景：夜晚、或者大地圖腳下係森林 */
+/** 野戰場景：夜晚，或者跟大地圖腳下地形 */
 function fieldTheme(): BattleTheme {
   if (isNight(world.save)) return 'night';
   const { x, y } = world.save;
-  let trees = 0;
+  const seen: Partial<Record<BattleTheme, number>> = {};
   for (let dy = -2; dy <= 2; dy++) {
     for (let dx = -2; dx <= 2; dx++) {
       const tx = Math.round(x) + dx;
       const ty = Math.round(y) + dy;
-      if (world.terrain.inside(tx, ty) && world.terrain.at(tx, ty) === 'forest') trees++;
+      const theme = world.terrain.inside(tx, ty) ? TILE_THEME[world.terrain.at(tx, ty)] : undefined;
+      if (theme) seen[theme] = (seen[theme] ?? 0) + 1;
     }
   }
-  return trees >= FOREST_TILES ? 'forest' : 'plains';
+  const best = (Object.entries(seen) as [BattleTheme, number][]).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] >= BIOME_TILES ? best[0] : 'plains';
 }
 
 function placeReward(p: PlaceDef): string {

@@ -1,10 +1,11 @@
-import { MAP, PLACES, TERRAIN_COST } from '../data/world';
+import { BIOMES, MAP, PLACES, TERRAIN_COST } from '../data/world';
 import { makeRng } from '../battle/terrain';
 
-export type Tile = 'plain' | 'forest' | 'hill' | 'mountain' | 'water' | 'bridge';
+export type Tile = 'plain' | 'forest' | 'hill' | 'mountain' | 'water' | 'bridge' | 'snow' | 'sand' | 'swamp' | 'ash';
 
 export const TILE_COLOR: Record<Tile, string> = {
   plain: '#8fae5e', forest: '#4f7a45', hill: '#a69a6a', mountain: '#6e6a68', water: '#4f86b8', bridge: '#b08a58',
+  snow: '#e4ecf2', sand: '#dcc484', swamp: '#6a7f58', ash: '#6c646a',
 };
 
 const W = MAP.width;
@@ -30,6 +31,54 @@ function smoothNoise(seed: number, cell: number): (x: number, y: number) => numb
   };
 }
 
+/** 尋路用嘅二元堆，地圖大咗之後線性搜尋太慢 */
+class MinHeap {
+  private keys: number[] = [];
+  private costs: number[] = [];
+
+  get size() {
+    return this.keys.length;
+  }
+
+  push(k: number, f: number) {
+    const { keys, costs } = this;
+    let i = keys.length;
+    keys.push(k);
+    costs.push(f);
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (costs[p] <= f) break;
+      keys[i] = keys[p];
+      costs[i] = costs[p];
+      i = p;
+    }
+    keys[i] = k;
+    costs[i] = f;
+  }
+
+  pop(): number {
+    const { keys, costs } = this;
+    const top = keys[0];
+    const k = keys.pop()!;
+    const f = costs.pop()!;
+    const n = keys.length;
+    if (!n) return top;
+    let i = 0;
+    for (;;) {
+      let c = 2 * i + 1;
+      if (c >= n) break;
+      if (c + 1 < n && costs[c + 1] < costs[c]) c++;
+      if (costs[c] >= f) break;
+      keys[i] = keys[c];
+      costs[i] = costs[c];
+      i = c;
+    }
+    keys[i] = k;
+    costs[i] = f;
+    return top;
+  }
+}
+
 export class WorldTerrain {
   tiles: Tile[] = new Array(W * H);
 
@@ -44,6 +93,15 @@ export class WorldTerrain {
         else if (n > MAP.forestAt + 0.09) t = 'hill';
         else if (n > MAP.forestAt) t = 'forest';
         this.tiles[x + y * W] = t;
+      }
+    }
+    // 地域生態：邊界用噪聲打亂，唔會係正圓
+    for (const b of BIOMES) {
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          if (Math.hypot(x - b.x, y - b.y) > b.r * (0.72 + mid(x, y) * 0.56)) continue;
+          if (this.tiles[x + y * W] !== 'mountain') this.tiles[x + y * W] = b.tile;
+        }
       }
     }
     // 河流由北向南穿過，橋位可以過
@@ -69,7 +127,7 @@ export class WorldTerrain {
       for (let x = cx - r; x <= cx + r; x++) {
         if (!this.inside(x, y)) continue;
         const t = this.at(x, y);
-        if (t === 'mountain' || t === 'forest' || t === 'hill') this.tiles[x + y * W] = 'plain';
+        if (t === 'mountain' || t === 'forest' || t === 'hill') this.tiles[x + y * W] = this.biomeAt(cx, cy);
       }
     }
   }
@@ -91,6 +149,12 @@ export class WorldTerrain {
     }
   }
 
+  /** 地點附近清地時用嘅地面，森林入面就留返草地 */
+  private biomeAt(x: number, y: number): Tile {
+    const b = BIOMES.find((d) => d.tile !== 'forest' && Math.hypot(x - d.x, y - d.y) < d.r * 0.72);
+    return b?.tile ?? 'plain';
+  }
+
   inside(x: number, y: number): boolean {
     return x >= 0 && y >= 0 && x < W && y < H;
   }
@@ -107,7 +171,7 @@ export class WorldTerrain {
 
   cost(x: number, y: number): number {
     const t = this.at(x, y);
-    return t === 'forest' ? TERRAIN_COST.forest : t === 'hill' ? TERRAIN_COST.hill : TERRAIN_COST.plain;
+    return t === 'water' || t === 'mountain' ? 1 : TERRAIN_COST[t];
   }
 
   /** A* 尋路，回傳格路徑（唔包起點），行唔到回傳 null */
@@ -120,14 +184,11 @@ export class WorldTerrain {
     const key = (x: number, y: number) => x + y * W;
     const g = new Map<number, number>([[key(sx, sy), 0]]);
     const from = new Map<number, number>();
-    const open: { k: number; f: number }[] = [{ k: key(sx, sy), f: 0 }];
+    const open = new MinHeap();
+    open.push(key(sx, sy), 0);
     const goal = key(tx, ty);
-    while (open.length) {
-      let bi = 0;
-      for (let i = 1; i < open.length; i++) if (open[i].f < open[bi].f) bi = i;
-      const { k } = open[bi];
-      open[bi] = open[open.length - 1];
-      open.pop();
+    while (open.size) {
+      const k = open.pop();
       if (k === goal) {
         const out: { x: number; y: number }[] = [];
         for (let c = goal; c !== key(sx, sy); c = from.get(c)!) out.push({ x: c % W, y: Math.floor(c / W) });
@@ -144,7 +205,7 @@ export class WorldTerrain {
           if (ng < (g.get(nk) ?? Infinity)) {
             g.set(nk, ng);
             from.set(nk, k);
-            open.push({ k: nk, f: ng + Math.hypot(cx + dx - tx, cy + dy - ty) });
+            open.push(nk, ng + Math.hypot(cx + dx - tx, cy + dy - ty));
           }
         }
       }

@@ -1,5 +1,5 @@
 import type { ArmyEntry } from '../data/battlefield';
-import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
+import { BANDIT, MAP, MAP_SCALE, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
 import { CAPTIVE, COMPANION_FEUD, EXPEDITION, EXPEDITION_POST, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS, WORLD_EVENTS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
@@ -63,6 +63,7 @@ export interface WorldSave {
   /** 城鎮 → 第幾日可以再比武 */
   arenaUntil: Record<string, number>;
   arenaWins: number;
+  mapVersion?: number;
   /** 第幾日先有下一屆錦標賽 */
   tournamentUntil?: number;
   /** 遠征隊幾時返 */
@@ -87,6 +88,14 @@ const baseGold = (id: string) => (isVillage(id) ? LOCAL.villageGold : LOCAL.town
 
 /** 舊存檔補上新欄位 */
 export function migrateWorld(w: WorldSave): WorldSave {
+  // 舊存檔：座標跟新地圖放大，路上嘅隊伍重新生成
+  if (w.bandits && !w.mapVersion) {
+    w.x = Math.round(w.x * MAP_SCALE);
+    w.y = Math.round(w.y * MAP_SCALE);
+    w.npcs = [];
+    w.bandits = [];
+  }
+  w.mapVersion = 2;
   w.npcs ??= [];
   w.stock ??= {};
   w.treasury ??= {};

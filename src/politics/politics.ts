@@ -47,6 +47,7 @@ export function migratePolitics(s: PoliticsSave): PoliticsSave {
   s.storyMet ??= [];
   s.lords ??= [];
   s.governors ??= {};
+  for (const [id, f] of Object.entries(FIEF_OWNERS)) s.owners[id] ??= f;
   return s;
 }
 

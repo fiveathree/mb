@@ -345,10 +345,18 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   };
   const [legL, kneeL] = leg(0.13);
   const [legR, kneeR] = leg(-0.13);
-  // 半人馬冇人腳；龍連上身都收埋，換成自己嘅身體
-  if (def.race === 'centaur' || def.race === 'dragon') {
+  // 半人馬冇人腳；龍同史萊姆連上身都收埋，換成自己嘅身體
+  if (def.race === 'centaur' || def.race === 'dragon' || def.race === 'slime') {
     legL.scale.setScalar(0.001);
     legR.scale.setScalar(0.001);
+  }
+  if (def.race === 'slime') {
+    torso.scale.setScalar(0.001);
+    const blob = ico(0.62, skin);
+    blob.position.y = -0.42;
+    blob.scale.y *= 0.82;
+    hips.add(blob);
+    for (const s of [1, -1]) hips.add(box(0.08, 0.14, 0.04, 0x10202c, s * 0.2, -0.3, 0.56));
   }
   let dragon: DragonRig | undefined;
   if (def.race === 'dragon') {

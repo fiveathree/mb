@@ -1,9 +1,9 @@
 export type Race =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'goblin' | 'undead' | 'lizard' | 'minotaur' | 'dragonkin'
   | 'beastkin' | 'halfling' | 'demon' | 'golem' | 'giant' | 'dragon'
-  | 'centaur' | 'harpy' | 'merfolk' | 'vampire' | 'werewolf' | 'treant' | 'fairy';
+  | 'centaur' | 'harpy' | 'merfolk' | 'vampire' | 'werewolf' | 'treant' | 'fairy' | 'darkelf' | 'ogre' | 'slime' | 'nord';
 
-export type RaceLook = 'plain' | 'ears' | 'tusks' | 'skull' | 'bull' | 'snout' | 'dragon' | 'wings' | 'antlers' | 'fins';
+export type RaceLook = 'plain' | 'ears' | 'tusks' | 'skull' | 'bull' | 'snout' | 'dragon' | 'wings' | 'antlers' | 'fins' | 'blob';
 
 /** 戰吼：主角按 V，附近敵人失士氣、友軍回士氣 */
 const WARCRY = { radius: 22, enemyLoss: 18, allyGain: 12, cooldown: 30 };
@@ -52,6 +52,10 @@ export const RACES: Record<Race, RaceDef> = {
   werewolf: { name: '狼人', skin: 0x6a5a4a, scale: 1.16, look: 'snout', food: 1.8, wage: 1.2, jump: 1.5, nightVision: true, warcry: WARCRY },
   treant: { name: '樹人', skin: 0x6a5230, scale: 1.5, look: 'antlers', food: 0, wage: 1.3, noRide: true },
   fairy: { name: '妖精', skin: 0xf0d8f0, scale: 0.7, look: 'wings', food: 0.4, wage: 1.2, jump: 1.6 },
+  darkelf: { name: '黑暗精靈', skin: 0x5a5478, scale: 1.02, look: 'ears', food: 0.75, wage: 1.4, nightVision: true },
+  ogre: { name: '食人魔', skin: 0x8a7a4a, scale: 1.5, look: 'tusks', food: 2.8, wage: 1.3, noRide: true, warcry: WARCRY },
+  slime: { name: '史萊姆', skin: 0x4fb8e8, scale: 0.9, look: 'blob', food: 0.2, wage: 0.4, noRide: true },
+  nord: { name: '北地人', skin: 0xe8c8a8, scale: 1.06, look: 'plain', food: 1.2, wage: 1, warcry: WARCRY },
 };
 
 /** 組團消耗 */

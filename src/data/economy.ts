@@ -24,6 +24,12 @@ export const TOWN_TRADE: Record<string, { makes: GoodId[]; needs: GoodId[] }> = 
   stonebridge: { makes: ['iron', 'fur'], needs: ['cloth'] },
   bamboo: { makes: ['cloth'], needs: ['wine', 'crystal'] },
   southpond: { makes: ['salt', 'spice'], needs: ['iron', 'fur'] },
+  frostfang: { makes: ['fur', 'iron'], needs: ['wine', 'spice'] },
+  iceharbor: { makes: ['fur', 'salt'], needs: ['cloth'] },
+  shadowspire: { makes: ['crystal', 'cloth'], needs: ['iron', 'salt'] },
+  moonleaf: { makes: ['wine', 'spice'], needs: ['iron'] },
+  monsterhold: { makes: ['crystal', 'fur'], needs: ['wine', 'cloth', 'iron'] },
+  goblinfen: { makes: ['iron'], needs: ['wine', 'salt'] },
 };
 
 /** 各地金庫同糧市 */

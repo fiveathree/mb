@@ -43,6 +43,18 @@ export const FACTIONS: FactionDef[] = [
     id: 'undead', name: '亡靈法師會', region: 'north', color: '#a0a8b8', level: 4,
     garrison: [{ unit: 'skeleton', count: 14 }, { unit: 'skeleton_archer', count: 8 }, { unit: 'grave_knight', count: 4 }, { unit: 'necromancer', count: 3 }],
   },
+  {
+    id: 'northmen', name: '北境聯盟', region: 'west', color: '#9ab8d0', level: 3,
+    garrison: [{ unit: 'huscarl', count: 14 }, { unit: 'archer', count: 8 }, { unit: 'axeman', count: 5 }],
+  },
+  {
+    id: 'darkelves', name: '影語議會', region: 'north', color: '#6a4f9a', level: 4,
+    garrison: [{ unit: 'darkelf_blade', count: 12 }, { unit: 'darkelf_witch', count: 4 }, { unit: 'elf_scout', count: 8 }],
+  },
+  {
+    id: 'monsters', name: '魔物聯邦', region: 'south', color: '#3fb8a0', level: 3,
+    garrison: [{ unit: 'slime', count: 12 }, { unit: 'goblin_spear', count: 10 }, { unit: 'ogre_brute', count: 5 }, { unit: 'harpy', count: 6 }],
+  },
 ];
 
 export const factionOf = (id: string) => FACTIONS.find((f) => f.id === id);
@@ -53,6 +65,7 @@ export const FIEF_OWNERS: Record<string, string> = {
   xuan_city: 'xuan', bamboo: 'xuan', bashu_pass: 'bashu', linjiang: 'jiangdong', southpond: 'jiangdong',
   wuyi: 'wuyi', chishui_fort: 'chishui', qingcheng_pass: 'qingcheng',
   songglade: 'sylvan', anvilhold: 'dwarves', blackfang: 'orcs', spire: 'undead',
+  frostfang: 'northmen', iceharbor: 'northmen', shadowspire: 'darkelves', moonleaf: 'sylvan', monsterhold: 'monsters', goblinfen: 'monsters',
 };
 
 export const POLITICS = {
@@ -199,7 +212,7 @@ export const ARTIFACTS: ArtifactDef[] = [
 /** 主角開局 */
 export type PlayableRace =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon'
-  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy' | 'centaur';
+  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy' | 'centaur' | 'darkelf' | 'ogre' | 'nord';
 
 export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>; spell?: string; friend?: string; foe?: string }> = {
   human: { name: '人類', desc: '平均，起步多 2 技能點', attrs: { cha: 1 } },
@@ -221,6 +234,9 @@ export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs:
   treant: { name: '樹人', desc: '力量 +3、敏捷 −2，唔騎馬唔使食', attrs: { str: 3, agi: -2 }, friend: 'sylvan', foe: 'dwarves' },
   fairy: { name: '妖精', desc: '智力 +3、力量 −2，起步火球', attrs: { int: 3, str: -2 }, spell: 'fireball', friend: 'sylvan' },
   centaur: { name: '半人馬', desc: '力敏各 +1，人馬一體，落唔到馬', attrs: { str: 1, agi: 1 } },
+  darkelf: { name: '黑暗精靈', desc: '敏智各 +1，夜視，起步雷擊', attrs: { agi: 1, int: 1 }, spell: 'lightning', friend: 'darkelves', foe: 'sylvan' },
+  ogre: { name: '食人魔', desc: '力量 +4、智力 −1，好大食', attrs: { str: 4, int: -1 }, friend: 'monsters', foe: 'griffin' },
+  nord: { name: '北地人', desc: '力量 +2，耐寒，會戰吼', attrs: { str: 2 }, friend: 'northmen' },
 };
 
 export interface StartOption {

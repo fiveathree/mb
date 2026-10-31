@@ -444,6 +444,10 @@ for (const u of [
   troop('sharpshooter', '神射手', 'archer', 5, 95, 8, ['elite_bow', 'infantry_sword'], 0x4e8a3a, { plumeColor: 0x9ae86a, desc: '弓兵頂點，百發百中' }),
   troop('templar', '聖殿騎士', 'cavalry', 5, 150, 17, ['elite_lance', 'cavalry_sword'], 0xf0ece0, { horse: 'warhorse', plumeColor: 0xc0302a, desc: '騎兵頂點，人馬俱甲' }),
   // 異族
+  troop('huscarl', '北地親衛', 'infantry', 3, 110, 9, ['infantry_axe'], 0x9ab8d0, { race: 'nord', desc: '雪原上嘅重斧戰士' }),
+  troop('darkelf_blade', '影刃', 'infantry', 3, 85, 6, ['elite_sword'], 0x4a3a6a, { race: 'darkelf', pool: 'fair', runSpeed: 5.2, desc: '由樹影入面出手' }),
+  troop('slime', '史萊姆', 'infantry', 1, 55, 1, ['short_sword'], 0x4fb8e8, { race: 'slime', pool: 'beast', desc: '軟綿綿，斬極都仲喺度' }),
+  troop('ogre_brute', '食人魔', 'infantry', 3, 170, 5, ['infantry_axe'], 0x7a5a2a, { race: 'ogre', pool: 'beast', walkSpeed: 1.9, runSpeed: 3.8, desc: '又大隻又好打' }),
   troop('centaur', '半人馬戰士', 'cavalry', 3, 100, 6, ['cavalry_sword'], 0x8a6a3a, { race: 'centaur', pool: 'beast', horse: 'steppe', desc: '人馬一體，草原之子' }),
   troop('harpy', '哈比', 'archer', 2, 50, 2, ['troop_bow', 'short_sword'], 0xb06a8a, { race: 'harpy', pool: 'beast', desc: '尖叫同利爪' }),
   troop('merfolk', '人魚衛士', 'infantry', 2, 72, 5, ['spear'], 0x2d9aa8, { race: 'merfolk', pool: 'beast', desc: '由河口上岸嘅矛手' }),
@@ -452,6 +456,7 @@ for (const u of [
   troop('treant', '樹人', 'infantry', 4, 210, 12, ['elite_axe'], 0x4f7a3a, { race: 'treant', pool: 'fair', walkSpeed: 1.6, runSpeed: 3.2, desc: '慢，但斬唔死' }),
 ]) UNITS[u.id] = u;
 UNITS.fairy = caster('fairy', '妖精術士', '細粒，雷擊好痛', 'fairy', 'fair', 'fine', 'troop_bolt', 3, 0xe0a0e8);
+UNITS.darkelf_witch = caster('darkelf_witch', '影語女巫', '森林深處嘅咒術', 'darkelf', 'fair', 'special', 'troop_bolt', 4, 0x8a5ac0);
 // 劇場英雄：唔喺抽卡池
 const storyHero = (id: string, name: string, desc: string, role: Role, weapons: string[], hp: number, trim: number, aura: number, extra: Partial<UnitDef> = {}) =>
   troop(id, name, role, 6, hp, 14, weapons, trim, {

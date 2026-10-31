@@ -55,8 +55,8 @@ export const SKY_FAUNA: Record<string, SkyFauna> = {
 };
 
 export const MAP = {
-  width: 160,
-  height: 100,
+  width: 256,
+  height: 160,
   seed: 77031,
   /** 每格畫幾多像素 */
   tilePx: 13,
@@ -64,11 +64,25 @@ export const MAP = {
   forestAt: 0.57,
   mountainAt: 0.76,
   /** 河流橋位（Y 格） */
-  bridges: [14, 50, 84],
-  riderX: 72,
+  bridges: [22, 80, 134],
+  riderX: 115,
 };
 
-export const TERRAIN_COST = { plain: 1, forest: 1.8, hill: 1.4, bridge: 1 };
+/** 舊地圖座標放大倍數，舊存檔同舊地點用 */
+export const MAP_SCALE = 1.6;
+
+export type BiomeTile = 'forest' | 'snow' | 'sand' | 'swamp' | 'ash';
+
+/** 地域生態：按勢力同種族分配，半徑內地面換成呢種 */
+export const BIOMES: { tile: BiomeTile; x: number; y: number; r: number }[] = [
+  { tile: 'forest', x: 232, y: 66, r: 40 }, // 精靈同黑暗精靈嘅大森林
+  { tile: 'snow', x: 38, y: 22, r: 44 }, // 北境
+  { tile: 'sand', x: 205, y: 130, r: 36 }, // 南域沙地
+  { tile: 'swamp', x: 122, y: 136, r: 32 }, // 魔物聯邦同蜥蜴沼澤
+  { tile: 'ash', x: 206, y: 24, r: 30 }, // 亡靈焦土
+];
+
+export const TERRAIN_COST = { plain: 1, forest: 1.8, hill: 1.4, bridge: 1, snow: 1.3, sand: 1.2, swamp: 1.6, ash: 1.1 };
 
 export const TIME = {
   /** 現實幾多秒一日（行軍時） */
@@ -159,7 +173,7 @@ export const SHOP = {
 };
 
 export type PlaceKind = 'town' | 'village' | 'castle' | 'dungeon' | 'maze' | 'lair';
-export type BattleTheme = 'plains' | 'night' | 'fort' | 'crypt' | 'maze' | 'forest';
+export type BattleTheme = 'plains' | 'night' | 'fort' | 'crypt' | 'maze' | 'forest' | 'snow' | 'desert' | 'swamp' | 'ash';
 
 export interface PlaceDef {
   id: string;
@@ -182,6 +196,10 @@ export interface PlaceDef {
   hidden?: boolean;
   /** 攻破掉落神器 */
   artifact?: string;
+  /** 魔物城市：地圖上畫成獠牙寨城 */
+  monster?: boolean;
+  /** 酒館傭兵，冇就跟劇本 */
+  mercs?: string[];
 }
 
 export const PLACES: PlaceDef[] = [
@@ -246,6 +264,24 @@ export const PLACES: PlaceDef[] = [
   },
 ];
 
+// 舊地點跟新地圖放大
+for (const p of PLACES) {
+  p.x = Math.round(p.x * MAP_SCALE);
+  p.y = Math.round(p.y * MAP_SCALE);
+}
+
+PLACES.push(
+  { id: 'frostfang', name: '霜牙城', kind: 'town', x: 30, y: 18, desc: '北地人世代嘅雪城，戰斧同蜜酒出名。', mercs: ['huscarl', 'archer', 'axeman', 'horseman'] },
+  { id: 'iceharbor', name: '冰港村', kind: 'village', x: 58, y: 34 },
+  { id: 'shadowspire', name: '影語都', kind: 'town', x: 216, y: 74, desc: '大森林深處嘅黑暗精靈之都，光線都入唔到。', mercs: ['darkelf_blade', 'darkelf_witch', 'elf_scout'] },
+  { id: 'moonleaf', name: '月葉村', kind: 'village', x: 246, y: 44 },
+  {
+    id: 'monsterhold', name: '萬魔城', kind: 'town', x: 134, y: 122, monster: true,
+    desc: '史萊姆、哥布林同食人魔一齊起嘅魔物城市，意外地有秩序。', mercs: ['slime', 'goblin_spear', 'ogre_brute', 'kobold_miner', 'harpy'],
+  },
+  { id: 'goblinfen', name: '沼鬼村', kind: 'village', x: 96, y: 142, monster: true, mercs: ['slime', 'goblin_spear'] },
+);
+
 /** 戰場主題 */
 export const THEMES: Record<BattleTheme, { sky: number; fog: number; near: number; far: number; light: number; ground: number }> = {
   plains: { sky: 0x9fc4dc, fog: 0xbcd3dc, near: 90, far: 330, light: 1, ground: 0xffffff },
@@ -255,4 +291,8 @@ export const THEMES: Record<BattleTheme, { sky: number; fog: number; near: numbe
   // 地底：草地染成灰石色
   crypt: { sky: 0x0e0d14, fog: 0x161520, near: 25, far: 90, light: 0.62, ground: 0x6a6470 },
   maze: { sky: 0x2a2433, fog: 0x362e40, near: 30, far: 110, light: 0.7, ground: 0x7a6a58 },
+  snow: { sky: 0xc8d8e8, fog: 0xdce6ee, near: 60, far: 240, light: 1.05, ground: 0xe8eef6 },
+  desert: { sky: 0xe0c89a, fog: 0xe6d2a8, near: 80, far: 300, light: 1.1, ground: 0xe8cf94 },
+  swamp: { sky: 0x7e9078, fog: 0x8a9a80, near: 40, far: 170, light: 0.7, ground: 0x8a9a6a },
+  ash: { sky: 0x4a4048, fog: 0x584c50, near: 45, far: 190, light: 0.6, ground: 0x6a6268 },
 };

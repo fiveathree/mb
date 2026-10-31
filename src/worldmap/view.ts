@@ -458,7 +458,7 @@ export class WorldView {
     g.stroke();
     g.fillStyle = color ?? (open ? '#7a2a2a' : '#555');
     g.strokeStyle = pol.s.threats.some((t) => t.place === p.id) ? '#ff3a2a' : '#fff4dc';
-    this.drawBuilding(p.kind, q.x, y, r);
+    this.drawBuilding(p.monster ? 'monster' : p.kind, q.x, y, r);
     g.fill();
     g.stroke();
     if (q.s < LABEL_MIN_SCALE) return;
@@ -470,7 +470,7 @@ export class WorldView {
   }
 
   /** 地點建築輪廓，由中心點畫 */
-  private drawBuilding(kind: PlaceKind, x: number, y: number, r: number) {
+  private drawBuilding(kind: PlaceKind | 'monster', x: number, y: number, r: number) {
     const g = this.g;
     const poly = (points: [number, number][]) => {
       points.forEach(([a, b], i) => (i ? g.lineTo(x + a * r, y + b * r) : g.moveTo(x + a * r, y + b * r)));
@@ -478,6 +478,10 @@ export class WorldView {
     };
     g.beginPath();
     switch (kind) {
+      case 'monster':
+        // 獠牙寨城：一排尖刺
+        poly([[-1.3, 1], [-1.3, -0.3], [-1, -1], [-0.65, -0.2], [-0.3, -1.3], [0, -0.3], [0.3, -1.3], [0.65, -0.2], [1, -1], [1.3, -0.3], [1.3, 1]]);
+        break;
       case 'town':
         // 三座塔加城牆
         poly([[-1.2, 1], [-1.2, -0.7], [-0.75, -0.7], [-0.75, -0.2], [-0.3, -0.2], [-0.3, -1.1], [0.3, -1.1], [0.3, -0.2], [0.75, -0.2], [0.75, -0.7], [1.2, -0.7], [1.2, 1]]);

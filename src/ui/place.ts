@@ -370,7 +370,7 @@ export class PlaceScreens {
 
   private mercOffers(p: PlaceDef): UnitDef[] {
     const slot = Math.floor(dayOf(this.world.save) / SHOP.mercRefreshDays) + p.x;
-    const pool = currentScenario().mercs;
+    const pool = p.mercs ?? currentScenario().mercs;
     return Array.from({ length: SHOP.mercOffers }, (_, i) => UNITS[pool[(slot + i * 2) % pool.length]]);
   }
 
