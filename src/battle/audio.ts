@@ -79,6 +79,13 @@ export class Sfx {
     this.burst(320, 0.7, 0.5, 0.35);
   }
 
+  /** 落雷：先脆後悶 */
+  thunder() {
+    this.burst(2600, 0.6, 0.6, 0.12);
+    this.tone(60, 0.7, 0.7, 'sine');
+    this.burst(220, 0.6, 0.6, 0.8, 'lowpass');
+  }
+
   ui() {
     this.tone(880, 0.05, 0.06, 'triangle');
   }

@@ -41,8 +41,10 @@ export interface HorseDef {
   fantasy?: boolean;
   /** 額外外形 */
   look?: 'wings' | 'horn' | 'antlers' | 'tusk' | 'hump';
-  /** 識飛：半空按住空白鍵爬升 */
+  /** 識飛：半空按住空白鍵爬升；大地圖飛得過河同山 */
   flight?: boolean;
+  /** 識游水：戰場過河唔減速；大地圖游得過河 */
+  swim?: boolean;
 }
 
 /** 飛行坐騎 */
@@ -104,6 +106,8 @@ export const HORSES: HorseDef[] = [
     turnRadius: 4.5, maxTurnRate: 2.2, stamina: 85, staminaDrain: 11, staminaRegen: 8, staminaResume: 22,
     hp: 95, armor: 2, jumpSpeed: 6, ramMult: 0.6, color: 0x5a5650, barded: false,
   },
+  mount('buffalo', '水牛', '慢，但過河如履平地', 6.5, 11, 8, 180, 5, 4.2, 1.1, 0x4a4440, { swim: true }),
+  mount('seahorse', '海龍駒', '半馬半龍，水陸兩棲', 9, 16, 6, 170, 7, 5.6, 1, 0x3f9aa8, { fantasy: true, swim: true, look: 'tusk' }),
   mount('camel', '駱駝', '耐力好，嚇馬', 7, 12, 8, 170, 3, 4.4, 0.9, 0xc8a56a, { look: 'hump', stamina: 170, staminaDrain: 7 }),
   mount('elk', '巨角鹿', '跳得高，角有得撞', 8.5, 15, 6, 135, 3, 7.5, 1.1, 0x8a6240, { look: 'antlers' }),
   mount('dire_wolf', '巨狼', '急轉最靈活', 8.5, 15, 3.8, 120, 3, 6.5, 0.7, 0x6a665e, { fantasy: true, accel: 6 }),
@@ -116,16 +120,23 @@ export const HORSES: HorseDef[] = [
   mount('griffin_mount', '獅鷲', '飛撲最高，撞擊最狠嘅翼獸', 9, 16.5, 6, 210, 9, 13, 1.5, 0xb08a4a, { fantasy: true, look: 'wings', flight: true }),
 ];
 
+/** 移動方式：陸、水、空 */
+export const moveOf = (h: HorseDef): 'fly' | 'swim' | 'land' => (h.flight ? 'fly' : h.swim ? 'swim' : 'land');
+export const MOVE_NAME = { fly: '飛行', swim: '游水', land: '陸行' };
+
+/** 戰場河流：冇水性嘅坐騎同步兵減速 */
+export const RIVER = { halfWidth: 9, slow: 0.5, swimBoost: 1.15 };
+
 /** 坐騎冠位 */
 export const HORSE_RANK: Record<string, Rarity> = {
-  hunter: 'common', pack: 'common', wolf: 'common', steppe: 'fine', camel: 'fine', elk: 'fine', warhorse: 'special', dire_wolf: 'special', tiger: 'special',
+  hunter: 'common', pack: 'common', wolf: 'common', steppe: 'fine', camel: 'fine', elk: 'fine', buffalo: 'fine', seahorse: 'special', warhorse: 'special', dire_wolf: 'special', tiger: 'special',
   drake: 'hero', rhino: 'hero', unicorn: 'hero', nightmare: 'hero', pegasus: 'hero', griffin_mount: 'ur',
 };
 
 /** 普通市場只賣到 R；地域馬房先有 SR */
 export const MARKET_RANKS: Rarity[] = ['common', 'fine'];
 export const STABLES: Record<string, string[]> = {
-  griffon: ['warhorse'], linjiang: ['warhorse'], wuyi: ['tiger'], frostfang: ['dire_wolf'], shadowspire: ['dire_wolf'], monsterhold: ['dire_wolf', 'tiger'],
+  griffon: ['warhorse'], linjiang: ['warhorse', 'seahorse'], wuyi: ['tiger'], frostfang: ['dire_wolf'], shadowspire: ['dire_wolf'], monsterhold: ['dire_wolf', 'tiger'],
 };
 
 /** SSR、UR 坐騎只靠攻陷同討伐：地點或者災厄 id → 坐騎 */

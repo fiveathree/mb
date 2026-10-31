@@ -1,5 +1,5 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
-import { HORSES, HORSE_RANK, MOUNT_REWARD, STABLES } from '../data/horses';
+import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
@@ -294,7 +294,7 @@ export class Camp {
     };
     const magic = currentScenario().cultures.includes('magic');
     const mounts = HORSES.filter((h) => !h.troopOnly && (!h.fantasy || magic)).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
-      `<div class="codex-row ${hero.horses.includes(h.id) ? 'own' : ''}">${tag(HORSE_RANK[h.id])} ${h.name}<small>${source(h.id)}</small></div>`
+      `<div class="codex-row ${hero.horses.includes(h.id) ? 'own' : ''}">${tag(HORSE_RANK[h.id])} ${h.name}（${MOVE_NAME[moveOf(h)]}）<small>${source(h.id)}</small></div>`
     )).join('');
     const figures = currentFigures().map((f) => {
       const n = w.npcs.find((x) => x.figure === f.id);

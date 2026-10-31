@@ -3,7 +3,7 @@ import { COLORS } from '../data/battlefield';
 import { ARCHER_AI } from '../data/units';
 import { COMBAT } from '../data/combat';
 import { SADDLE_HEIGHT } from '../data/horses';
-import type { WeaponDef } from '../data/weapons';
+import { SPELL_GLOW, type WeaponDef } from '../data/weapons';
 import { clamp, flatDist, rad, type Combatant } from './entities';
 import { explode, shotHit, type CombatWorld } from './combat';
 import { heightAt } from './terrain';
@@ -11,6 +11,9 @@ import { heightAt } from './terrain';
 const MAX = 500;
 const SUBSTEPS = 3;
 const ROCK_SCALE = 25;
+const STRIKE_RANGE = 90;
+const ORB_MIN = 0.35;
+const ORB_PER_AOE = 0.16;
 const HUMAN_HEIGHT = 1.8;
 const RIDER_HEIGHT = 3;
 const RIDER_BODY_FROM = 1.65;
@@ -27,6 +30,7 @@ interface Shot {
   vel: THREE.Vector3;
 }
 
+const TMP_COLOR = new THREE.Color();
 const v1 = new THREE.Vector3();
 const v2 = new THREE.Vector3();
 const FORWARD = new THREE.Vector3(0, 0, 1);
@@ -36,8 +40,19 @@ export class Projectiles {
   private shots: Shot[] = [];
   private next = 0;
   private dummy = new THREE.Object3D();
+  /** 法術光球 */
+  private orbs: THREE.InstancedMesh;
+  private trail = 0;
 
   constructor(scene: THREE.Scene) {
+    this.orbs = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial(), MAX);
+    this.orbs.frustumCulled = false;
+    const white = new THREE.Color(0xffffff);
+    for (let i = 0; i < MAX; i++) {
+      this.orbs.setMatrixAt(i, ZERO);
+      this.orbs.setColorAt(i, white);
+    }
+    scene.add(this.orbs);
     this.mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(0.03, 0.03, 0.9),
       new THREE.MeshBasicMaterial({ color: COLORS.arrow }),
@@ -59,8 +74,10 @@ export class Projectiles {
       this.shots[i].live = false;
       this.shots[i].stuck = 0;
       this.mesh.setMatrixAt(i, ZERO);
+      this.orbs.setMatrixAt(i, ZERO);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
+    this.orbs.instanceMatrix.needsUpdate = true;
   }
 
   /** 計散布（度），HUD 準星都用 */
@@ -84,6 +101,10 @@ export class Projectiles {
 
     const muzzle = v1.set(c.pos.x, c.pos.y + MUZZLE_HEIGHT + (c.horse ? SADDLE_HEIGHT - 0.8 : 0), c.pos.z);
     const dir = v2;
+    if (w.spell?.strike) {
+      world.strike(c, w, strikePoint(world, c, muzzle), r.minDamageMult + (1 - r.minDamageMult) * c.charge);
+      return;
+    }
     if (c === world.player) {
       world.playerAim(muzzle, dir);
       world.sfx.arrow();
@@ -97,6 +118,11 @@ export class Projectiles {
     dir.z += (Math.random() - 0.5) * 2 * spread;
     dir.normalize();
 
+    const glow = SPELL_GLOW[w.id];
+    if (glow) {
+      this.orbs.setColorAt(this.next, TMP_COLOR.set(glow));
+      this.orbs.instanceColor!.needsUpdate = true;
+    }
     const s = this.shots[this.next];
     this.next = (this.next + 1) % MAX;
     s.live = true;
@@ -182,6 +208,20 @@ export class Projectiles {
 
       if (!s.live && s.stuck <= 0) {
         this.mesh.setMatrixAt(i, ZERO);
+        this.orbs.setMatrixAt(i, ZERO);
+        continue;
+      }
+      const glow = s.weapon ? SPELL_GLOW[s.weapon.id] : undefined;
+      if (glow) {
+        // 法術係發光實體，拖一條尾
+        const r = ORB_MIN + (s.weapon!.spell?.aoe ?? 0) * ORB_PER_AOE;
+        this.dummy.position.copy(s.pos);
+        this.dummy.quaternion.identity();
+        this.dummy.scale.setScalar(r);
+        this.dummy.updateMatrix();
+        this.orbs.setMatrixAt(i, this.dummy.matrix);
+        this.mesh.setMatrixAt(i, ZERO);
+        if (this.trail++ % 2 === 0) world.fx.burst(s.pos, glow, 2, 1.5);
         continue;
       }
       this.dummy.position.copy(s.pos);
@@ -192,7 +232,27 @@ export class Projectiles {
       this.mesh.setMatrixAt(i, this.dummy.matrix);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
+    this.orbs.instanceMatrix.needsUpdate = true;
   }
+}
+
+/** 落雷落點：主角睇住邊就劈邊，AI 劈目標 */
+function strikePoint(world: CombatWorld, c: Combatant, muzzle: THREE.Vector3): THREE.Vector3 {
+  const out = new THREE.Vector3();
+  if (c !== world.player) {
+    const t = c.ai?.target;
+    return t ? out.copy(t.pos) : out.set(c.pos.x, c.pos.y, c.pos.z);
+  }
+  const dir = new THREE.Vector3();
+  world.playerAim(muzzle, dir);
+  for (let d = 2; d < STRIKE_RANGE; d += 1) {
+    out.copy(muzzle).addScaledVector(dir, d);
+    const ground = heightAt(out.x, out.z);
+    const foe = world.units.some((u) => u.team !== c.team && !u.dead && flatDist(u.pos, out) < 1.6 && out.y - u.pos.y < 3);
+    if (out.y <= ground || foe) break;
+  }
+  out.y = heightAt(out.x, out.z);
+  return out;
 }
 
 /** AI 按飛行時間預判目標，計拋物線 */

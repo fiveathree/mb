@@ -22,6 +22,8 @@ export interface SpellDef {
   aoe?: number;
   /** 直線飛行，唔受重力 */
   flat?: boolean;
+  /** 由天劈落 */
+  strike?: boolean;
   /** 對自己施放 */
   self?: 'heal' | 'ward';
   /** 治療量或者護盾秒數 */
@@ -278,6 +280,20 @@ const WEAPON_LIST: WeaponDef[] = [
 ];
 
 export const WEAPONS: Record<string, WeaponDef> = Object.fromEntries(WEAPON_LIST.map((w) => [w.id, w]));
+
+/** 落雷：由天劈落瞄準點，範圍細 */
+for (const id of ['lightning', 'troop_bolt', 'lich_bolt', 'dragon_bolt']) {
+  const s = WEAPONS[id].spell!;
+  s.strike = true;
+  s.aoe = 2.8;
+}
+
+/** 飛行法術係發光實體，顏色見呢度；冇寫就係普通箭矢 */
+export const SPELL_GLOW: Record<string, number> = {
+  fireball: 0xff7a1a, dragon_breath: 0xff5a1a, troop_fire: 0xff8a2c, dragon_fire: 0xff4a1a, dragon_frost: 0x9ad8ff, dragon_poison: 0x7ac04a, dragon_acid: 0xb0d040,
+  lich_fire: 0x7a4ae0, witch_curse: 0xc040e0, wyrm_breath: 0x9a4ae0, frost_nova: 0x9ad8ff, ember_blast: 0xff9a3a, acid_spit: 0x9ad04a, psi_bolt: 0x4ac0d0,
+  flying_sword: 0x8fe0e8, heavy_cannon: 0xffd080,
+};
 
 /** 玩家開局可揀嘅武器，順序即選擇畫面順序 */
 export const PLAYER_ARSENAL = [

@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { COMBAT, FEEL, type AttackDir } from '../data/combat';
 import { COLORS, TERRAIN } from '../data/battlefield';
-import { SHIELD, type WeaponDef } from '../data/weapons';
+import { SHIELD, SPELL_GLOW, type WeaponDef } from '../data/weapons';
 import { HORSE_RADIUS } from '../data/horses';
 import { angleDiff, bearing, clamp, flatDist, rad, type Combatant, type Horse } from './entities';
 import type { Fx } from './fx';
@@ -36,6 +36,8 @@ export interface CombatWorld {
   playerAim(muzzle: Vector3, out: Vector3): void;
   /** 圍城時將行軍目標改去最近缺口 */
   routeGoal(c: Combatant, gx: number, gz: number): [number, number];
+  /** 喺呢點召落雷 */
+  strike(owner: Combatant, w: WeaponDef, pos: Vector3, mult: number): void;
   /** 地下城模式 */
   crawling: boolean;
   /** 由 a 去 b 喺高度 y 有冇被牆擋住 */
@@ -278,8 +280,9 @@ export function shotHit(
 /** 火球爆炸：範圍內敵人受傷，距離愈遠愈輕 */
 export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: Vector3, mult: number) {
   const radius = w.spell!.aoe!;
-  world.fx.burst(pos, 0xff8a2c, 34, 9);
-  world.sfx.boom();
+  const strike = !!w.spell!.strike;
+  world.fx.burst(pos, strike ? 0xc8dcff : SPELL_GLOW[w.id] ?? 0xff8a2c, strike ? 18 : 34, 9);
+  if (!strike) world.sfx.boom();
   for (const t of world.units) {
     if (t.team === att.team || t.dead) continue;
     const d = flatDist(t.pos, pos);

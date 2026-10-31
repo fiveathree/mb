@@ -1,7 +1,7 @@
 import { COMBAT } from '../data/combat';
-import { FLIGHT, HORSE_INJURED_MIN_SPEED, HORSE_MIN_TURN_SPEED, HORSE_RADIUS } from '../data/horses';
+import { FLIGHT, HORSE_INJURED_MIN_SPEED, HORSE_MIN_TURN_SPEED, HORSE_RADIUS, RIVER } from '../data/horses';
 import { BATTLEFIELD } from '../data/battlefield';
-import { heightAt, type Obstacle } from './terrain';
+import { heightAt, inRiver, type Obstacle } from './terrain';
 import { clamp, moveToward, type Horse } from './entities';
 
 /** 低速時嘅最細轉彎半徑（公尺） */
@@ -24,6 +24,8 @@ export function updateHorse(h: Horse, dt: number, obstacles: Obstacle[]): number
   let target = 0;
   if (ctl.throttle > 0) target = (sprinting ? d.gallopSpeed : d.trotSpeed) * health;
   else if (ctl.throttle < 0 && h.speed < 0.5) target = -d.reverseSpeed;
+  // 河：識游水快少少，飛緊就冇影響，其他減速
+  if (inRiver(h.pos.z) && h.grounded) target *= d.swim ? RIVER.swimBoost : d.flight ? 1 : RIVER.slow;
   // 馬唔可以原地掉頭：要行起先轉得
   if (ctl.turn !== 0 && ctl.throttle >= 0 && target < HORSE_MIN_TURN_SPEED) target = HORSE_MIN_TURN_SPEED;
 

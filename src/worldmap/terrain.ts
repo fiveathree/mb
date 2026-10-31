@@ -1,6 +1,7 @@
 import { BIOMES, MAP, PLACES, TERRAIN_COST } from '../data/world';
 import { makeRng } from '../battle/terrain';
 
+export type MoveMode = 'land' | 'swim' | 'fly';
 export type Tile = 'plain' | 'forest' | 'hill' | 'mountain' | 'water' | 'bridge' | 'snow' | 'sand' | 'swamp' | 'ash';
 
 export const TILE_COLOR: Record<Tile, string> = {
@@ -170,18 +171,25 @@ export class WorldTerrain {
     return t !== 'mountain' && t !== 'water';
   }
 
+  /** 陸行、游水、飛行分別行得過邊度 */
+  canCross(x: number, y: number, move: MoveMode): boolean {
+    if (!this.inside(x, y)) return false;
+    if (move === 'fly') return true;
+    return move === 'swim' ? this.at(x, y) !== 'mountain' : this.passable(x, y);
+  }
+
   cost(x: number, y: number): number {
     const t = this.at(x, y);
     return t === 'water' || t === 'mountain' ? 1 : TERRAIN_COST[t];
   }
 
   /** A* 尋路，回傳格路徑（唔包起點），行唔到回傳 null */
-  path(sx: number, sy: number, tx: number, ty: number): { x: number; y: number }[] | null {
+  path(sx: number, sy: number, tx: number, ty: number, move: MoveMode = 'land'): { x: number; y: number }[] | null {
     sx = Math.round(sx);
     sy = Math.round(sy);
     tx = Math.round(tx);
     ty = Math.round(ty);
-    if (!this.passable(tx, ty) || !this.inside(sx, sy)) return null;
+    if (!this.canCross(tx, ty, move) || !this.inside(sx, sy)) return null;
     const key = (x: number, y: number) => x + y * W;
     const g = new Map<number, number>([[key(sx, sy), 0]]);
     const from = new Map<number, number>();
@@ -199,10 +207,11 @@ export class WorldTerrain {
       const cy = Math.floor(k / W);
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-          if ((!dx && !dy) || !this.passable(cx + dx, cy + dy)) continue;
-          if (dx && dy && (!this.passable(cx + dx, cy) || !this.passable(cx, cy + dy))) continue;
+          if ((!dx && !dy) || !this.canCross(cx + dx, cy + dy, move)) continue;
+          if (dx && dy && (!this.canCross(cx + dx, cy, move) || !this.canCross(cx, cy + dy, move))) continue;
           const nk = key(cx + dx, cy + dy);
-          const ng = g.get(k)! + this.cost(cx + dx, cy + dy) * (dx && dy ? 1.41 : 1);
+          const step = move === 'fly' ? 1 : this.cost(cx + dx, cy + dy);
+          const ng = g.get(k)! + step * (dx && dy ? 1.41 : 1);
           if (ng < (g.get(nk) ?? Infinity)) {
             g.set(nk, ng);
             from.set(nk, k);

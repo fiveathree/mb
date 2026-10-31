@@ -16,7 +16,9 @@ import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
   addXp, isElite, sortedSoldiers,
 } from '../core/roster';
-import { WorldTerrain } from './terrain';
+import { WorldTerrain, type MoveMode } from './terrain';
+import { HORSES, moveOf } from '../data/horses';
+import { RACES } from '../data/races';
 
 export interface BanditParty {
   id: number;
@@ -227,8 +229,15 @@ export class World {
     return PARTY.speed * (1 - size) * (1 + cav * PARTY.cavalryBonus);
   }
 
+  /** 主角坐騎決定部隊點行 */
+  moveMode(): MoveMode {
+    const h = this.roster.hero;
+    const mount = HORSES.find((d) => d.id === h.horse);
+    return mount && !RACES[h.race].noRide ? moveOf(mount) : 'land';
+  }
+
   goTo(x: number, y: number, place: PlaceDef | null): boolean {
-    const route = this.terrain.path(this.save.x, this.save.y, x, y);
+    const route = this.terrain.path(this.save.x, this.save.y, x, y, this.moveMode());
     if (!route) return false;
     this.path = route;
     this.destination = place;
@@ -289,7 +298,7 @@ export class World {
     if (this.rechase <= 0) {
       this.rechase = 0.8;
       const id = this.chasing;
-      this.path = this.terrain.path(w.x, w.y, n.x, n.y) ?? this.path;
+      this.path = this.terrain.path(w.x, w.y, n.x, n.y, this.moveMode()) ?? this.path;
       this.chasing = id;
     }
     return null;
@@ -512,7 +521,7 @@ export class World {
     let budget = this.partySpeed() * dt;
     while (budget > 0 && this.path.length) {
       const next = this.path[0];
-      const cost = this.terrain.cost(next.x, next.y);
+      const cost = this.moveMode() === 'fly' ? 1 : this.terrain.cost(next.x, next.y);
       const dx = next.x - w.x;
       const dy = next.y - w.y;
       const dist = Math.hypot(dx, dy);

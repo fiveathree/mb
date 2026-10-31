@@ -2,6 +2,7 @@ import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef, type PlaceKind } fro
 import type { Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
+import { MOVE_NAME } from '../data/horses';
 import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
@@ -238,7 +239,7 @@ export class WorldView {
   private planRoute(q: Quest) {
     const w = this.world.save;
     const goal = this.questGoal(q);
-    const path = goal && this.world.terrain.path(w.x, w.y, goal.x, goal.y);
+    const path = goal && this.world.terrain.path(w.x, w.y, goal.x, goal.y, this.world.moveMode());
     this.preview = goal && path ? { id: q.id, ...goal, path, fromX: w.x, fromY: w.y } : null;
   }
 
@@ -628,7 +629,7 @@ export class WorldView {
       `糧 ${Math.floor(w.food)}（−${partyFood(r).toFixed(1)}／日）`,
       `餉 ${partyWage(r)}／週`,
       `部隊 ${r.soldiers.length + 1} 人${hurt ? `（傷 ${hurt}）` : ''}`,
-      `行軍 ${this.world.partySpeed().toFixed(1)}`,
+      `${MOVE_NAME[this.world.moveMode()]} ${this.world.partySpeed().toFixed(1)}`,
       `士氣 ${Math.round(w.morale)}`,
       `聲望 ${w.pol.renown}`,
       `正義 ${w.pol.justice}`,

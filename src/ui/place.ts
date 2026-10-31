@@ -11,7 +11,7 @@ import { PLAYER } from '../politics/politics';
 import { accept, acceptFavor, offersAt } from '../quests/quests';
 import { applyChoice } from '../quests/events';
 import type { StoryEvent } from '../data/quests';
-import { HORSES, HORSE_RANK, MARKET_RANKS, STABLES } from '../data/horses';
+import { HORSES, HORSE_RANK, MARKET_RANKS, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { FAVORS, FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
@@ -402,7 +402,7 @@ export class PlaceScreens {
     const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic) && (MARKET_RANKS.includes(HORSE_RANK[d.id]) || stable.includes(d.id))).map((d) => {
       const owned = hero.horses.includes(d.id);
       if (!owned) buy(`h_${d.id}`, horsePrice(d.id), () => hero.horses.push(d.id));
-      return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>[${RARITY[HORSE_RANK[d.id]].name}] ${d.name} ${owned ? '已有' : horsePrice(d.id)}</button>`;
+      return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>[${RARITY[HORSE_RANK[d.id]].name}] ${d.name}（${MOVE_NAME[moveOf(d)]}） ${owned ? '已有' : horsePrice(d.id)}</button>`;
     }).join('');
     return `
       <div class="pick-title">武器</div><div class="shop">${weapons}</div>

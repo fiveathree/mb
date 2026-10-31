@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BATTLEFIELD as F, COLORS } from '../data/battlefield';
+import { RIVER } from '../data/horses';
 
 export interface Obstacle {
   x: number;
@@ -18,6 +19,11 @@ export function makeRng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+let riverOn = false;
+/** 呢場有冇河 */
+export const setRiver = (on: boolean) => { riverOn = on; };
+export const inRiver = (z: number) => riverOn && Math.abs(z) < RIVER.halfWidth;
 
 export function heightAt(x: number, z: number): number {
   const a = F.hillAmplitude;

@@ -1,13 +1,13 @@
 import { AI, ARCHER_AI, CAVALRY_AI, MORALE } from '../data/units';
 import { BATTLEFIELD } from '../data/battlefield';
 import { COMBAT, type AttackDir } from '../data/combat';
-import { FLIGHT, HORSE_RADIUS } from '../data/horses';
+import { FLIGHT, HORSE_RADIUS, RIVER } from '../data/horses';
 import {
   angleDiff, bearing, clamp, flatDist, moveToward, randRange, type AiState, type Combatant,
 } from './entities';
 import { mirrorDir, startBlock, startCharge, type CombatWorld } from './combat';
 import type { Group } from './orders';
-import { heightAt } from './terrain';
+import { heightAt, inRiver } from './terrain';
 
 const DIRS: AttackDir[] = ['up', 'down', 'left', 'right'];
 const randomDir = () => DIRS[Math.floor(Math.random() * 4)];
@@ -215,7 +215,7 @@ function updateFoot(c: Combatant, ai: AiState, dt: number, world: CombatWorld) {
 
   let mx = 0;
   let mz = 0;
-  let speed = c.def.runSpeed;
+  let speed = c.def.runSpeed * (inRiver(c.pos.z) ? RIVER.slow : 1);
   if (ai.dodgeT > 0 && t) {
     ai.dodgeT -= dt;
     const side = bearing(c.pos, t.pos) + (Math.PI / 2) * ai.dodgeDir;

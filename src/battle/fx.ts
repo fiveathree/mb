@@ -14,7 +14,20 @@ interface Particle {
   vz: number;
 }
 
+const BOLTS = 6;
+const BOLT_SEGMENTS = 8;
+const BOLT_TOP = 42;
+const BOLT_LIFE = 0.18;
+
+interface Bolt {
+  group: THREE.Group;
+  life: number;
+}
+
 export class Fx {
+  private bolts: Bolt[] = [];
+  private nextBolt = 0;
+  private flash = new THREE.PointLight(0xc8dcff, 0, 70, 1.2);
   private mesh: THREE.InstancedMesh;
   private parts: Particle[] = [];
   private next = 0;
@@ -31,6 +44,44 @@ export class Fx {
       this.mesh.setMatrixAt(i, this.m.makeScale(0, 0, 0));
     }
     scene.add(this.mesh);
+    scene.add(this.flash);
+    const geo = new THREE.BoxGeometry(0.28, 1, 0.28);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xe8f0ff });
+    for (let i = 0; i < BOLTS; i++) {
+      const group = new THREE.Group();
+      for (let k = 0; k < BOLT_SEGMENTS; k++) group.add(new THREE.Mesh(geo, mat));
+      group.visible = false;
+      scene.add(group);
+      this.bolts.push({ group, life: 0 });
+    }
+  }
+
+  /** 閃電：由天頂曲折劈到地面 */
+  bolt(pos: THREE.Vector3) {
+    const b = this.bolts[this.nextBolt];
+    this.nextBolt = (this.nextBolt + 1) % BOLTS;
+    b.life = BOLT_LIFE;
+    b.group.visible = true;
+    let x = pos.x + (Math.random() - 0.5) * 8;
+    let z = pos.z + (Math.random() - 0.5) * 8;
+    let y = pos.y + BOLT_TOP;
+    const step = BOLT_TOP / BOLT_SEGMENTS;
+    b.group.children.forEach((seg, i) => {
+      const left = BOLT_SEGMENTS - i - 1;
+      const nx = left ? pos.x + (x - pos.x) * 0.72 + (Math.random() - 0.5) * 3 : pos.x;
+      const nz = left ? pos.z + (z - pos.z) * 0.72 + (Math.random() - 0.5) * 3 : pos.z;
+      const ny = y - step;
+      const from = new THREE.Vector3(x, y, z);
+      const to = new THREE.Vector3(nx, ny, nz);
+      seg.position.copy(from).add(to).multiplyScalar(0.5);
+      seg.scale.set(1, from.distanceTo(to), 1);
+      seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.sub(from).normalize());
+      x = nx;
+      y = ny;
+      z = nz;
+    });
+    this.flash.position.set(pos.x, pos.y + 8, pos.z);
+    this.flash.intensity = 260;
   }
 
   burst(pos: THREE.Vector3, color: number, count: number, speed: number) {
@@ -53,6 +104,12 @@ export class Fx {
   }
 
   update(dt: number) {
+    this.flash.intensity *= Math.exp(-14 * dt);
+    for (const b of this.bolts) {
+      if (b.life <= 0) continue;
+      b.life -= dt;
+      if (b.life <= 0) b.group.visible = false;
+    }
     for (let i = 0; i < MAX; i++) {
       const p = this.parts[i];
       if (p.life <= 0) continue;

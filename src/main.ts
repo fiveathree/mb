@@ -34,6 +34,7 @@ import { World, banditArmy, dayOf, isNight, newWorld, type BanditParty, type Wor
 const FORMATION_MIN_TROOPS = 4;
 /** 附近幾多格同類地形就用嗰種戰場 */
 const BIOME_TILES = 6;
+const RIVER_NEAR = 5;
 const BIOME_STYLE: Record<BiomeTile, TownStyleId> = { forest: 'forest', snow: 'snow', sand: 'sand', swamp: 'monster', ash: 'ash' };
 const TILE_THEME: Partial<Record<Tile, BattleTheme>> = { forest: 'forest', snow: 'snow', sand: 'desert', swamp: 'swamp', ash: 'ash' };
 
@@ -274,7 +275,7 @@ async function startBattle(
     hud.hideScreen();
     battle.start({
       playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
-      dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky,
+      dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky, river: !extra.firstPerson && !extra.breaches && nearWater(),
       formations, enemyCultures: arenaFight ? [] : currentScenario().cultures,
     });
     inBattle = true;
@@ -309,6 +310,20 @@ function rollLoot(): string {
     out.push(piece.name);
   }
   return out.length ? `戰利品：${out.join('、')}` : '';
+}
+
+/** 附近有河就喺河邊開打 */
+function nearWater(): boolean {
+  const { x, y } = world.save;
+  const t = world.terrain;
+  for (let dy = -RIVER_NEAR; dy <= RIVER_NEAR; dy++) {
+    for (let dx = -RIVER_NEAR; dx <= RIVER_NEAR; dx++) {
+      const tx = Math.round(x) + dx;
+      const ty = Math.round(y) + dy;
+      if (t.inside(tx, ty) && t.at(tx, ty) === 'water') return true;
+    }
+  }
+  return false;
 }
 
 /** 野戰場景：夜晚，或者跟大地圖腳下地形 */

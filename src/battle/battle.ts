@@ -10,12 +10,12 @@ import {
 import { THEMES, type BattleTheme } from '../data/world';
 import { RACES } from '../data/races';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
-import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
+import { HORSES, HORSE_RADIUS, RIVER, type HorseDef } from '../data/horses';
 import {
   ENEMY_COMMAND, ROLE_KEYS, ROLE_LABEL, UNITS, type Role, type UnitDef,
 } from '../data/units';
 import { LEVEL } from '../data/gacha';
-import { WEAPONS } from '../data/weapons';
+import { WEAPONS, type WeaponDef } from '../data/weapons';
 import { applyGear } from '../core/hero';
 import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
@@ -34,13 +34,15 @@ import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
-import { buildTerrain, heightAt, placeTrees, type Obstacle } from './terrain';
+import { buildTerrain, heightAt, inRiver, placeTrees, setRiver, type Obstacle } from './terrain';
 import type { Hud } from '../ui/hud';
 
 const JUMP_SPEED = 5.5;
 const MOUNT_RANGE = 3.2;
 const MAX_DISMOUNT_SPEED = 6;
 const RESULT_DELAY = 2;
+/** 落雷由施法到劈落嘅時間 */
+const STRIKE_DELAY = 0.25;
 /** 自動畫質：連續幾次（每半秒）低過 lowFps 就降一級 */
 const QUALITY = { lowFps: 40, patience: 8, maxPixelRatio: 1.5 };
 /** 鏡頭跟滑鼠嘅順滑度，愈大愈貼手 */
@@ -76,6 +78,8 @@ export interface BattleSetup {
   defend?: boolean;
   /** 天上飛嘅生物 */
   sky?: string[];
+  /** 戰場中間有條河 */
+  river?: boolean;
   /** 入城行街，唔係打仗 */
   town?: { shops: [string, string][]; style: TownStyleId; seed: number };
   /** 地下城陷阱數，冇就用預設 */
@@ -129,6 +133,7 @@ export class Battle implements CombatWorld {
   private formationT = 0;
   private warcryT = 0;
   private forest = false;
+  private pendingStrikes: { owner: Combatant; w: WeaponDef; pos: THREE.Vector3; mult: number; t: number }[] = [];
   private trapCount = 0;
   private roomWalls = DUNGEON.walls;
   private peaceful = false;
@@ -292,6 +297,34 @@ export class Battle implements CombatWorld {
     mesh.castShadow = true;
     this.wall.add(mesh);
     this.obstacles = [...this.obstacles, ...solid.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 河：跟住地形起伏嘅水面 */
+  private layRiver() {
+    const geo = new THREE.PlaneGeometry(F.size, RIVER.halfWidth * 2, 80, 2);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i)) + 0.25);
+    geo.computeVertexNormals();
+    const water = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0x3f86c8, flatShading: true, transparent: true, opacity: 0.85 }));
+    this.wall.add(water);
+  }
+
+  /** 落雷：烏雲聚埋一陣，然後由天劈落 */
+  strike(owner: Combatant, w: WeaponDef, pos: THREE.Vector3, mult: number) {
+    this.fx.burst(new THREE.Vector3(pos.x, pos.y + 0.2, pos.z), 0x8fb4ff, 10, 2);
+    this.pendingStrikes.push({ owner, w, pos: pos.clone(), mult, t: STRIKE_DELAY });
+  }
+
+  private updateStrikes(dt: number) {
+    for (const s of [...this.pendingStrikes]) {
+      s.t -= dt;
+      if (s.t > 0) continue;
+      this.pendingStrikes.splice(this.pendingStrikes.indexOf(s), 1);
+      this.fx.bolt(s.pos);
+      this.sfx.thunder();
+      explode(this, s.owner, s.w, s.pos, s.mult);
+    }
   }
 
   /** 鎮民喺廣場揀個新位行過去 */
@@ -706,6 +739,9 @@ export class Battle implements CombatWorld {
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
+    setRiver(!!setup.river);
+    if (setup.river) this.layRiver();
+    this.pendingStrikes = [];
     this.peaceful = !!setup.town;
     this.townHint = '';
     this.townSpots = [];
@@ -961,6 +997,7 @@ export class Battle implements CombatWorld {
   private tickCommand(dt: number) {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
+    this.updateStrikes(dt);
     if (this.peaceful) this.updateTown(dt);
     // 主角倒下：跟隨嘅部隊唔再等，繼續打
     else if (this.player.dead) for (const g of this.groups[0]) if (g.order === 'follow') g.order = 'charge';
@@ -1085,7 +1122,7 @@ export class Battle implements CombatWorld {
       const mx = fx * throttle + fz * strafe;
       const mz = fz * throttle - fx * strafe;
       const len = Math.hypot(mx, mz) || 1;
-      let speed = sprint ? p.def.walkSpeed : p.def.runSpeed;
+      let speed = (sprint ? p.def.walkSpeed : p.def.runSpeed) * (inRiver(p.pos.z) ? RIVER.slow : 1);
       if (p.phase === 'charge' || p.phase === 'block') speed *= 0.55;
       if (p.phase === 'swing') speed *= 0.4;
       const step = 22 * dt;

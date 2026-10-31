@@ -157,7 +157,7 @@ export const WEAPON_PRICE: Record<string, number> = {
 };
 
 export const HORSE_PRICE: Record<string, number> = {
-  hunter: 0, pack: 300, steppe: 900, warhorse: 2400, camel: 700, elk: 1100,
+  hunter: 0, pack: 300, steppe: 900, warhorse: 2400, camel: 700, elk: 1100, buffalo: 800, seahorse: 2600,
   dire_wolf: 1600, tiger: 2600, drake: 3200, rhino: 3600, unicorn: 4200, nightmare: 4500, pegasus: 5000, griffin_mount: 6000,
 };
 
