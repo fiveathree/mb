@@ -1,0 +1,26 @@
+{
+  "name": "mb",
+  "private": true,
+  "version": "0.1.0",
+  "description": "《鐵騎風雲》瀏覽器奇幻騎戰沙盒",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "og": "node scripts/gen-og.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fiveathree/mb.git"
+  },
+  "dependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

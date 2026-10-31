@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16202f"/>
+      <stop offset=".62" stop-color="#8f3b2a"/>
+      <stop offset="1" stop-color="#f0a34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <circle cx="860" cy="372" r="150" fill="#f7cf73"/>
+  <path d="M0 470 150 390 290 448 470 360 640 452 820 380 1010 462 1200 400V630H0z" fill="#5d2c2a"/>
+  <path d="M0 540 220 492 500 530 800 486 1200 540V630H0z" fill="#17131a"/>
+
+  <!-- 騎兵衝鋒剪影 -->
+  <g fill="#17131a" transform="translate(150 96) scale(1.02)">
+    <path d="M250 214 342 206 420 216 500 198 548 150 566 120 612 104 654 134 668 164 646 174 612 156 590 186 566 248 556 292 590 340 646 372 628 392 560 362 512 310 462 318 420 324 360 398 300 440 282 420 332 362 342 318 278 326 214 392 142 404 138 382 192 354 216 298 196 262 120 306 102 290 182 226z"/>
+    <path d="M566 118 548 80 590 104z"/>
+    <path d="M182 226 116 196 72 214 110 232 60 250 128 256 186 244z"/>
+    <path d="M336 204 356 112 392 74 402 34 442 26 462 62 446 84 474 100 500 146 610 132 612 150 490 176 454 146 448 208z"/>
+    <path d="M398 34 416 0 430 8 440 28z"/>
+    <path d="M360 108 836 62 838 72 362 126z"/>
+    <path d="M836 58 900 62 836 78z"/>
+    <path d="M322 118C282 128 268 168 290 206L346 200 366 132z" fill="#b5362c"/>
+  </g>
+
+  <text x="64" y="128" font-family="Microsoft JhengHei, PingFang TC, Noto Sans CJK TC, sans-serif" font-weight="700" font-size="112" fill="#fff4dc" letter-spacing="8">鐵騎風雲</text>
+  <text x="68" y="186" font-family="Microsoft JhengHei, PingFang TC, Noto Sans CJK TC, sans-serif" font-size="36" fill="#f2c14e" letter-spacing="3">衝鋒、劈砍、帶兵打天下</text>
+</svg>
