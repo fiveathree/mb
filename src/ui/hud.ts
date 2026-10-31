@@ -19,8 +19,8 @@ const CONTROLS: [string, string][] = [
   ['滑鼠移動', '望方向，亦決定出招方向'],
   ['左鍵', '撳住蓄力，放手出招'],
   ['右鍵', '格擋（移滑鼠揀方向）'],
-  ['X', '放平騎槍（全速自動命中）'],
-  ['Q／E', '切換武器'],
+  ['E', '放平騎槍（全速自動命中）'],
+  ['滾輪／Q', '切換武器'],
   ['F', '上馬／下馬'],
   ['空白鍵', '跳躍'],
   ['Tab', '戰況表'],
@@ -179,9 +179,9 @@ export class Hud {
 
     const kmh = p.horse ? Math.round(Math.abs(p.horse.speed) * 3.6) : 0;
     this.q('#speed').innerHTML = `${kmh}<small> km/h</small>`;
-    this.q('#weapon').textContent = `${p.weapon.name}　Q／E`;
+    this.q('#weapon').textContent = `${p.weapon.name}　滾輪切換`;
     const canCouch = p.weapon.couchable && p.horse && p.horse.speed >= COMBAT.couch.minSpeed;
-    this.q('#hint').textContent = p.couched ? '騎槍已放平！瞄準馬頭前方' : canCouch ? '撳 X 放平騎槍' : p.horse ? '' : '撳 F 上馬';
+    this.q('#hint').textContent = p.couched ? '騎槍已放平！瞄準馬頭前方' : canCouch ? '撳 E 放平騎槍' : p.horse ? '' : '撳 F 上馬';
 
     const inc = this.incoming(b, p);
     for (const d of DIRS) {

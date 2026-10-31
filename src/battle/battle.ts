@@ -252,8 +252,9 @@ export class Battle implements CombatWorld {
     p.aimYaw = this.camYaw;
 
     if (p.phase === 'idle') {
-      const step = i.pressed('KeyQ') ? -1 : i.pressed('KeyE') ? 1 : 0;
+      const step = i.pressed('KeyQ') ? 1 : i.wheelStep;
       if (step) {
+        i.wheelStep = 0;
         p.weaponIdx = (p.weaponIdx + step + p.weapons.length) % p.weapons.length;
         p.couched = false;
       }
@@ -261,7 +262,7 @@ export class Battle implements CombatWorld {
 
     const h = p.horse;
     if (i.pressed('KeyF')) this.toggleMount();
-    if (i.pressed('KeyX')) this.toggleCouch();
+    if (i.pressed('KeyE')) this.toggleCouch();
 
     const throttle = (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
     const strafe = (i.down('KeyA') ? 1 : 0) - (i.down('KeyD') ? 1 : 0);
@@ -351,7 +352,7 @@ export class Battle implements CombatWorld {
       return;
     }
     if (!p.weapon.couchable) {
-      this.hud.announce('要用騎槍（Q／E 切換）', 'guard');
+      this.hud.announce('要用騎槍（滾輪切換）', 'guard');
     } else if (!p.horse || p.horse.speed < COMBAT.couch.minSpeed) {
       this.hud.announce('速度未夠，放唔平騎槍', 'guard');
     } else if (p.phase === 'idle' && p.couchCooldown <= 0) {

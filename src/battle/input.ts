@@ -3,6 +3,8 @@ import type { AttackDir } from '../data/combat';
 const RECENT_DECAY = 7; // 滑鼠方向記憶每秒衰減率
 const DIR_DEADZONE = 2;
 const ATTACK_BUFFER = 0.2;
+const WHEEL_BUFFER = 0.25; // 出招中轉武器，等收招後先生效
+const WHEEL_COOLDOWN = 0.12; // 避免觸控板一下滑動轉過晒所有武器
 
 const GAME_KEYS = new Set(['Tab', 'Space', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6']);
 
@@ -14,6 +16,10 @@ export class Input {
   lmb = false;
   rmb = false;
   attackBuffer = 0;
+  /** 滾輪方向：-1 上一件、1 下一件 */
+  wheelStep = 0;
+  private wheelBuffer = 0;
+  private wheelCooldown = 0;
   private rx = 0;
   private ry = 0;
   private lastDir: AttackDir = 'right';
@@ -40,6 +46,13 @@ export class Input {
       else if (e.button === 2) this.rmb = false;
     });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (this.wheelCooldown > 0 || e.deltaY === 0) return;
+      this.wheelStep = Math.sign(e.deltaY);
+      this.wheelBuffer = WHEEL_BUFFER;
+      this.wheelCooldown = WHEEL_COOLDOWN;
+    }, { passive: false });
   }
 
   addMouse(dx: number, dy: number) {
@@ -77,6 +90,9 @@ export class Input {
     this.rx *= k;
     this.ry *= k;
     this.attackBuffer = Math.max(0, this.attackBuffer - dt);
+    this.wheelCooldown = Math.max(0, this.wheelCooldown - dt);
+    this.wheelBuffer = Math.max(0, this.wheelBuffer - dt);
+    if (this.wheelBuffer === 0) this.wheelStep = 0;
   }
 
   clear() {
@@ -84,5 +100,7 @@ export class Input {
     this.lmb = false;
     this.rmb = false;
     this.attackBuffer = 0;
+    this.wheelStep = 0;
+    this.wheelBuffer = 0;
   }
 }

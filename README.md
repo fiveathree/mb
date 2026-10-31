@@ -31,8 +31,8 @@ GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後�
 | 滑鼠移動 | 望方向 | 望方向 |
 | 左鍵 | 撳住蓄力，放手出招 | 同左 |
 | 右鍵 | 撳住格擋 | 同左 |
-| X | 放平騎槍（要揀騎槍、速度夠） | — |
-| Q／E | 切換武器 | 同左 |
+| E | 放平騎槍（要揀騎槍、速度夠） | — |
+| 滑鼠滾輪／Q | 切換武器 | 同左 |
 | F | 下馬 | 上馬（要喺馬附近） |
 | Tab | 戰況表 | 同左 |
 | M | 靜音 | 同左 |
@@ -44,7 +44,7 @@ GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後�
 
 **盾牌**：只要擋喺正面，任何方向都擋到，但會損耗耐久，耐久歸零就碎。
 
-**騎槍衝鋒**：Q／E 揀騎槍，速度去到約 29 km/h 以上撳 X，然後對準目標衝過去，會自動命中。
+**騎槍衝鋒**：用滾輪揀騎槍，速度去到約 29 km/h 以上撳 E，然後對準目標衝過去，會自動命中。
 
 ## 已完成功能
 
@@ -78,7 +78,7 @@ GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後�
 
 手感同取捨（暫定預設）：
 
-3. 騎槍放平用 `X` 鍵（PLAN 冇指定）；Shift 係衝刺（PLAN 冇指定），步行時改為慢行。
+3. Shift 係衝刺（PLAN 冇指定），步行時改為慢行。滑鼠滾輪切換武器、E 放平騎槍係玩家試玩後改嘅，同 PLAN 第 12 節按鍵表唔同；Q 保留做下一件武器。
 4. 鏡頭跟馬轉 65%（`CAMERA.followHorseTurn`）。PLAN 冇講，純獨立鏡頭對新手太難。
 5. 全速時間約 4 秒，全速約 56 km/h。
 6. 擦身而過都計 80% 馬速加成（`passingSpeedRatio`），否則側砍冇馬速傷害。
@@ -94,3 +94,4 @@ GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後�
 13. og:image 暫時用 GitHub raw 網址，正式網域定咗要改 `index.html`。
 14. PLAN 話六個階段做齊先公開，而家 GitHub Pages 已經有公開網址，暫時當試玩用。
 15. F1–F6 指令同 1–4 選兵種留待階段 2。
+16. 下一步要加更多武器（玩家要求）：單手斧、錘、長矛、弓、弩、投擲物等。數值加喺 `src/data/weapons.ts`，弓弩同投擲要配合階段 2 嘅射擊系統。
