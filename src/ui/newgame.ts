@@ -96,7 +96,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
           <label ${crownMode ? 'style="visibility:hidden"' : ''}>姓名 <input id="ngName" maxlength="12" placeholder="無名氏" value="${c.name.replace(/"/g, '&quot;')}"></label>
         </div>
         <div class="pick-title">劇本</div>
-        <div class="weapons">${SCENARIOS.map((s) => chip('sc', s.id, s.name, s.id === c.scenario.id)).join('')}</div>
+        <div class="weapons sc-list">${SCENARIOS.map((s) => chip('sc', s.id, s.name, s.id === c.scenario.id)).join('')}</div>
         <p class="detail">${c.scenario.desc}</p>
         ${body}
         <div class="row">

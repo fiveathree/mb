@@ -214,6 +214,151 @@ export const CROWNS: CrownDef[] = [
     attrs: [10, 15, 9, 11], skills: { archery: 6, trade: 5 }, sig: ['獵寶長弓', 'hero_bow', 8], extra: ['sword'], horse: 'elk', armor: LIGHT,
     army: [['archer', 8], ['footman', 6]], gold: 3000, food: 80, home: 'linjiang', color: 0x8a6a3a,
   },
+  {
+    id: 'crown_lijing', cls: '統率', name: '托塔天王 李靖', scenario: 'tianjie', desc: '掌天兵十萬，手上寶塔鎮得住魔', race: 'human',
+    attrs: [11, 9, 12, 16], skills: { leadership: 8, tactics: 5 }, sig: ['玲瓏寶塔', 'lich_bolt', 12], extra: ['sword', 'ward'], horse: 'pegasus', armor: HEAVY,
+    army: [['tian_bing', 14], ['tian_jiang', 5], ['tian_archer', 6]], gold: 4000, food: 150, home: 'ironhelm_keep', color: 0xe8c860,
+  },
+  {
+    id: 'crown_juling', cls: '武力', name: '巨靈神', scenario: 'tianjie', desc: '一斧開山，天庭第一力士', race: 'human',
+    attrs: [19, 7, 4, 7], skills: { ironskin: 8, tactics: 1 }, sig: ['宣花板斧', 'hero_axe', 12], extra: ['sword'], horse: 'hunter', armor: HEAVY,
+    army: [['jin_jia', 3], ['tian_bing', 12]], gold: 1800, food: 110, home: 'griffon', color: 0xd8a83a,
+  },
+  {
+    id: 'crown_leigong', cls: '魔導', name: '雷部天尊', scenario: 'tianjie', desc: '一聲令下，九天雷動', race: 'human',
+    attrs: [8, 12, 18, 12], skills: { magic: 8, leadership: 3 }, sig: ['九霄神雷', 'lich_bolt', 14], extra: ['lightning', 'ward'], horse: 'griffin_mount', armor: MEDIUM,
+    army: [['lei_bu', 6], ['tian_bing', 10]], gold: 3000, food: 100, home: 'xuan_city', color: 0x8ab0ff,
+  },
+  {
+    id: 'crown_change', cls: '弓術', name: '嫦娥', scenario: 'tianjie', desc: '廣寒宮主，月華為箭', race: 'human',
+    attrs: [6, 17, 14, 13], skills: { archery: 7, magic: 3 }, sig: ['太陰弓', 'hero_bow', 12], extra: ['heal', 'sword'], horse: 'unicorn', armor: LIGHT,
+    army: [['tian_archer', 10], ['tian_bing', 6]], gold: 2500, food: 100, home: 'chishui_fort', color: 0xd8e4ff,
+  },
+  {
+    id: 'crown_xuehai', cls: '武力', name: '血海魔君', scenario: 'tianjie', desc: '率魔界先鋒殺上南天門', race: 'demon',
+    attrs: [17, 13, 10, 8], skills: { ironskin: 5, magic: 3 }, sig: ['血海魔刀', 'hero_blade', 16], extra: ['fireball'], horse: 'nightmare', armor: HEAVY,
+    army: [['demon_grunt', 12], ['ye_cha', 5]], gold: 2000, food: 80, home: 'blackfang', color: 0xc8342c,
+  },
+  {
+    id: 'crown_wukong', cls: '武力', name: '孫悟空', scenario: 'xiyou', desc: '齊天大聖，一個筋斗十萬八千里', race: 'human',
+    attrs: [18, 19, 12, 9], skills: { ironskin: 6, tactics: 2 }, sig: ['如意金箍棒', 'hero_lance', 22], extra: ['heal'], horse: 'griffin_mount', armor: MEDIUM,
+    army: [['yao_bing', 14], ['yao_jiang', 3]], gold: 1500, food: 100, home: 'ironhelm_keep', color: 0xf2c14e,
+  },
+  {
+    id: 'crown_tangseng', cls: '統率', name: '唐三藏', scenario: 'xiyou', desc: '手無寸鐵，一心向西', race: 'human',
+    attrs: [4, 6, 16, 19], skills: { leadership: 8, medicine: 6 }, sig: ['九環錫杖', 'lich_bolt', 8], extra: ['heal', 'ward'], horse: 'hunter', armor: LIGHT,
+    army: [['dao_guard', 14], ['archer', 8]], gold: 5000, food: 160, home: 'griffon', color: 0xe8d8a8,
+  },
+  {
+    id: 'crown_bajie', cls: '武力', name: '豬八戒', scenario: 'xiyou', desc: '食得打得，三十六變', race: 'human',
+    attrs: [16, 8, 8, 13], skills: { ironskin: 6, trade: 3 }, sig: ['九齒釘鈀', 'hero_axe', 10], extra: ['sword'], horse: 'hunter', armor: MEDIUM,
+    army: [['yao_bing', 12], ['shui_zu', 4]], gold: 1800, food: 140, home: 'xuan_city', color: 0xe8a8b8,
+  },
+  {
+    id: 'crown_wujing', cls: '統率', name: '沙悟淨', scenario: 'xiyou', desc: '流沙河出身，挑擔行天下', race: 'human',
+    attrs: [14, 9, 10, 12], skills: { ironskin: 5, leadership: 4 }, sig: ['降妖寶杖', 'hero_lance', 12], extra: ['sword'], horse: 'hunter', armor: MEDIUM,
+    army: [['shui_zu', 12], ['dao_guard', 6]], gold: 2000, food: 110, home: 'bashu_pass', color: 0x4a8a9a,
+  },
+  {
+    id: 'crown_niumo', cls: '武力', name: '牛魔王', scenario: 'xiyou', desc: '七十二洞妖王之首', race: 'minotaur',
+    attrs: [19, 10, 9, 11], skills: { ironskin: 7, leadership: 3 }, sig: ['混鐵棍', 'hero_axe', 12], extra: ['fireball'], horse: 'hunter', armor: HEAVY,
+    army: [['yao_jiang', 8], ['yao_bing', 12]], gold: 3000, food: 110, home: 'chishui_fort', color: 0x4a3020,
+  },
+  {
+    id: 'crown_tieshan', cls: '魔導', name: '鐵扇公主', scenario: 'xiyou', desc: '一扇熄火，二扇生風，三扇落雨', race: 'human',
+    attrs: [8, 14, 17, 12], skills: { magic: 8, trade: 2 }, sig: ['芭蕉扇', 'frost_nova', 8], extra: ['ward', 'sword'], horse: 'tiger', armor: LIGHT,
+    army: [['yao_jiang', 4], ['yao_bing', 10]], gold: 3500, food: 100, home: 'chishui_fort', color: 0xe87a4a,
+  },
+  {
+    id: 'crown_ziya', cls: '智略', name: '姜子牙', scenario: 'fengshen', desc: '七十二歲下山，手持打神鞭', race: 'human',
+    attrs: [6, 8, 19, 15], skills: { tactics: 8, magic: 5, leadership: 4 }, sig: ['打神鞭', 'lich_bolt', 12], extra: ['ward', 'heal'], horse: 'unicorn', armor: LIGHT,
+    army: [['dao_guard', 14], ['crossbowman', 8]], gold: 4500, food: 150, home: 'griffon', color: 0xd8c8a0,
+  },
+  {
+    id: 'crown_nezha', cls: '騎術', name: '哪吒', scenario: 'fengshen', desc: '三頭六臂，腳踏風火輪', race: 'human',
+    attrs: [15, 19, 9, 8], skills: { riding: 8, ironskin: 3 }, sig: ['火尖槍', 'hero_lance', 16], extra: ['fireball'], horse: 'nightmare', armor: MEDIUM,
+    army: [['lancer', 8], ['dao_guard', 8]], gold: 2000, food: 110, home: 'bashu_pass', color: 0xe8542c,
+  },
+  {
+    id: 'crown_yangjian', cls: '武力', name: '楊戩', scenario: 'fengshen', desc: '三隻眼，七十三變，哮天犬隨身', race: 'human',
+    attrs: [17, 16, 13, 10], skills: { ironskin: 5, magic: 4, tactics: 3 }, sig: ['三尖兩刃刀', 'hero_lance', 18], extra: ['longbow'], horse: 'tiger', armor: HEAVY,
+    army: [['tian_jiang', 5], ['dao_guard', 8]], gold: 2500, food: 110, home: 'songglade', color: 0xe8e8f0,
+  },
+  {
+    id: 'crown_wenzhong', cls: '魔導', name: '太師聞仲', scenario: 'fengshen', desc: '三隻眼洞悉忠奸，雌雄鞭鎮朝歌', race: 'human',
+    attrs: [13, 10, 17, 14], skills: { magic: 7, leadership: 5 }, sig: ['雌雄金鞭', 'lich_bolt', 14], extra: ['lightning', 'sword'], horse: 'drake', armor: HEAVY,
+    army: [['dao_guard', 12], ['lei_bu', 4], ['crossbowman', 6]], gold: 3500, food: 120, home: 'ironhelm_keep', color: 0x7a4ae0,
+  },
+  {
+    id: 'crown_daji', cls: '暗影', name: '妲己', scenario: 'fengshen', desc: '千年狐精，一笑傾國', race: 'demon',
+    attrs: [6, 17, 16, 18], skills: { magic: 6, trade: 4 }, sig: ['九尾魅火', 'lich_fire', 10], extra: ['heal', 'sword'], horse: 'dire_wolf', armor: LIGHT,
+    army: [['yao_jiang', 5], ['yao_bing', 12]], gold: 4000, food: 100, home: 'blackfang', color: 0xe84a8a,
+  },
+  {
+    id: 'crown_huangdi', cls: '統率', name: '軒轅黃帝', scenario: 'shenhua', desc: '統御諸部，人文初祖', race: 'human',
+    attrs: [13, 11, 15, 18], skills: { leadership: 8, tactics: 6 }, sig: ['軒轅劍', 'hero_blade', 14], extra: ['horsebow'], horse: 'warhorse', armor: HEAVY,
+    army: [['pikeman', 14], ['archer', 8], ['axeman', 5]], gold: 4500, food: 160, home: 'griffon', color: 0xf2c14e,
+  },
+  {
+    id: 'crown_chiyou', cls: '武力', name: '蚩尤', scenario: 'shenhua', desc: '銅頭鐵額，八十一兄弟', race: 'minotaur',
+    attrs: [20, 11, 10, 11], skills: { ironskin: 8, tactics: 3 }, sig: ['五兵戰斧', 'hero_axe', 12], extra: ['sword'], horse: 'hunter', armor: HEAVY,
+    army: [['yao_jiang', 8], ['axeman', 8]], gold: 2500, food: 110, home: 'xuan_city', color: 0x8a2c3a,
+  },
+  {
+    id: 'crown_houyi', cls: '弓術', name: '后羿', scenario: 'shenhua', desc: '十日並出，一箭一個', race: 'human',
+    attrs: [14, 16, 9, 11], skills: { archery: 8, ironskin: 2 }, sig: ['射日神弓', 'hero_bow', 18], extra: ['sword'], horse: 'hunter', armor: MEDIUM,
+    army: [['archer', 14], ['pikeman', 6]], gold: 1800, food: 100, home: 'bashu_pass', color: 0xffb84a,
+  },
+  {
+    id: 'crown_nvwa', cls: '魔導', name: '女媧', scenario: 'shenhua', desc: '煉石補天，摶土造人', race: 'human',
+    attrs: [8, 11, 20, 17], skills: { magic: 8, medicine: 8 }, sig: ['五色神石', 'lich_fire', 14], extra: ['heal', 'ward'], horse: 'griffin_mount', armor: LIGHT,
+    army: [['lei_bu', 4], ['pikeman', 12]], gold: 4000, food: 130, home: 'linjiang', color: 0x8ae0c8,
+  },
+  {
+    id: 'crown_xingtian', cls: '武力', name: '刑天', scenario: 'shenhua', desc: '斷頭猶舞干戚，猛志固常在', race: 'human',
+    attrs: [18, 12, 6, 12], skills: { ironskin: 8 }, sig: ['干戚', 'hero_axe', 10], extra: ['sword'], horse: 'hunter', armor: MEDIUM,
+    army: [['axeman', 12], ['pikeman', 6]], gold: 1200, food: 100, home: 'spire', color: 0xa84a3a,
+  },
+  {
+    id: 'crown_zhongkui', cls: '武力', name: '鍾馗', scenario: 'fengdu', desc: '天下第一捉鬼師，鬼見都驚', race: 'human',
+    attrs: [16, 11, 13, 10], skills: { ironskin: 5, magic: 4 }, sig: ['斬鬼劍', 'hero_blade', 16], extra: ['fireball'], horse: 'hunter', armor: MEDIUM,
+    army: [['yin_cha', 10], ['gui_zu', 8]], gold: 2200, food: 110, home: 'griffon', color: 0x3a4a6a,
+  },
+  {
+    id: 'crown_yanluo', cls: '統率', name: '閻羅王', scenario: 'fengdu', desc: '生死簿在手，判官隨侍', race: 'human',
+    attrs: [13, 9, 16, 16], skills: { leadership: 8, tactics: 4, magic: 3 }, sig: ['判官筆', 'lich_bolt', 14], extra: ['ward', 'sword'], horse: 'nightmare', armor: HEAVY,
+    army: [['niu_tou', 3], ['ma_mian', 5], ['gui_zu', 12]], gold: 4000, food: 120, home: 'wuyi', color: 0x2a2a3a,
+  },
+  {
+    id: 'crown_wuchang', cls: '暗影', name: '黑白無常', scenario: 'fengdu', desc: '一見生財，天下太平', race: 'undead',
+    attrs: [12, 18, 12, 9], skills: { ironskin: 3, magic: 4 }, sig: ['勾魂索', 'hero_blade', 12], extra: ['lightning'], horse: 'hunter', armor: LIGHT,
+    army: [['yin_cha', 12], ['wang_hun', 4]], gold: 2000, food: 60, home: 'ironhelm_keep', color: 0xd8d8e0,
+  },
+  {
+    id: 'crown_mengpo', cls: '魔導', name: '孟婆', scenario: 'fengdu', desc: '一碗湯，前塵盡忘', race: 'undead',
+    attrs: [5, 9, 19, 14], skills: { magic: 8, medicine: 6 }, sig: ['忘川湯', 'frost_nova', 8], extra: ['heal', 'ward'], horse: 'hunter', armor: LIGHT,
+    army: [['wang_hun', 8], ['gui_zu', 8]], gold: 2500, food: 60, home: 'shadowspire', color: 0x8ac8d8,
+  },
+  {
+    id: 'crown_hades', cls: '統率', name: '哈迪斯', scenario: 'mingfu', desc: '冥界之王，雙叉戟定生死', race: 'undead',
+    attrs: [15, 10, 16, 15], skills: { leadership: 7, magic: 5 }, sig: ['冥王雙叉戟', 'hero_lance', 16], extra: ['lightning', 'ward'], horse: 'nightmare', armor: HEAVY,
+    army: [['styx_guard', 12], ['grave_knight', 5], ['wang_hun', 4]], gold: 4500, food: 60, home: 'griffon', color: 0x3a2a5a,
+  },
+  {
+    id: 'crown_persephone', cls: '魔導', name: '波瑟芬妮', scenario: 'mingfu', desc: '半年春神，半年冥后', race: 'human',
+    attrs: [6, 13, 18, 16], skills: { magic: 8, medicine: 5 }, sig: ['冥石榴', 'lich_fire', 12], extra: ['heal', 'ward'], horse: 'unicorn', armor: LIGHT,
+    army: [['wang_hun', 6], ['styx_guard', 8]], gold: 3500, food: 90, home: 'ironhelm_keep', color: 0xc84a8a,
+  },
+  {
+    id: 'crown_anubis', cls: '暗影', name: '阿努比斯', scenario: 'mingfu', desc: '秤心之神，胡狼首引魂', race: 'beastkin',
+    attrs: [14, 17, 15, 9], skills: { ironskin: 4, magic: 5 }, sig: ['秤心權杖', 'hero_blade', 14], extra: ['lightning'], horse: 'hunter', armor: MEDIUM,
+    army: [['jackal_guard', 8], ['skeleton', 8]], gold: 2500, food: 80, home: 'chishui_fort', color: 0xc8a040,
+  },
+  {
+    id: 'crown_orpheus', cls: '智略', name: '奧爾弗斯', scenario: 'mingfu', desc: '琴聲可以令冥王落淚', race: 'human',
+    attrs: [6, 12, 17, 18], skills: { tactics: 6, leadership: 5, medicine: 3 }, sig: ['金豎琴', 'psi_bolt', 14], extra: ['heal', 'sword'], horse: 'hunter', armor: LIGHT,
+    army: [['wang_hun', 5], ['styx_guard', 8]], gold: 3000, food: 120, home: 'anvilhold', color: 0xf2e08a,
+  },
 ];
 
 /** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
@@ -304,6 +449,35 @@ export const MUSOU: Record<string, MusouDef> = {
   fig_windranger: { name: '疾風連射', style: 'rain', color: 0x9af08a },
   fig_alchemist: { name: '熾礦核爆', style: 'nova', color: 0xff9a3a },
   fig_pethunter: { name: '靈犬突襲', style: 'shadow', color: 0xe0b06a },
+  crown_lijing: { name: '寶塔鎮魔', style: 'rally', color: 0xffe08a },
+  crown_juling: { name: '開山一擊', style: 'nova', color: 0xffb84a },
+  crown_leigong: { name: '九天應元', style: 'thunder', color: 0xa8c8ff },
+  crown_change: { name: '月華萬箭', style: 'rain', color: 0xd8e8ff },
+  crown_xuehai: { name: '血海滔天', style: 'whirl', color: 0xe0322a },
+  crown_wukong: { name: '齊天大聖', style: 'whirl', color: 0xffd24a },
+  crown_tangseng: { name: '緊箍真言', style: 'rally', color: 0xfff0c0 },
+  crown_bajie: { name: '九齒連耙', style: 'charge', color: 0xf0a8b8 },
+  crown_wujing: { name: '流沙捲地', style: 'nova', color: 0xc8b078 },
+  crown_niumo: { name: '牛魔衝撞', style: 'charge', color: 0xe0602a },
+  crown_tieshan: { name: '三扇狂風', style: 'rain', color: 0xff9a4a },
+  crown_ziya: { name: '封神榜', style: 'thunder', color: 0xffe8a0 },
+  crown_nezha: { name: '風火輪', style: 'charge', color: 0xff5a2a },
+  crown_yangjian: { name: '天眼神光', style: 'shadow', color: 0xe8f0ff },
+  crown_wenzhong: { name: '雌雄雙鞭', style: 'thunder', color: 0xb08aff },
+  crown_daji: { name: '九尾魅惑', style: 'shadow', color: 0xff6aa8 },
+  crown_huangdi: { name: '指南破霧', style: 'rally', color: 0xffd24a },
+  crown_chiyou: { name: '五兵齊出', style: 'whirl', color: 0xc8342c },
+  crown_houyi: { name: '射日九箭', style: 'rain', color: 0xffc84a },
+  crown_nvwa: { name: '煉石補天', style: 'nova', color: 0x8af0d0 },
+  crown_xingtian: { name: '干戚狂舞', style: 'whirl', color: 0xe0602a },
+  crown_zhongkui: { name: '斬鬼一劍', style: 'shadow', color: 0x8ab0e0 },
+  crown_yanluo: { name: '生死簿', style: 'thunder', color: 0x6a4ae0 },
+  crown_wuchang: { name: '勾魂奪魄', style: 'shadow', color: 0xe8e8f0 },
+  crown_mengpo: { name: '忘川寒流', style: 'nova', color: 0x9ad8e8 },
+  crown_hades: { name: '冥王降臨', style: 'nova', color: 0x7a4ae0 },
+  crown_persephone: { name: '四季輪迴', style: 'rally', color: 0xe87ab0 },
+  crown_anubis: { name: '秤心審判', style: 'shadow', color: 0xe8c84a },
+  crown_orpheus: { name: '冥府之歌', style: 'rally', color: 0xf8e8a0 },
 };
 export const musouOf = (id: string) => MUSOU[id];
 

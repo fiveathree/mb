@@ -462,3 +462,5 @@ kbd { background: linear-gradient(180deg, #4a3a2a, #2a2018); border: 1px solid r
 .toast { font-family: var(--serif); }
 .codex-tabs { margin-bottom: 4px; gap: 6px; }
 .codex.wide-list { align-content: start; gap: 2px 14px; }
+.sc-list { grid-template-columns: repeat(8, 1fr); }
+.sc-list .wp { font-size: 12px; }

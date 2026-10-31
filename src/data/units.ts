@@ -528,6 +528,32 @@ UNITS.boss_cyclops = { ...boss('boss_cyclops', '獨眼巨人', 'giant', 'boss_cl
 UNITS.boss_hellking = { ...boss('boss_hellking', '深淵魔王', 'demon', 'boss_club', 1800, 22, 1.1, 4.6) };
 UNITS.boss_chimera = { ...boss('boss_chimera', '上古凶獸', 'giant', 'boss_club', 1400, 16, 1.4, 4.4) };
 UNITS.boss_heavenly = { ...boss('boss_heavenly', '渡劫老魔', 'demon', 'boss_fist', 1500, 18, 1, 5) };
+UNITS.boss_chaos = { ...boss('boss_chaos', '混沌魔祖', 'demon', 'boss_club', 1900, 22, 1.15, 4.8) };
+UNITS.boss_jiuling = { ...boss('boss_jiuling', '九靈元聖', 'demon', 'boss_fist', 1600, 18, 1.1, 5) };
+UNITS.boss_tongtian = { ...boss('boss_tongtian', '通天教主', 'demon', 'boss_fist', 1700, 20, 1, 5) };
+UNITS.boss_gonggong = { ...boss('boss_gonggong', '水神共工', 'giant', 'boss_club', 1800, 20, 1.3, 4.5) };
+UNITS.boss_blood = { ...boss('boss_blood', '血池魔君', 'demon', 'boss_club', 1700, 20, 1.1, 4.7) };
+UNITS.boss_kronos = { ...boss('boss_kronos', '泰坦克羅諾斯', 'giant', 'boss_club', 2000, 24, 1.4, 4.4) };
+
+// 神話劇本兵種
+for (const u of [
+  troop('tian_bing', '天兵', 'infantry', 2, 80, 8, ['infantry_sword'], 0xe8c860),
+  troop('tian_archer', '天弓手', 'archer', 3, 70, 5, ['troop_bow', 'short_sword'], 0xd8d0a0),
+  troop('tian_jiang', '天將', 'infantry', 4, 150, 14, ['elite_spear'], 0xf2c14e, { plumeColor: 0xff5a3a }),
+  troop('jin_jia', '金甲力士', 'infantry', 5, 230, 18, ['elite_axe'], 0xd8a83a, { plumeColor: 0xffe08a, scale: 1.15 }),
+  troop('lei_bu', '雷部神將', 'mage', 4, 100, 7, ['troop_bolt', 'short_sword'], 0x6a8ae8),
+  troop('yao_bing', '小妖', 'infantry', 1, 55, 2, ['spear'], 0x6a8a4a, { race: 'goblin' }),
+  troop('yao_jiang', '妖將', 'infantry', 4, 150, 10, ['elite_axe'], 0x7a4a3a, { race: 'orc' }),
+  troop('shui_zu', '蝦兵蟹將', 'infantry', 2, 75, 8, ['spear'], 0x3f9aa8, { race: 'lizard' }),
+  troop('gui_zu', '鬼卒', 'infantry', 2, 70, 4, ['infantry_axe'], 0x4a5a5a, { race: 'undead' }),
+  troop('yin_cha', '陰差', 'infantry', 3, 95, 7, ['elite_sword'], 0x2a2a3a, { race: 'undead' }),
+  troop('niu_tou', '牛頭', 'infantry', 5, 200, 11, ['elite_axe'], 0x4a3020, { race: 'minotaur', radius: 0.6 }),
+  troop('ma_mian', '馬面', 'infantry', 4, 140, 10, ['elite_spear'], 0x5a4030, { race: 'beastkin' }),
+  troop('ye_cha', '夜叉', 'infantry', 4, 130, 8, ['elite_sword'], 0x3a6a5a, { race: 'demon' }),
+  troop('wang_hun', '亡魂', 'mage', 3, 60, 2, ['troop_bolt', 'short_sword'], 0x8aa8c8, { race: 'undead' }),
+  troop('styx_guard', '冥河衛', 'infantry', 3, 110, 12, ['elite_spear'], 0x2a3a5a, { race: 'undead' }),
+  troop('jackal_guard', '胡狼衛', 'infantry', 4, 135, 10, ['elite_sword'], 0xc8a040, { race: 'beastkin' }),
+]) UNITS[u.id] = u;
 
 // 酒館同伴
 const companion = (id: string, name: string, desc: string, role: Role, weapons: string[], trimColor: number): UnitDef => ({
