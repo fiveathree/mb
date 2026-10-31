@@ -18,7 +18,7 @@ import {
 } from '../core/roster';
 import { WorldTerrain, type MoveMode } from './terrain';
 import { gainHeroXp } from '../core/hero';
-import { JOB_RULES, WORK_PLACE, type WorkDef, type WorkPlace } from '../data/jobs';
+import { CAREER_REWARD, JOB_RULES, WORK_PLACE, jobTitle, type WorkDef, type WorkPlace } from '../data/jobs';
 import { HORSES, moveOf } from '../data/horses';
 import { RACES } from '../data/races';
 
@@ -317,6 +317,14 @@ export class World {
       h.jobXp = 0;
       h.jobLevel++;
       got.push(`職業升到 ${h.jobLevel} 級`);
+      if (h.jobLevel === JOB_RULES.maxLevel && !h.careers.includes(h.job)) {
+        h.careers.push(h.job);
+        this.roster.gold += CAREER_REWARD.gold;
+        w.pol.renown += CAREER_REWARD.renown;
+        const title = jobTitle(h.job, h.jobLevel);
+        this.note(`你成為一代${title}，名震大陸`);
+        got.push(`成為${title}！${CAREER_REWARD.gold} 金、聲望 +${CAREER_REWARD.renown}`);
+      }
     }
     return `${work.label}：${got.join('、')}`;
   }

@@ -27,6 +27,8 @@ export interface Hero {
   job: string;
   jobLevel: number;
   jobXp: number;
+  /** 做到頂嘅職業 */
+  careers: string[];
 }
 
 export interface HeroStart {
@@ -42,6 +44,7 @@ export function migrateHero(h: Hero): Hero {
   h.job ??= 'warrior';
   h.jobLevel ??= 1;
   h.jobXp ??= 0;
+  h.careers ??= [];
   return h;
 }
 
@@ -85,7 +88,7 @@ export function newHero(): Hero {
     attrs: { str: s, agi: s, int: s, cha: s },
     skills: Object.fromEntries(SKILL_ORDER.map((k) => [k, 0])) as Record<SkillId, number>,
     weapons: [...HERO.startWeapons], horses: [HERO.startHorse], armors: [...HERO.startArmor],
-    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout], race: 'human', artifacts: [], job: 'warrior', jobLevel: 1, jobXp: 0,
+    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout], race: 'human', artifacts: [], job: 'warrior', jobLevel: 1, jobXp: 0, careers: [],
   };
   h.equip.body = HERO.startArmor[0];
   return h;

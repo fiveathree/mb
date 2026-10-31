@@ -32,6 +32,8 @@ export interface StoryEvent {
   magic?: boolean;
   /** 只喺呢個劇本出現 */
   scenario?: string;
+  /** 只有呢個職業先遇到 */
+  job?: string;
 }
 
 export const EVENTS: StoryEvent[] = [
@@ -54,6 +56,54 @@ export const EVENTS: StoryEvent[] = [
   {
     id: 'peddler', title: '神秘行商', text: '有個披斗篷嘅行商話有好貨，收你 800 金換一張招募令。',
     choices: [{ label: '買', effect: 'ticket' }, { label: '唔信佢', effect: 'none' }],
+  },
+  {
+    id: 'job_farmer', job: 'farmer', title: '大旱之年', text: '今年天旱，鄰村求你分啲種子。',
+    choices: [{ label: '分畀佢哋', effect: 'renown' }, { label: '高價賣畀佢哋', effect: 'gold' }],
+  },
+  {
+    id: 'job_hunter', job: 'hunter', title: '白鹿', text: '林中出現一隻通體雪白嘅鹿，老人話射唔得。',
+    choices: [{ label: '放佢走', effect: 'renown' }, { label: '一箭射落', effect: 'food' }],
+  },
+  {
+    id: 'job_fisher', job: 'fisher', title: '會講嘢嘅魚', text: '條魚開口話：放我走，我話你知河底金幣喺邊。',
+    choices: [{ label: '放佢走', effect: 'gold' }, { label: '今晚加餸', effect: 'food' }],
+  },
+  {
+    id: 'job_miner', job: 'miner', title: '礦脈異光', text: '礦道深處有奇異光芒，工友叫你唔好過去。',
+    choices: [{ label: '掘落去', effect: 'gold' }, { label: '封咗條礦道', effect: 'renown' }],
+  },
+  {
+    id: 'job_smith', job: 'smith', title: '名匠挑戰', text: '外地名匠上門，話你打嘅刀唔夠硬。',
+    choices: [{ label: '鬥一場', effect: 'prophecy' }, { label: '虛心請教', effect: 'renown' }],
+  },
+  {
+    id: 'job_merchant', job: 'merchant', title: '囤貨良機', text: '有消息話鐵價就快暴升，要唔要全倉買入？',
+    choices: [{ label: '賭一鋪', effect: 'gold' }, { label: '穩陣啲', effect: 'none' }],
+  },
+  {
+    id: 'job_cook', job: 'cook', title: '貴客臨門', text: '微服大官試你手勢，食得開心就幫你揚名。',
+    choices: [{ label: '煮招牌菜', effect: 'renown' }, { label: '加價宰佢', effect: 'gold' }],
+  },
+  {
+    id: 'job_doctor', job: 'doctor', title: '夜半求醫', text: '半夜有人拍門，話老母病重，但佢冇錢。',
+    choices: [{ label: '即刻去', effect: 'renown' }, { label: '收定訂金先', effect: 'gold' }],
+  },
+  {
+    id: 'job_bard', job: 'bard', title: '御前獻唱', text: '貴族宴會請你唱一曲，但要你讚佢打勝仗，雖然佢輸咗。',
+    choices: [{ label: '照唱，收錢', effect: 'gold' }, { label: '唱真相', effect: 'renown' }],
+  },
+  {
+    id: 'job_thief', job: 'thief', title: '同行請帖', text: '盜賊公會塞張紙條：今晚一齊做單大嘅？',
+    choices: [{ label: '入夥', effect: 'gold' }, { label: '獨行', effect: 'prophecy' }],
+  },
+  {
+    id: 'job_hermit', job: 'hermit', title: '頓悟', text: '打坐到深處，你好似見到自己嘅前世。',
+    choices: [{ label: '繼續入定', effect: 'prophecy' }, { label: '抽身返嚟', effect: 'none' }],
+  },
+  {
+    id: 'job_warrior', job: 'warrior', title: '比武下戰書', text: '老對手派人送嚟戰書，約你單打獨鬥。',
+    choices: [{ label: '應戰', effect: 'prophecy' }, { label: '一笑置之', effect: 'renown' }],
   },
   {
     id: 'plaguegrain', scenario: 'frostwar', title: '染疫糧車', text: '一架糧車入面嘅麥發黑。王子話要燒村，村民喊住求你。',

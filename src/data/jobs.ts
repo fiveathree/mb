@@ -110,3 +110,23 @@ export const JOB_RULES = {
 };
 
 export const jobOf = (id: string) => JOBS.find((j) => j.id === id) ?? JOBS[0];
+
+/** 職業頭銜：第 1、5、10 級；十級就係呢行嘅終點 */
+export const JOB_TITLES: Record<string, [string, string, string]> = {
+  warrior: ['新兵', '百夫長', '萬人敵'],
+  farmer: ['佃農', '大農戶', '天下糧倉'],
+  hunter: ['獵戶', '山林獵王', '百獸之主'],
+  fisher: ['漁家子', '江上老手', '一代釣聖'],
+  miner: ['礦工', '礦頭', '掘山之王'],
+  smith: ['學徒', '大師傅', '神兵匠'],
+  merchant: ['小販', '大掌櫃', '天下首富'],
+  cook: ['伙頭', '名廚', '食神'],
+  doctor: ['郎中', '名醫', '再世華佗'],
+  bard: ['街頭歌者', '宮廷樂師', '傳奇詩人'],
+  thief: ['小毛賊', '飛天大盜', '盜聖'],
+  hermit: ['求道者', '得道高人', '半步飛昇'],
+};
+export const jobTitle = (id: string, level: number) => JOB_TITLES[id][level >= 10 ? 2 : level >= 5 ? 1 : 0];
+
+/** 十級職業結局嘅獎勵 */
+export const CAREER_REWARD = { gold: 3000, renown: 30 };

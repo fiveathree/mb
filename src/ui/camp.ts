@@ -1,7 +1,7 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
-import { JOBS, JOB_RULES, WORK_PLACE, jobOf } from '../data/jobs';
+import { JOBS, JOB_RULES, JOB_TITLES, WORK_PLACE, jobOf, jobTitle } from '../data/jobs';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
@@ -311,7 +311,9 @@ export class Camp {
     const need = h.jobLevel * JOB_RULES.xpPerLevel;
     const list = JOBS.map((j) => `<button class="wp ${j.id === h.job ? 'on' : ''}" data-job="${j.id}">${j.name}</button>`).join('');
     return `
-      <div class="pick-title">而家職業：${job.name} ${h.jobLevel} 級（${h.jobXp}／${need}）。${job.desc}</div>
+      <div class="pick-title">而家職業：${job.name}・${jobTitle(h.job, h.jobLevel)} ${h.jobLevel} 級（${h.jobXp}／${need}）。${job.desc}</div>
+      <div class="pick-title">呢行嘅終點：做到 ${JOB_RULES.maxLevel} 級成為「${JOB_TITLES[h.job][2]}」，唔使打仗都青史留名。</div>
+      ${h.careers.length ? `<div class="pick-title">已經登頂：${h.careers.map((c) => JOB_TITLES[c][2]).join('、')}</div>` : ''}
       <p class="notice">${this.notice}</p>
       <div class="pick-title">工作（會過時間，收成隨等級增加）</div>
       <div class="row wrap">${works}</div>

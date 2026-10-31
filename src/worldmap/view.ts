@@ -2,7 +2,7 @@ import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef, type PlaceKind } fro
 import type { Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
-import { jobOf } from '../data/jobs';
+import { jobTitle } from '../data/jobs';
 import { MOVE_NAME } from '../data/horses';
 import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
@@ -632,7 +632,7 @@ export class WorldView {
       `金 ${r.infiniteGold ? '∞' : r.gold}`,
       `糧 ${Math.floor(w.food)}（−${partyFood(r).toFixed(1)}／日）`,
       `餉 ${partyWage(r)}／週`,
-      `${jobOf(r.hero.job).name} ${r.hero.jobLevel} 級`,
+      `${jobTitle(r.hero.job, r.hero.jobLevel)} ${r.hero.jobLevel} 級`,
       `部隊 ${r.soldiers.length + 1} 人${hurt ? `（傷 ${hurt}）` : ''}`,
       `${MOVE_NAME[this.world.moveMode()]} ${this.world.partySpeed().toFixed(1)}`,
       `士氣 ${Math.round(w.morale)}`,
