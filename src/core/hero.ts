@@ -53,6 +53,9 @@ export function migrateHero(h: Hero): Hero {
   return h;
 }
 
+/** 主角名會入畫面，唔收 HTML 符號 */
+export const cleanName = (s: string) => s.replace(/[<>"'&]/g, '').trim().slice(0, 12);
+
 /** 按種族同出身開主角 */
 export function createHero(start: HeroStart): Hero {
   const h = newHero();

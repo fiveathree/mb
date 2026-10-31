@@ -216,6 +216,9 @@ export const CROWNS: CrownDef[] = [
   },
 ];
 
+/** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
+export const SIG_MP = { aoe: 18, bolt: 12 };
+
 export const crownOf = (id?: string) => CROWNS.find((c) => c.id === id);
 export const GRAND_CROWNS = CROWNS.filter((c) => c.grand);
 /** 大混戰揀到領軍嗰十五位，其他劇本揀自己嗰幾位 */

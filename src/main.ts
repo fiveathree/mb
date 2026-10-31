@@ -1,6 +1,6 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
-import { createCrownHero, createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
+import { cleanName, createCrownHero, createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
 import { ARTIFACTS, DUNGEON, LORD_RULES, PLAYABLE, SIEGE, START_REGIONS, factionOf, lordOf } from './data/factions';
 import { showNewGame, type NewGameChoice } from './ui/newgame';
 import { CROWN_RENOWN } from './data/economy';
@@ -822,7 +822,7 @@ async function showMenu() {
         }
         const bg = c.background;
         r.hero = createHero({ race: c.race, background: bg });
-        r.hero.name = c.name.trim() || r.hero.name;
+        r.hero.name = cleanName(c.name) || r.hero.name;
         r.gold = bg.gold;
         r.soldiers = [];
         for (const e of bg.army) {

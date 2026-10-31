@@ -226,7 +226,7 @@ export const currentFigures = () => figuresFor(isMagic(), current.id, !!current.
 SCENARIOS[0].realms = GRAND_CROWNS.map((c) => [`${shortName(c)}軍`, '']);
 
 /** 呢個冠位喺呢個劇本由邊度起家 */
-export const crownHome = (c: CrownDef, scenario: string) => (scenario === 'chaos' ? HOME_PLACE[GRAND_CROWNS.indexOf(c)] : c.home);
+export const crownHome = (c: CrownDef, scenario: string) => (scenario === 'chaos' ? HOME_PLACE[GRAND_CROWNS.findIndex((g) => g.id === c.id)] : c.home);
 
 /** 將劇本套用落勢力同地點；扮冠位時，佢本身個國變舊部 */
 export function applyScenario(id: string, crownId?: string) {

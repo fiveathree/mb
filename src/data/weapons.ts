@@ -1,4 +1,4 @@
-import { CROWNS, sigId } from './crowns';
+import { CROWNS, SIG_MP, sigId } from './crowns';
 import type { DamageType } from './combat';
 
 export type WeaponModel = 'sword' | 'axe' | 'mace' | 'lance' | 'spear' | 'bow' | 'crossbow' | 'javelin' | 'staff';
@@ -300,7 +300,9 @@ export const SPELL_GLOW: Record<string, number> = {
 for (const c of CROWNS) {
   const [name, base, bonus] = c.sig;
   const w = WEAPONS[base];
-  WEAPONS[sigId(c)] = { ...w, id: sigId(c), name, baseDamage: w.baseDamage + bonus };
+  // 槍係槍，唔使法力
+  const spell = w.spell && base !== 'gauss_rifle' ? { ...w.spell, mp: w.spell.aoe ? SIG_MP.aoe : SIG_MP.bolt } : w.spell;
+  WEAPONS[sigId(c)] = { ...w, id: sigId(c), name, baseDamage: w.baseDamage + bonus, spell };
   if (SPELL_GLOW[base]) SPELL_GLOW[sigId(c)] = SPELL_GLOW[base];
 }
 

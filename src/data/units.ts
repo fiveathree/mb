@@ -536,11 +536,15 @@ UNITS.comp_medic = companion('comp_medic', '軍醫 白薇', '傷兵好得快', '
 UNITS.comp_trader = companion('comp_trader', '行商 錢滿', '識講價', 'infantry', ['infantry_sword'], 0xd9b24a);
 UNITS.comp_veteran = companion('comp_veteran', '老兵 鐵叔', '百戰餘生，部下信服', 'infantry', ['elite_sword'], 0x8a8a92);
 
+const AI_CROWN_MP = 999;
+
 // 有名有姓嘅人物
 for (const f of FIGURES) {
   UNITS[f.id] = troop(f.id, f.name, f.role, f.tier, f.hp, f.armor, f.weapons, f.color, {
     desc: f.desc, hero: true, aura: f.aura, rarity: f.rarity, plumeColor: f.color, race: f.race, horse: f.horse, morale: 130,
     blockSkill: 0.75, blockChance: 0.6, reaction: 0.18, attackCooldown: [0.8, 1.4], dodgeChance: 0.25, runSpeed: 5, companion: true,
+    // 冠位用專屬法術，AI 法力夠用
+    mp: f.weapons[0].startsWith('sig_') ? AI_CROWN_MP : undefined,
   });
 }
 

@@ -8,7 +8,7 @@ import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type T
 import { RACES } from '../data/races';
 import { ROLE_LABEL, UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
-import { armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
+import { cleanName, armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
 import {
   applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rankTag, rarityOf, roleCounts,
   sortedSoldiers, wageOf, xpToNext, type DrawResult, type Roster, type Soldier,
@@ -115,6 +115,8 @@ export class Camp {
         this.render();
       };
     });
+    const nameBox = document.getElementById('heroName') as HTMLInputElement | null;
+    if (nameBox) nameBox.onchange = () => { hero.name = cleanName(nameBox.value) || hero.name; nameBox.value = hero.name; };
     this.$$('.attr', (el) => {
       el.onclick = () => {
         if (hero.attrPoints > 0) {
@@ -259,7 +261,7 @@ export class Camp {
       return `<button class="skill" data-id="${k}" ${h.skillPoints && h.skills[k] < HERO.skillMax ? '' : 'disabled'}><b>${SKILLS[k].name} ${h.skills[k]}${bonus ? ` +${bonus}` : ''}</b><small>${SKILLS[k].desc}</small></button>`;
     }).join('');
     return `
-      <div class="pick-title">${h.name}・等級 ${h.level}・經驗 ${h.xp}／${heroXpNeed(h.level)}・生命 ${def.hp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, r.soldiers)}</div>
+      <div class="pick-title"><input id="heroName" class="hero-name" maxlength="12" value="${h.name}" title="撳入去改名">・等級 ${h.level}・經驗 ${h.xp}／${heroXpNeed(h.level)}・生命 ${def.hp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, r.soldiers)}</div>
       <div class="pick-title">屬性點 ${h.attrPoints}</div>
       <div class="attrs">${attrs}</div>
       <div class="pick-title">技能點 ${h.skillPoints}</div>

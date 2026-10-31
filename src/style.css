@@ -368,3 +368,4 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 .card.newgame .row button { padding-top: 6px; padding-bottom: 6px; }
 .ng-head h2 { margin: 0; }
 .ng-head .wp { padding-top: 0; padding-bottom: 0; }
+.hero-name { width: 90px; padding: 0 4px; font-size: 13px; color: var(--gold); text-align: center; background: #1b2230; border: 1px solid var(--line); border-radius: 4px; }
