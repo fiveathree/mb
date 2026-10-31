@@ -291,6 +291,20 @@ PLACES.push(
   { id: 'goblinfen', name: '沼鬼村', kind: 'village', x: 96, y: 142, monster: true, mercs: ['slime', 'goblin_spear'] },
 );
 
+/** 戰場美術：地面兩色、泥路、草、樹、石；grass 係 null 就冇草 */
+export const THEME_ART: Record<BattleTheme, { groundA: number; groundB: number; dirt: number; grass: number | null; leaf: number; trunk: number; rock: number; zenith: number; sun: number; cloud: number; stars: number }> = {
+  plains: { groundA: 0x6f9a48, groundB: 0x8fae56, dirt: 0xa08a60, grass: 0x7fa84e, leaf: 0x4a7a3c, trunk: 0x5c4030, rock: 0x8a8c90, zenith: 0x3f7fc4, sun: 0xfff2d0, cloud: 0.8, stars: 0 },
+  night: { groundA: 0x45683a, groundB: 0x587a44, dirt: 0x6a6048, grass: 0x4f7a42, leaf: 0x2f5436, trunk: 0x3a2a24, rock: 0x60646c, zenith: 0x0a1020, sun: 0x000000, cloud: 0.18, stars: 0.9 },
+  forest: { groundA: 0x4d7a3c, groundB: 0x6a8e44, dirt: 0x75684a, grass: 0x5a8a42, leaf: 0x386a38, trunk: 0x4a3426, rock: 0x70786c, zenith: 0x4f8ca0, sun: 0xfff0c8, cloud: 0.6, stars: 0 },
+  fort: { groundA: 0x8a8a54, groundB: 0xa89a62, dirt: 0xa88a5e, grass: 0x98964e, leaf: 0x5f7a3c, trunk: 0x5c4030, rock: 0x90887a, zenith: 0x8a7a8a, sun: 0xffd8a0, cloud: 0.7, stars: 0 },
+  crypt: { groundA: 0x3e3a44, groundB: 0x4a4650, dirt: 0x34303a, grass: null, leaf: 0x2a2a30, trunk: 0x24202a, rock: 0x4a4650, zenith: 0x08070c, sun: 0x000000, cloud: 0, stars: 0 },
+  maze: { groundA: 0x54483c, groundB: 0x645444, dirt: 0x483e34, grass: null, leaf: 0x34302c, trunk: 0x2a2420, rock: 0x5a5046, zenith: 0x161220, sun: 0x000000, cloud: 0, stars: 0 },
+  snow: { groundA: 0xdce6ee, groundB: 0xf0f4f8, dirt: 0xb0b4b8, grass: null, leaf: 0xc8d8dc, trunk: 0x4a3a30, rock: 0x98a0a8, zenith: 0x7fa8d0, sun: 0xfff8e8, cloud: 0.85, stars: 0 },
+  desert: { groundA: 0xd0b070, groundB: 0xe4c88a, dirt: 0xc09a60, grass: 0xb8a458, leaf: 0x7a8a4a, trunk: 0x6a5238, rock: 0xb09468, zenith: 0x6a9ccc, sun: 0xfff0c0, cloud: 0.3, stars: 0 },
+  swamp: { groundA: 0x56683e, groundB: 0x6a7a4a, dirt: 0x4e4a34, grass: 0x6a7c44, leaf: 0x3e5a38, trunk: 0x3a3024, rock: 0x5e665a, zenith: 0x5a7068, sun: 0xd8e0b0, cloud: 0.9, stars: 0 },
+  ash: { groundA: 0x4a444a, groundB: 0x5c5458, dirt: 0x3a3438, grass: null, leaf: 0x3a3438, trunk: 0x2a2428, rock: 0x4e484c, zenith: 0x2a2228, sun: 0xff8a50, cloud: 0.9, stars: 0 },
+};
+
 /** 戰場主題 */
 export const THEMES: Record<BattleTheme, { sky: number; fog: number; near: number; far: number; light: number; ground: number }> = {
   plains: { sky: 0x9fc4dc, fog: 0xbcd3dc, near: 90, far: 330, light: 1, ground: 0xffffff },

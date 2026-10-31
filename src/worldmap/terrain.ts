@@ -1,5 +1,6 @@
 import { BIOMES, MAP, PLACES, TERRAIN_COST } from '../data/world';
 import { makeRng } from '../battle/terrain';
+import { paintMap } from './paint';
 
 export type MoveMode = 'land' | 'swim' | 'fly';
 export type Tile = 'plain' | 'forest' | 'hill' | 'mountain' | 'water' | 'bridge' | 'snow' | 'sand' | 'swamp' | 'ash';
@@ -225,33 +226,6 @@ export class WorldTerrain {
 
   /** 預先畫好地形圖 */
   render(px: number): HTMLCanvasElement {
-    const c = document.createElement('canvas');
-    c.width = W * px;
-    c.height = H * px;
-    const g = c.getContext('2d')!;
-    const rng = makeRng(MAP.seed + 5);
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const t = this.at(x, y);
-        g.fillStyle = TILE_COLOR[t];
-        g.fillRect(x * px, y * px, px + 1, px + 1);
-        if (t === 'forest' && rng() < 0.75) {
-          g.fillStyle = '#2f5a35';
-          g.beginPath();
-          g.moveTo(x * px + px / 2, y * px + 1);
-          g.lineTo(x * px + px - 2, y * px + px - 1);
-          g.lineTo(x * px + 2, y * px + px - 1);
-          g.fill();
-        } else if (t === 'mountain') {
-          g.fillStyle = '#524f50';
-          g.beginPath();
-          g.moveTo(x * px + px / 2, y * px);
-          g.lineTo(x * px + px, y * px + px);
-          g.lineTo(x * px, y * px + px);
-          g.fill();
-        }
-      }
-    }
-    return c;
+    return paintMap(this, px);
   }
 }

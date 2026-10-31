@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-const BOX_CAPACITY = 7000;
-const OTHER_CAPACITY = 1600;
+const BOX_CAPACITY = 3000;
+const OTHER_CAPACITY = 8000;
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 interface Batch {
@@ -28,9 +28,11 @@ export class Batches {
     let b = this.batches.get(key);
     if (!b) {
       const capacity = key === 'box' ? BOX_CAPACITY : OTHER_CAPACITY;
-      const mesh = new THREE.InstancedMesh(
-        make(), new THREE.MeshLambertMaterial({ flatShading: true }), capacity,
-      );
+      // 鍵頭 m| 係金屬件，用高光材質；其餘圓滑光影
+      const material = key.startsWith('m|')
+        ? new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x8a8a8a })
+        : new THREE.MeshLambertMaterial({ flatShading: key === 'box' });
+      const mesh = new THREE.InstancedMesh(make(), material, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.castShadow = true;
       mesh.frustumCulled = false;

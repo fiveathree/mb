@@ -10,6 +10,7 @@ import { TEAM_STYLES, type UnitDef } from '../data/units';
 import type { WeaponDef } from '../data/weapons';
 import { flushParts, type Batches, type Part } from './batch';
 import { clamp, angleDiff, type Combatant, type Horse } from './entities';
+import { axeGeo, bladeGeo, bowGeo, leafGeo, limbGeo, loftGeo, torsoGeo, wingGeo, type Ring } from './shapes';
 
 /** 建模時嘅目標：部件加入邊個 rig、由邊個節點控制顯示 */
 let ctx: { batches: Batches; parts: Part[]; gate: THREE.Object3D | null };
@@ -29,17 +30,63 @@ function box(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0
   return node;
 }
 
-function cyl(rTop: number, rBottom: number, h: number, seg: number, color: number): THREE.Object3D {
+/** 金屬件：反光，由鍵頭決定材質 */
+const steel = (key: string) => `m|${key}`;
+
+function ell(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, metal = false): THREE.Object3D {
+  const node = part(metal ? steel('ell') : 'ell', () => new THREE.SphereGeometry(0.5, 9, 7), color, w, h, d);
+  node.position.set(x, y, z);
+  return node;
+}
+
+/** 手腳：頂底粗幼唔同嘅圓柱 */
+function limb(rTop: number, rBottom: number, h: number, color: number, x = 0, y = 0, z = 0, metal = false): THREE.Object3D {
+  const ratio = Math.round((rBottom / rTop) * 10) / 10;
+  const key = `limb:${ratio}`;
+  const node = part(metal ? steel(key) : key, () => limbGeo(ratio), color, rTop, h, rTop);
+  node.position.set(x, y, z);
+  return node;
+}
+
+function cyl(rTop: number, rBottom: number, h: number, seg: number, color: number, metal = false): THREE.Object3D {
   const ratio = Math.round((rTop / rBottom) * 20) / 20;
-  return part(`cyl:${seg}:${ratio}`, () => new THREE.CylinderGeometry(ratio, 1, 1, seg), color, rBottom, h, rBottom);
+  const key = `cyl:${seg}:${ratio}`;
+  return part(metal ? steel(key) : key, () => new THREE.CylinderGeometry(ratio, 1, 1, seg), color, rBottom, h, rBottom);
 }
 
-function cone(r: number, h: number, seg: number, color: number): THREE.Object3D {
-  return part(`cone:${seg}`, () => new THREE.ConeGeometry(1, 1, seg), color, r, h, r);
+function cone(r: number, h: number, seg: number, color: number, metal = false): THREE.Object3D {
+  const key = `cone:${seg}`;
+  return part(metal ? steel(key) : key, () => new THREE.ConeGeometry(1, 1, seg), color, r, h, r);
 }
 
-function ico(r: number, color: number): THREE.Object3D {
-  return part('ico', () => new THREE.IcosahedronGeometry(1, 0), color, r, r, r);
+function ico(r: number, color: number, metal = false): THREE.Object3D {
+  const key = 'ico';
+  return part(metal ? steel(key) : key, () => new THREE.IcosahedronGeometry(1, 1), color, r, r, r);
+}
+
+/** 半球：頭盔、頭髮 */
+function dome(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, metal = false): THREE.Object3D {
+  const key = 'dome';
+  const node = part(metal ? steel(key) : key, () => new THREE.SphereGeometry(0.5, 10, 5, 0, Math.PI * 2, 0, Math.PI * 0.55), color, w, h, d);
+  node.position.set(x, y, z);
+  return node;
+}
+
+function torsoPart(w: number, h: number, d: number, color: number, y: number, metal = false): THREE.Object3D {
+  const node = part(metal ? steel('torso') : 'torso', torsoGeo, color, w, h, d);
+  node.position.y = y;
+  return node;
+}
+
+/** 長形刃：高度向前（Z） */
+function edge(key: string, make: () => THREE.BufferGeometry, w: number, t: number, l: number, color: number, z = 0, y = 0): THREE.Object3D {
+  const node = part(steel(key), make, color, w, t, l);
+  node.position.set(0, y, z);
+  return node;
+}
+
+function loft(key: string, rings: Ring[], color: number, seg = 9, arc?: [number, number]): THREE.Object3D {
+  return part(key, () => loftGeo(rings, seg, arc), color, 1, 1, 1);
 }
 
 export interface HumanRig {
@@ -71,61 +118,79 @@ export interface DragonRig {
   t: number;
 }
 
+const GOLD_TRIM = 0x9a7c34;
+const LEATHER = 0x4a3324;
+
 function buildWeapon(w: WeaponDef): THREE.Group {
   const g = new THREE.Group();
   ctx.gate = g;
   const L = w.length;
   switch (w.model) {
-    case 'sword':
-      g.add(
-        box(0.06, 0.02, L, COLORS.steel, 0, 0, L / 2 + 0.08),
-        box(0.22, 0.04, 0.04, 0x8d7a3c, 0, 0, 0.08),
-        box(0.035, 0.035, 0.2, COLORS.wood, 0, 0, -0.03),
-      );
+    case 'sword': {
+      const guard = limb(0.022, 0.022, 0.26, GOLD_TRIM, 0, 0, 0.08, true);
+      guard.rotation.z = Math.PI / 2;
+      const grip = limb(0.02, 0.02, 0.16, LEATHER, 0, 0, -0.03);
+      grip.rotation.x = Math.PI / 2;
+      g.add(edge('blade', bladeGeo, 0.085, 0.018, L, COLORS.steel, 0.09), guard, grip, ell(0.06, 0.06, 0.06, GOLD_TRIM, 0, 0, -0.13, true));
       break;
-    case 'axe':
-      g.add(box(0.045, 0.045, L, COLORS.wood, 0, 0, L / 2 - 0.25), box(0.03, 0.34, 0.26, COLORS.steel, 0, 0.14, L - 0.34));
+    }
+    case 'axe': {
+      const haft = limb(0.026, 0.03, L, COLORS.wood, 0, 0, L / 2 - 0.25);
+      haft.rotation.x = Math.PI / 2;
+      const head = edge('axe', axeGeo, 0.36, 0.03, 0.44, COLORS.steel, L - 0.34, 0.06);
+      head.rotation.z = Math.PI / 2;
+      g.add(haft, head);
       break;
+    }
     case 'mace': {
-      const head = ico(0.11, COLORS.steel);
+      const haft = limb(0.024, 0.028, L, COLORS.wood, 0, 0, L / 2 - 0.2);
+      haft.rotation.x = Math.PI / 2;
+      const head = ico(0.1, COLORS.steel, true);
       head.position.z = L - 0.2;
-      g.add(box(0.045, 0.045, L, COLORS.wood, 0, 0, L / 2 - 0.2), head);
+      g.add(haft, head);
+      for (const s of [1, -1]) g.add(box(0.03, 0.26, 0.12, COLORS.steel, 0, 0, L - 0.2 + s * 0.04));
       break;
     }
     case 'bow': {
-      const limb = (sign: number) => {
-        const n = box(0.035, 0.05, L * 0.5, COLORS.wood, 0, 0, sign * L * 0.25);
-        n.rotation.x = sign * 0.32;
-        n.position.y = 0.09;
-        return n;
-      };
-      g.add(limb(1), limb(-1), box(0.008, 0.008, L * 0.92, 0xe8e0cc, 0, -0.03, 0));
+      const arc = part('bow', bowGeo, COLORS.wood, L * 0.5, L * 0.5, L * 0.5);
+      arc.position.y = -L * 0.32;
+      const string = limb(0.004, 0.004, L * 0.88, 0xe8e0cc, 0, -0.03, 0);
+      string.rotation.x = Math.PI / 2;
+      g.add(arc, string);
       break;
     }
     case 'staff': {
+      const haft = limb(0.022, 0.03, L, COLORS.wood, 0, 0, L / 2 - 0.3);
+      haft.rotation.x = Math.PI / 2;
       const orb = ico(0.09, 0xff9a3c);
       orb.position.z = L - 0.25;
-      g.add(box(0.04, 0.04, L, COLORS.wood, 0, 0, L / 2 - 0.3), orb);
+      const claw = cone(0.07, 0.16, 5, GOLD_TRIM, true);
+      claw.rotation.x = -Math.PI / 2;
+      claw.position.z = L - 0.38;
+      g.add(haft, orb, claw);
       break;
     }
-    case 'crossbow':
-      g.add(box(0.06, 0.07, L, COLORS.wood, 0, 0, L / 2 - 0.15), box(0.72, 0.03, 0.05, COLORS.steel, 0, 0.03, L - 0.2));
+    case 'crossbow': {
+      const stock = limb(0.035, 0.045, L, COLORS.wood, 0, 0, L / 2 - 0.15);
+      stock.rotation.x = Math.PI / 2;
+      const prod = limb(0.016, 0.03, 0.74, COLORS.steel, 0, 0.03, L - 0.2, true);
+      prod.rotation.z = Math.PI / 2;
+      g.add(stock, prod);
       break;
+    }
     default: {
       const color = w.model === 'lance' ? 0xe8dcc0 : COLORS.wood;
-      const shaft = cyl(0.025, 0.04, L, 5, color);
+      const shaft = cyl(0.022, 0.034, L, 6, color);
       shaft.rotation.x = Math.PI / 2;
       const back = w.model === 'javelin' ? 0.5 : 0.7;
       shaft.position.z = L / 2 - back;
-      const tip = cone(0.06, 0.32, 4, COLORS.steel);
-      tip.rotation.x = Math.PI / 2;
-      tip.position.z = L - back + 0.15;
-      g.add(shaft, tip);
+      g.add(shaft, edge('leaf', leafGeo, 0.11, 0.02, 0.42, COLORS.steel, L - back - 0.05));
       if (w.model === 'lance') {
-        const guard = cone(0.11, 0.3, 6, 0xb5362c);
+        const guard = cone(0.1, 0.3, 8, 0xb5362c);
         guard.rotation.x = -Math.PI / 2;
         guard.position.z = 0.26;
-        g.add(guard);
+        const pennon = box(0.01, 0.2, 0.36, 0xb5362c, 0, -0.1, L - back - 0.55);
+        g.add(guard, pennon);
       }
     }
   }
@@ -139,46 +204,52 @@ function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
   switch (look) {
     case 'ears':
       side((s) => {
-        const ear = cone(0.04, 0.2, 4, skin);
-        ear.position.set(s * 0.17, 0.86, -0.02);
+        const ear = cone(0.035, 0.2, 5, skin);
+        ear.position.set(s * 0.16, 0.86, -0.02);
         ear.rotation.z = -s * 1.2;
         return ear;
       });
       break;
     case 'tusks':
-      side((s) => box(0.035, 0.09, 0.035, 0xf0ead8, s * 0.07, 0.75, 0.12));
+      side((s) => {
+        const tusk = cone(0.024, 0.11, 5, 0xf0ead8);
+        tusk.position.set(s * 0.065, 0.76, 0.12);
+        return tusk;
+      });
       break;
     case 'skull':
-      side((s) => box(0.05, 0.05, 0.02, 0x121018, s * 0.055, 0.84, 0.125));
+      side((s) => ell(0.05, 0.055, 0.03, 0x121018, s * 0.05, 0.84, 0.115));
+      torso.add(box(0.1, 0.03, 0.02, 0xd8d0b8, 0, 0.75, 0.125));
       break;
     case 'bull':
-      torso.add(box(0.16, 0.13, 0.2, skin, 0, 0.77, 0.14));
+      torso.add(ell(0.2, 0.15, 0.26, skin, 0, 0.77, 0.13), ell(0.13, 0.08, 0.05, 0x3a2a24, 0, 0.75, 0.26));
       side((s) => {
-        const horn = cone(0.06, 0.42, 5, 0xe8dcc0);
+        const horn = cone(0.055, 0.42, 7, 0xe8dcc0);
         horn.position.set(s * 0.26, 0.98, 0);
         horn.rotation.z = -s * 0.85;
         return horn;
       });
       break;
     case 'snout':
-      torso.add(box(0.13, 0.1, 0.18, skin, 0, 0.78, 0.15));
+      torso.add(ell(0.15, 0.11, 0.22, skin, 0, 0.78, 0.14), ell(0.06, 0.04, 0.03, 0x241a18, 0, 0.8, 0.25));
       break;
     case 'wings':
       side((s) => {
-        const wing = box(0.7, 0.03, 0.34, skin, s * 0.5, 0.58, -0.17);
+        const wing = part('wing', wingGeo, skin, s * 0.86, 0.03, 0.7);
+        wing.position.set(s * 0.1, 0.62, -0.18);
         wing.rotation.z = s * 0.5;
         return wing;
       });
       break;
     case 'antlers':
       side((s) => {
-        const branch = box(0.05, 0.42, 0.05, 0x5a7a3a, s * 0.14, 1.06, 0);
+        const branch = limb(0.018, 0.035, 0.42, 0x5a7a3a, s * 0.14, 1.06, 0);
         branch.rotation.z = -s * 0.5;
         return branch;
       });
       break;
     case 'fins':
-      side((s) => box(0.03, 0.16, 0.14, 0x2d9aa8, s * 0.15, 0.84, 0));
+      side((s) => ell(0.03, 0.18, 0.16, 0x2d9aa8, s * 0.15, 0.84, 0));
       break;
     default:
       break;
@@ -192,22 +263,36 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
   const body = new THREE.Group();
   body.position.y = 0.1;
   hips.add(body);
-  body.add(box(0.74, 0.72, 1.7, skin), box(0.62, 0.62, 0.62, skin, 0, 0.08, 0.95), box(0.56, 0.08, 1.9, belly, 0, -0.36, 0.1));
-  for (let i = 0; i < 5; i++) body.add(box(0.05, 0.16, 0.2, dark, 0, 0.44, 0.7 - i * 0.38));
+  body.add(
+    loft('dragonBody', [
+      { z: -0.95, y: 0.04, rx: 0.22, ry: 0.22 }, { z: -0.55, y: 0.02, rx: 0.4, ry: 0.4 }, { z: 0.1, y: 0, rx: 0.46, ry: 0.46 },
+      { z: 0.75, y: 0.06, rx: 0.42, ry: 0.42 }, { z: 1.2, y: 0.2, rx: 0.22, ry: 0.22 },
+    ], skin, 10),
+    ell(0.62, 0.2, 1.8, belly, 0, -0.34, 0.1),
+  );
+  for (let i = 0; i < 6; i++) {
+    const spike = cone(0.07, 0.24, 5, dark);
+    spike.position.set(0, 0.5 - Math.abs(i - 2) * 0.02, 0.8 - i * 0.34);
+    spike.rotation.x = -0.4;
+    body.add(spike);
+  }
 
   const neck = new THREE.Group();
-  neck.position.set(0, 0.3, 1.2);
+  neck.position.set(0, 0.3, 1.1);
   neck.rotation.x = -0.75;
-  neck.add(box(0.34, 0.34, 0.5, skin, 0, 0, 0.22), box(0.28, 0.28, 0.5, skin, 0, 0, 0.64));
+  neck.add(loft('dragonNeck', [{ z: 0, y: 0, rx: 0.24, ry: 0.24 }, { z: 0.5, y: 0.02, rx: 0.18, ry: 0.19 }, { z: 0.95, y: 0.02, rx: 0.15, ry: 0.15 }], skin));
   const head = new THREE.Group();
   head.position.set(0, 0, 0.92);
   head.rotation.x = 0.8;
-  head.add(box(0.4, 0.3, 0.46, skin, 0, 0, 0.14), box(0.28, 0.18, 0.42, skin, 0, -0.04, 0.54), box(0.26, 0.05, 0.38, belly, 0, -0.15, 0.5));
+  head.add(
+    loft('dragonHead', [{ z: -0.1, y: 0, rx: 0.17, ry: 0.15 }, { z: 0.2, y: 0.02, rx: 0.2, ry: 0.15 }, { z: 0.5, y: -0.03, rx: 0.13, ry: 0.09 }, { z: 0.78, y: -0.05, rx: 0.07, ry: 0.05 }], skin),
+    ell(0.22, 0.05, 0.56, belly, 0, -0.14, 0.42),
+  );
   for (const s of [1, -1]) {
-    const horn = cone(0.05, 0.42, 5, 0xe8dcc0);
-    horn.position.set(s * 0.14, 0.26, -0.14);
-    horn.rotation.x = -0.9;
-    head.add(horn, box(0.05, 0.05, 0.05, 0xf2c14e, s * 0.17, 0.08, 0.26));
+    const horn = cone(0.05, 0.46, 7, 0xe8dcc0);
+    horn.position.set(s * 0.13, 0.24, -0.18);
+    horn.rotation.x = -1;
+    head.add(horn, ell(0.06, 0.05, 0.05, 0xf2c14e, s * 0.15, 0.08, 0.22));
   }
   neck.add(head);
   body.add(neck);
@@ -215,9 +300,9 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
   const tail = new THREE.Group();
   tail.position.set(0, 0.06, -0.85);
   tail.rotation.x = 0.16;
-  tail.add(box(0.42, 0.4, 0.8, skin, 0, 0, -0.38), box(0.28, 0.26, 0.8, skin, 0, -0.02, -1.08), box(0.16, 0.14, 0.7, skin, 0, -0.04, -1.76));
+  tail.add(loft('dragonTail', [{ z: 0.1, y: 0, rx: 0.24, ry: 0.24 }, { z: -0.7, y: -0.02, rx: 0.16, ry: 0.16 }, { z: -1.5, y: -0.04, rx: 0.09, ry: 0.09 }, { z: -2.1, y: -0.05, rx: 0.03, ry: 0.03 }], skin));
   const tip = cone(0.16, 0.42, 4, dark);
-  tip.position.set(0, -0.04, -2.2);
+  tip.position.set(0, -0.05, -2.2);
   tip.rotation.x = -Math.PI / 2;
   tail.add(tip);
   body.add(tail);
@@ -225,7 +310,8 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
   const wings = [1, -1].map((s) => {
     const wing = new THREE.Group();
     wing.position.set(s * 0.36, 0.34, 0.35);
-    wing.add(box(1.9, 0.05, 0.14, dark, s * 0.95, 0, 0.3), box(1.8, 0.03, 0.95, dark, s * 0.95, 0, -0.2));
+    const web = part('wing', wingGeo, dark, s * 2.3, 0.04, 2.1);
+    wing.add(web);
     body.add(wing);
     return wing;
   });
@@ -233,11 +319,70 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
   const legs = [[1, 0.72], [-1, 0.72], [1, -0.62], [-1, -0.62]].map(([s, z]) => {
     const leg = new THREE.Group();
     leg.position.set(s * 0.42, -0.2, z);
-    leg.add(box(0.26, 0.5, 0.32, skin, 0, -0.22, 0), box(0.2, 0.42, 0.24, skin, 0, -0.6, 0), box(0.28, 0.08, 0.42, dark, 0, -0.82, 0.08));
+    leg.add(limb(0.17, 0.12, 0.42, skin, 0, -0.22, 0), limb(0.11, 0.09, 0.34, skin, 0, -0.58, 0), ell(0.26, 0.09, 0.42, dark, 0, -0.82, 0.08));
     body.add(leg);
     return leg;
   });
   return { wings, legs, neck, tail, t: 0 };
+}
+
+/** 由 id 計個固定數，同一兵種外觀一樣，唔同兵種有變化 */
+function hashOf(id: string): number {
+  let h = 7;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+const HAIR = [0x2a2018, 0x4a3020, 0x6a4a28, 0x1c1a1e, 0x8a6a3a, 0x7a7a78];
+
+/** 頭：面、眼、鼻，再加髮或者鬚 */
+function buildHead(torso: THREE.Group, def: UnitDef, skin: number, look: RaceLook) {
+  const h = hashOf(def.id);
+  torso.add(limb(0.06, 0.07, 0.1, skin, 0, 0.66, 0));
+  torso.add(ell(0.235, 0.285, 0.26, skin, 0, 0.82, 0));
+  if (look === 'skull' || look === 'bull') return;
+  const eye = 0x16130f;
+  for (const s of [1, -1]) torso.add(ell(0.032, 0.026, 0.02, eye, s * 0.05, 0.84, 0.118));
+  torso.add(ell(0.035, 0.05, 0.05, skin, 0, 0.8, 0.13));
+  const hair = HAIR[h % HAIR.length];
+  torso.add(dome(0.26, 0.2, 0.28, hair, 0, 0.87, -0.012));
+  if (h % 3 === 0) torso.add(ell(0.17, 0.14, 0.12, hair, 0, 0.74, 0.07));
+}
+
+/** 頭盔：按兵階分布帽、鐵笠同全盔 */
+function buildHelmet(torso: THREE.Group, def: UnitDef, color: number, crest: 'plume' | 'horns', crestColor: number) {
+  const tier = def.tier;
+  const metal = tier >= 3 || def.role !== 'archer';
+  if (def.role === 'mage') {
+    torso.add(dome(0.34, 0.26, 0.34, def.trimColor, 0, 0.88, -0.01));
+    const tip = cone(0.15, 0.34, 8, def.trimColor);
+    tip.position.set(0, 1.08, -0.03);
+    tip.rotation.x = -0.18;
+    torso.add(tip);
+    return;
+  }
+  torso.add(dome(0.29, 0.25, 0.31, color, 0, 0.885, 0, metal));
+  if (tier <= 2) {
+    const brim = cyl(0.21, 0.23, 0.02, 12, color, metal);
+    brim.position.y = 0.875;
+    torso.add(brim);
+  } else {
+    torso.add(box(0.025, 0.14, 0.02, color, 0, 0.81, 0.135));
+    for (const s of [1, -1]) torso.add(ell(0.05, 0.13, 0.1, color, s * 0.125, 0.8, 0.02, true));
+  }
+  if (tier < 3) return;
+  if (crest === 'plume') {
+    const plume = ell(0.05, 0.2, 0.34, crestColor, 0, 1.05, -0.05);
+    plume.rotation.x = -0.3;
+    torso.add(plume);
+  } else {
+    for (const s of [1, -1]) {
+      const h = cone(0.04, 0.28, 7, crestColor);
+      h.position.set(s * 0.18, 1.02, 0);
+      h.rotation.z = -s * 0.6;
+      torso.add(h);
+    }
+  }
 }
 
 export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
@@ -251,66 +396,66 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const hips = new THREE.Group();
   hips.position.y = 0.95;
   root.add(hips);
+  const armored = !def.civilian && def.tier >= 3 && def.role !== 'mage';
+  const robed = def.role === 'mage' || !!def.civilian;
+  const skin = def.skin ?? race.skin;
 
   const torso = new THREE.Group();
   hips.add(torso);
-  torso.add(box(0.46, 0.62, 0.27, bodyColor, 0, 0.32, 0));
-  torso.add(box(0.48, 0.08, 0.29, def.trimColor, 0, 0.05, 0));
-  torso.add(box(0.52, 0.12, 0.3, def.trimColor, 0, 0.6, 0));
+  torso.add(torsoPart(0.5, 0.66, 0.31, armored ? COLORS.steel : bodyColor, 0.3, armored));
+  // 罩袍同腰帶：隊色喺呢度
+  if (armored) torso.add(torsoPart(0.44, 0.5, 0.33, bodyColor, 0.22));
+  const belt = cyl(0.2, 0.2, 0.07, 10, LEATHER);
+  belt.position.y = 0.04;
+  belt.scale.z *= 0.72;
+  torso.add(belt, ell(0.08, 0.07, 0.04, GOLD_TRIM, 0, 0.04, 0.14, true));
+  const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, robed ? bodyColor : def.trimColor);
+  skirt.position.y = robed ? -0.42 : -0.16;
+  skirt.scale.z *= 0.74;
+  torso.add(skirt);
+  if (def.race === 'centaur') skirt.scale.setScalar(0.001);
+  for (const s of [1, -1]) torso.add(ell(0.19, 0.15, 0.2, armored ? COLORS.steel : bodyColor, s * 0.27, 0.56, 0, armored));
 
-  const skin = def.skin ?? race.skin;
-  const head = ico(0.135, skin);
-  head.position.y = 0.82;
-  torso.add(head);
+  buildHead(torso, def, skin, race.look);
   addRaceFeatures(torso, race.look, skin);
-  if (race.look !== 'bull' && !def.civilian) {
-    const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
-    helmet.position.y = 0.93;
-    torso.add(helmet);
+  if (race.look !== 'bull' && !def.civilian) buildHelmet(torso, def, style.helmet, style.crest, def.plumeColor ?? style.crestColor);
+
+  // 背旗：只有英雄同精銳，遠處認得出邊個帶隊
+  if (!def.civilian && (def.hero || def.tier >= 5)) {
+    torso.add(limb(0.014, 0.014, 1.25, COLORS.wood, 0.08, 1, -0.2));
+    torso.add(box(0.015, 0.42, 0.42, def.plumeColor ?? style.body, 0.08, 1.38, -0.42));
   }
 
-  // 盔飾：我軍羽飾、敵軍牛角
-  if (def.civilian) {
-    // 平民唔戴盔飾
-  } else if (style.crest === 'plume') {
-    const plume = box(0.05, 0.2, 0.3, def.plumeColor ?? style.crestColor, 0, 1.08, -0.04);
-    plume.rotation.x = -0.25;
-    torso.add(plume);
-  } else {
-    const horn = (side: number) => {
-      const h = cone(0.045, 0.3, 4, def.plumeColor ?? style.crestColor);
-      h.position.set(side * 0.2, 1.03, 0);
-      h.rotation.z = -side * 0.6;
-      return h;
-    };
-    torso.add(horn(1), horn(-1));
-  }
-
-  // 背旗：遠處都睇到邊邊
-  if (!def.civilian) {
-    torso.add(box(0.03, 1.1, 0.03, COLORS.wood, 0.08, 0.95, -0.18));
-    torso.add(box(0.03, 0.34, 0.36, def.plumeColor ?? style.body, 0.08, 1.32, -0.38));
+  if (def.role === 'archer' && !def.civilian) {
+    const quiver = limb(0.06, 0.05, 0.5, LEATHER, -0.1, 0.32, -0.19);
+    quiver.rotation.z = -0.25;
+    torso.add(quiver);
   }
 
   if (def.hero) {
-    const cape = box(0.5, 0.95, 0.04, def.trimColor, 0, 0.12, -0.17);
+    const cape = limb(0.2, 0.3, 0.95, def.trimColor, 0, 0.1, -0.19);
+    cape.scale.z *= 0.1;
     cape.rotation.x = 0.14;
     torso.add(cape);
   }
 
-  const armR = new THREE.Group();
-  armR.rotation.order = 'YXZ';
-  armR.position.set(-0.3, 0.57, 0);
-  armR.add(box(0.13, 0.58, 0.13, bodyColor, 0, -0.27, 0));
+  const arm = (x: number) => {
+    const a = new THREE.Group();
+    a.rotation.order = 'YXZ';
+    a.position.set(x, 0.57, 0);
+    const fore = armored ? COLORS.steel : skin;
+    a.add(limb(0.072, 0.06, 0.26, bodyColor, 0, -0.14, 0), ell(0.095, 0.095, 0.095, armored ? COLORS.steel : bodyColor, 0, -0.29, 0, armored));
+    a.add(limb(0.056, 0.045, 0.22, fore, 0, -0.41, 0, armored), ell(0.09, 0.1, 0.09, armored ? 0x55504a : skin, 0, -0.55, 0));
+    return a;
+  };
+
+  const armR = arm(-0.3);
   const wrist = new THREE.Group();
   wrist.position.y = -0.56;
   armR.add(wrist);
   torso.add(armR);
 
-  const armL = new THREE.Group();
-  armL.rotation.order = 'YXZ';
-  armL.position.set(0.3, 0.57, 0);
-  armL.add(box(0.13, 0.58, 0.13, bodyColor, 0, -0.27, 0));
+  const armL = arm(0.3);
   const gripL = new THREE.Group();
   gripL.position.y = -0.56;
   armL.add(gripL);
@@ -318,12 +463,14 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
 
   const shield = new THREE.Group();
   ctx.gate = shield;
-  const face = cyl(0.42, 0.42, 0.05, 6, style.shield);
+  const face = cyl(0.42, 0.42, 0.04, 14, style.shield);
   face.rotation.z = Math.PI / 2;
-  const boss = cyl(0.13, 0.13, 0.07, 6, COLORS.steel);
-  boss.rotation.z = Math.PI / 2;
-  boss.position.x = 0.03;
-  shield.add(face, boss);
+  const rim = part('ring', () => new THREE.TorusGeometry(1, 0.05, 5, 16), COLORS.steel, 0.42, 0.42, 0.42);
+  rim.rotation.y = Math.PI / 2;
+  const inner = cyl(0.26, 0.26, 0.045, 14, def.trimColor);
+  inner.rotation.z = Math.PI / 2;
+  const boss = ell(0.08, 0.22, 0.22, COLORS.steel, 0.03, 0, 0, true);
+  shield.add(face, rim, inner, boss);
   ctx.gate = null;
   shield.position.set(0.08, -0.42, 0);
   armL.add(shield);
@@ -339,16 +486,17 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const leg = (x: number) => {
     const upper = new THREE.Group();
     upper.position.set(x, 0, 0);
-    upper.add(box(0.17, 0.46, 0.17, style.legs, 0, -0.22, 0));
+    upper.add(limb(0.1, 0.075, 0.36, style.legs, 0, -0.22, 0));
     const knee = new THREE.Group();
     knee.position.y = -0.44;
-    knee.add(box(0.15, 0.46, 0.15, style.legs, 0, -0.22, 0), box(0.16, 0.08, 0.28, 0x2c2622, 0, -0.46, 0.05));
+    const shin = armored ? COLORS.steel : LEATHER;
+    knee.add(ell(0.12, 0.12, 0.13, shin, 0, 0, 0.01, armored), limb(0.07, 0.056, 0.32, shin, 0, -0.2, 0, armored), ell(0.13, 0.09, 0.27, 0x2c2622, 0, -0.45, 0.05));
     upper.add(knee);
     hips.add(upper);
     return [upper, knee] as const;
   };
-  const [legL, kneeL] = leg(0.13);
-  const [legR, kneeR] = leg(-0.13);
+  const [legL, kneeL] = leg(0.12);
+  const [legR, kneeR] = leg(-0.12);
   // 半人馬冇人腳；龍同史萊姆連上身都收埋，換成自己嘅身體
   if (def.race === 'centaur' || def.race === 'dragon' || def.race === 'slime') {
     legL.scale.setScalar(0.001);
@@ -356,11 +504,9 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   }
   if (def.race === 'slime') {
     torso.scale.setScalar(0.001);
-    const blob = ico(0.62, skin);
-    blob.position.y = -0.42;
-    blob.scale.y *= 0.82;
+    const blob = ell(1.24, 1.02, 1.24, skin, 0, -0.42, 0);
     hips.add(blob);
-    for (const s of [1, -1]) hips.add(box(0.08, 0.14, 0.04, 0x10202c, s * 0.2, -0.3, 0.56));
+    for (const s of [1, -1]) hips.add(ell(0.1, 0.15, 0.05, 0x10202c, s * 0.2, -0.3, 0.56));
   }
   let dragon: DragonRig | undefined;
   if (def.race === 'dragon') {
@@ -368,12 +514,12 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
     dragon = buildDragon(hips, def.skin ?? race.skin);
   }
 
-  // 頭頂標記：英雄用金色
+  // 頭頂標記：英雄用金色，細細粒唔搶畫面
   const marker = new THREE.Group();
   ctx.gate = marker;
-  const tip = cone(0.15, 0.3, 4, def.hero ? 0xffd34d : style.marker);
+  const tip = cone(0.09, 0.18, 4, def.hero ? 0xffd34d : style.marker);
   tip.rotation.x = Math.PI;
-  tip.position.y = 2.5;
+  tip.position.y = 2.45;
   marker.add(tip);
   ctx.gate = null;
   root.add(marker);
@@ -393,6 +539,17 @@ export interface HorseRig {
   parts: Part[];
 }
 
+/** 馬身：胸深腰收，後腿肌肉隆起 */
+const HORSE_BODY: Ring[] = [
+  { z: -1.08, y: 0.06, rx: 0.1, ry: 0.12 }, { z: -0.92, y: 0.06, rx: 0.27, ry: 0.32 }, { z: -0.62, y: 0.05, rx: 0.34, ry: 0.4 },
+  { z: -0.2, y: 0.03, rx: 0.3, ry: 0.35 }, { z: 0.25, y: 0, rx: 0.31, ry: 0.37 }, { z: 0.7, y: 0.02, rx: 0.3, ry: 0.4 },
+  { z: 1.0, y: 0.1, rx: 0.22, ry: 0.3 }, { z: 1.18, y: 0.2, rx: 0.08, ry: 0.1 },
+];
+const HORSE_NECK: Ring[] = [{ z: -0.12, y: -0.04, rx: 0.17, ry: 0.28 }, { z: 0.35, y: 0, rx: 0.13, ry: 0.22 }, { z: 0.8, y: 0.02, rx: 0.1, ry: 0.15 }, { z: 1.02, y: 0.02, rx: 0.09, ry: 0.12 }];
+const HORSE_HEAD: Ring[] = [{ z: -0.1, y: 0.02, rx: 0.08, ry: 0.11 }, { z: 0.08, y: 0, rx: 0.115, ry: 0.15 }, { z: 0.36, y: -0.03, rx: 0.09, ry: 0.11 }, { z: 0.6, y: -0.05, rx: 0.08, ry: 0.085 }, { z: 0.7, y: -0.05, rx: 0.04, ry: 0.04 }];
+const BLANKET: Ring[] = [{ z: -0.62, y: 0.05, rx: 0.36, ry: 0.42 }, { z: -0.2, y: 0.03, rx: 0.325, ry: 0.375 }, { z: 0.3, y: 0, rx: 0.335, ry: 0.395 }];
+const BARD: Ring[] = [{ z: -0.95, y: 0.05, rx: 0.33, ry: 0.38 }, { z: -0.62, y: 0.05, rx: 0.37, ry: 0.43 }, { z: -0.2, y: 0.03, rx: 0.33, ry: 0.38 }, { z: 0.25, y: 0, rx: 0.34, ry: 0.4 }, { z: 0.75, y: 0.02, rx: 0.33, ry: 0.43 }, { z: 1.02, y: 0.1, rx: 0.25, ry: 0.33 }];
+
 export function buildHorse(def: HorseDef, team: number, batches: Batches): HorseRig {
   ctx = { batches, parts: [], gate: null };
   const cloth = TEAM_STYLES[team].cloth;
@@ -404,78 +561,85 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
   body.position.y = 1.18;
   root.add(body);
 
-  body.add(box(0.62, 0.68, 1.75, c));
-  body.add(box(0.56, 0.6, 0.5, c, 0, 0.03, 0.85));
-  body.add(box(0.58, 0.62, 0.55, c, 0, 0.04, -0.8));
-  // 鞍具
-  body.add(box(0.66, 0.1, 0.72, 0x5b2b22, 0, 0.36, -0.04), box(0.7, 0.62, 1.1, cloth, 0, 0.06, -0.05));
-  if (def.barded) {
-    body.add(box(0.72, 0.68, 1.3, cloth, 0, -0.14, 0.42), box(0.72, 0.68, 0.9, cloth, 0, -0.14, -0.72));
-  }
+  body.add(loft('horseBody', HORSE_BODY, c, 11));
+  // 鞍具：鞍毯只包上半身
+  body.add(loft('blanket', BLANKET, cloth, 10, [-0.45, Math.PI + 0.45]));
+  body.add(ell(0.34, 0.14, 0.62, 0x5b2b22, 0, 0.42, -0.1), ell(0.3, 0.16, 0.12, 0x4a2219, 0, 0.47, 0.2), ell(0.3, 0.2, 0.1, 0x4a2219, 0, 0.49, -0.4));
+  if (def.barded) body.add(loft('barding', BARD, cloth, 11));
 
   const neck = new THREE.Group();
-  neck.position.set(0, 0.2, 1);
+  neck.position.set(0, 0.2, 0.95);
   neck.rotation.x = -0.72;
-  neck.add(box(0.3, 0.42, 0.95, c, 0, 0, 0.42));
-  neck.add(box(0.08, 0.14, 0.92, dark, 0, 0.26, 0.38));
+  neck.add(loft('horseNeck', HORSE_NECK, c));
+  // 鬃毛
+  neck.add(ell(0.07, 0.2, 1.12, dark, 0, 0.21, 0.36));
   const head = new THREE.Group();
-  head.position.set(0, 0.05, 0.88);
+  head.position.set(0, 0.05, 0.92);
   head.rotation.x = 1.15;
-  head.add(box(0.24, 0.27, 0.42, c, 0, 0, 0.14), box(0.19, 0.2, 0.32, c, 0, -0.02, 0.46));
-  head.add(box(0.05, 0.14, 0.05, dark, 0.08, 0.17, -0.04), box(0.05, 0.14, 0.05, dark, -0.08, 0.17, -0.04));
+  head.add(loft('horseHead', HORSE_HEAD, c));
+  for (const s of [1, -1]) {
+    const ear = cone(0.035, 0.15, 5, c);
+    ear.position.set(s * 0.07, 0.19, -0.05);
+    head.add(ear, ell(0.03, 0.035, 0.03, 0x0e0c0a, s * 0.105, 0.05, 0.12));
+  }
+  head.add(ell(0.12, 0.09, 0.05, dark, 0, -0.04, 0.68));
   neck.add(head);
   body.add(neck);
 
   switch (def.look) {
     case 'wings':
       for (const s of [1, -1]) {
-        const wing = box(1.5, 0.05, 0.85, c, s * 1, 0.42, 0.1);
+        const wing = part('wing', wingGeo, c, s * 1.9, 0.04, 1.3);
+        wing.position.set(s * 0.26, 0.42, 0.2);
         wing.rotation.z = s * 0.35;
         body.add(wing);
       }
       break;
     case 'horn': {
-      const horn = cone(0.05, 0.55, 5, 0xf0e0a0);
-      horn.position.set(0, 0.28, 0.32);
+      const horn = cone(0.045, 0.55, 8, 0xf0e0a0);
+      horn.position.set(0, 0.28, 0.2);
       horn.rotation.x = 0.8;
       head.add(horn);
       break;
     }
     case 'antlers':
       for (const s of [1, -1]) {
-        const antler = box(0.05, 0.6, 0.05, 0xd8c8a0, s * 0.2, 0.36, -0.05);
+        const antler = limb(0.015, 0.035, 0.6, 0xd8c8a0, s * 0.2, 0.36, -0.05);
         antler.rotation.z = -s * 0.5;
         head.add(antler);
       }
       break;
     case 'tusk': {
-      const tusk = cone(0.1, 0.4, 5, 0xe8dcc0);
-      tusk.position.set(0, 0.18, 0.56);
+      const tusk = cone(0.09, 0.4, 8, 0xe8dcc0);
+      tusk.position.set(0, 0.12, 0.5);
       tusk.rotation.x = 0.5;
       head.add(tusk);
       break;
     }
     case 'hump':
-      body.add(box(0.46, 0.34, 0.5, c, 0, 0.5, 0.48));
+      body.add(ell(0.5, 0.42, 0.62, c, 0, 0.46, 0.48));
       break;
     default:
       break;
   }
 
   const tail = new THREE.Group();
-  tail.position.set(0, 0.24, -1.07);
+  tail.position.set(0, 0.24, -1.05);
   tail.rotation.x = 0.5;
-  tail.add(box(0.11, 0.8, 0.11, dark, 0, -0.38, 0));
+  tail.add(limb(0.05, 0.1, 0.72, dark, 0, -0.38, 0));
   body.add(tail);
 
   const legs: HorseRig['legs'] = [];
   const leg = (x: number, z: number, offset: number) => {
     const upper = new THREE.Group();
     upper.position.set(x, -0.2, z);
-    upper.add(box(0.17, 0.52, 0.2, c, 0, -0.26, 0));
+    upper.add(limb(0.12, 0.07, 0.4, c, 0, -0.24, 0));
     const lower = new THREE.Group();
     lower.position.y = -0.5;
-    lower.add(box(0.11, 0.46, 0.13, c, 0, -0.22, 0), box(0.14, 0.09, 0.17, dark, 0, -0.46, 0.02));
+    lower.add(ell(0.13, 0.13, 0.13, c), limb(0.05, 0.05, 0.34, c, 0, -0.21, 0), ell(0.11, 0.09, 0.11, c, 0, -0.4, 0));
+    const hoof = cyl(0.06, 0.08, 0.09, 8, dark);
+    hoof.position.set(0, -0.47, 0.01);
+    lower.add(hoof);
     upper.add(lower);
     body.add(upper);
     legs.push({ upper, lower, offset });

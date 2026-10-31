@@ -9,7 +9,7 @@ import { DUNGEON, SIEGE } from '../data/factions';
 import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
 } from '../data/formations';
-import { THEMES, type BattleTheme } from '../data/world';
+import { THEME_ART, THEMES, type BattleTheme } from '../data/world';
 import { RACES } from '../data/races';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, RIVER, type HorseDef } from '../data/horses';
@@ -37,7 +37,8 @@ import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
-import { buildTerrain, heightAt, inRiver, placeTrees, setRiver, type Obstacle } from './terrain';
+import { SkyDome, buildTerrain, heightAt, inRiver, paintScenery, placeTrees, setRiver, type Obstacle } from './terrain';
+import { stoneTexture } from './textures';
 import type { Hud } from '../ui/hud';
 
 const JUMP_SPEED = 5.5;
@@ -137,6 +138,7 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  private sky: SkyDome;
   /** 絕招鏡頭 0 到 1 */
   private musouCam = 0;
   casts: MusouCast[] = [];
@@ -225,6 +227,9 @@ export class Battle implements CombatWorld {
     this.sun.shadow.bias = -0.0008;
     this.scene.add(this.sun, this.sun.target);
 
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMappingExposure = 1.05;
+    this.sky = new SkyDome(this.scene);
     this.baseObstacles = buildTerrain(this.scene);
     this.obstacles = this.baseObstacles;
     this.scene.add(this.wall);
@@ -298,12 +303,19 @@ export class Battle implements CombatWorld {
       }
     }
     const mesh = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(2.05, 7, 2.4), new THREE.MeshLambertMaterial({ color: 0x8a8678, flatShading: true }), spots.length,
+      new THREE.BoxGeometry(2.05, 7, 2.4), new THREE.MeshLambertMaterial({ map: stoneTexture(), color: 0xd8d0c0 }), spots.length,
     );
     const m = new THREE.Matrix4();
     spots.forEach((s, i) => mesh.setMatrixAt(i, m.makeTranslation(s.x, heightAt(s.x, s.z) + 3, s.z)));
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
     this.wall.add(mesh);
+    // 城垛：隔一格一個
+    const teeth = spots.filter((_, i) => i % 2 === 0);
+    const merlon = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 2.4), mesh.material as THREE.Material, teeth.length);
+    teeth.forEach((s, i) => merlon.setMatrixAt(i, m.makeTranslation(s.x, heightAt(s.x, s.z) + 7, s.z)));
+    merlon.castShadow = true;
+    this.wall.add(merlon);
     this.obstacles = [...this.obstacles, ...solid.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
   }
 
@@ -314,7 +326,7 @@ export class Battle implements CombatWorld {
     const pos = geo.getAttribute('position') as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i)) + 0.25);
     geo.computeVertexNormals();
-    const water = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0x3f86c8, flatShading: true, transparent: true, opacity: 0.85 }));
+    const water = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x2f6f9e, specular: 0xbfd8e8, shininess: 80, transparent: true, opacity: 0.82 }));
     this.wall.add(water);
   }
 
@@ -721,15 +733,15 @@ export class Battle implements CombatWorld {
   start(setup: BattleSetup) {
     const { horse: horseDef, loadout, soldiers, enemy, enemyLevel } = setup;
     const theme = THEMES[setup.theme];
+    const art = THEME_ART[setup.theme];
     (this.scene.background as THREE.Color).set(theme.sky);
+    this.sky.set(art.zenith, theme.fog, art.sun, art.cloud, art.stars);
     const fog = this.scene.fog as THREE.Fog;
     fog.color.set(theme.fog);
     fog.near = theme.near;
     fog.far = theme.far;
-    const ground = this.scene.getObjectByName('ground') as THREE.Mesh;
-    (ground.material as THREE.MeshLambertMaterial).color.set(theme.ground);
-    this.hemi.intensity = 1.5 * theme.light;
-    this.sun.intensity = 2.3 * theme.light;
+    this.hemi.intensity = 1.25 * theme.light;
+    this.sun.intensity = 2.7 * theme.light;
     const race = RACES[setup.playerDef.race ?? 'human'];
     if (setup.theme === 'night' && race.nightVision) {
       fog.near *= 1.7;
@@ -747,6 +759,7 @@ export class Battle implements CombatWorld {
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
+    paintScenery(setup.theme);
     setRiver(!!setup.river);
     if (setup.river) this.layRiver();
     this.pendingStrikes = [];
@@ -943,6 +956,7 @@ export class Battle implements CombatWorld {
     this.input.endFrame(real);
     this.shadowTick = !this.shadowTick;
     this.renderer.shadowMap.needsUpdate = this.shadowTick;
+    this.sky.mesh.position.copy(this.camera.position);
     this.renderer.render(this.scene, this.camera);
   }
 

@@ -1,4 +1,4 @@
-import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef, type PlaceKind } from '../data/world';
+import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef } from '../data/world';
 import type { Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
@@ -8,6 +8,7 @@ import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
 import { partyFood, partyWage } from '../core/roster';
+import { placeIcon, partyIcon } from './icons';
 import { Sky, type Projected } from './sky';
 import { dayOf, hourOf, isNight, isOpen, type World, type WorldEvent } from './world';
 
@@ -488,18 +489,15 @@ export class WorldView {
       const q = at(b.x, b.y);
       if (!q) continue;
       const radius = dotRadius(b.size) * Math.max(0.5, q.s);
-      g.fillStyle = '#d6352a';
-      g.beginPath();
-      g.arc(q.x, q.y, radius, 0, Math.PI * 2);
-      g.fill();
+      this.drawParty(q, radius, '#d6352a');
       g.font = `700 14px ${FONT}`;
       if (q.s > LABEL_MIN_SCALE) {
         const text = `山賊 ${b.size} 人`;
         g.lineWidth = 5;
         g.strokeStyle = OUTLINE;
-        g.strokeText(text, q.x, q.y - radius - 9);
+        g.strokeText(text, q.x, q.y - radius * 3.7);
         g.fillStyle = '#ffd0c8';
-        g.fillText(text, q.x, q.y - radius - 9);
+        g.fillText(text, q.x, q.y - radius * 3.7);
       }
     }
 
@@ -510,23 +508,16 @@ export class WorldView {
       const q = at(n.x, n.y);
       if (!q) continue;
       const def = NPC[n.kind];
-      g.fillStyle = def.color;
-      g.strokeStyle = '#1b2433';
-      g.lineWidth = 1.5;
       const radius = dotRadius(n.size) * Math.max(0.5, q.s);
-      g.beginPath();
-      if (n.size > 3) g.rect(q.x - radius, q.y - radius, radius * 2, radius * 2);
-      else g.arc(q.x, q.y, radius, 0, Math.PI * 2);
-      g.fill();
-      g.stroke();
+      this.drawParty(q, radius, def.color, n.kind === 'caravan');
       if (dist < NPC_RULES.labelDist && q.s > LABEL_MIN_SCALE) {
         const text = n.figure ? `${figureOf(n.figure)!.name}：${n.job}` : `${def.name} ${n.size} 人：${n.job}`;
         g.lineWidth = 5;
         g.lineJoin = 'round';
         g.strokeStyle = OUTLINE;
-        g.strokeText(text, q.x, q.y - radius - 7);
+        g.strokeText(text, q.x, q.y - radius * 3.7);
         g.fillStyle = '#fff4dc';
-        g.fillText(text, q.x, q.y - radius - 7);
+        g.fillText(text, q.x, q.y - radius * 3.7);
       }
     }
 
@@ -535,22 +526,32 @@ export class WorldView {
     // 自己部隊：人愈多粒點愈大
     if (!me) return;
     const men = this.world.roster.soldiers.length + 1;
-    const radius = dotRadius(men);
-    g.fillStyle = '#f2c14e';
-    g.strokeStyle = '#1b2433';
+    const radius = dotRadius(men) * 1.25;
+    g.strokeStyle = 'rgba(242,193,78,.85)';
     g.lineWidth = 2;
     g.beginPath();
-    g.arc(me.x, me.y, radius, 0, Math.PI * 2);
-    g.fill();
+    g.ellipse(me.x, me.y, radius * 1.3, radius * 0.6, 0, 0, Math.PI * 2);
     g.stroke();
+    this.drawParty(me, radius, '#f2c14e');
     const label = `你 ${men} 人`;
     g.font = `900 16px ${FONT}`;
     g.lineWidth = 5;
         g.lineJoin = 'round';
     g.strokeStyle = OUTLINE;
-    g.strokeText(label, me.x, me.y - radius - 9);
+    g.strokeText(label, me.x, me.y - radius * 3.7);
     g.fillStyle = '#ffe9a8';
-    g.fillText(label, me.x, me.y - radius - 9);
+    g.fillText(label, me.x, me.y - radius * 3.7);
+  }
+
+  /** 部隊圖示：腳踏喺地面位置，有影 */
+  private drawParty(q: { x: number; y: number }, radius: number, color: string, wagon = false) {
+    const g = this.g;
+    const size = radius * 4.6;
+    g.fillStyle = 'rgba(8,10,16,.35)';
+    g.beginPath();
+    g.ellipse(q.x, q.y, radius * 0.95, radius * 0.34, 0, 0, Math.PI * 2);
+    g.fill();
+    g.drawImage(partyIcon(color, wagon), q.x - size / 2, q.y - size * 0.9, size, size);
   }
 
   /** 地點：地上有影，標記企起身 */
@@ -561,65 +562,33 @@ export class WorldView {
     const owner = pol.ownerOf(p.id);
     const color = owner === PLAYER ? '#f2c14e' : factionOf(owner ?? '')?.color;
     const size = Math.max(0.7, Math.min(1.5, q.s * 1.3));
-    const r = (p.kind === 'town' ? 15 : 12) * size;
-    const lift = 16 * size;
-    const y = q.y - lift;
+    const r = (p.kind === 'town' ? 34 : 26) * size;
+    const y = q.y;
     g.fillStyle = 'rgba(8,10,16,.35)';
     g.beginPath();
-    g.ellipse(q.x, q.y, r, r * 0.35, 0, 0, Math.PI * 2);
+    g.ellipse(q.x, q.y, r * 0.9, r * 0.28, 0, 0, Math.PI * 2);
     g.fill();
-    g.strokeStyle = '#2a2230';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(q.x, q.y);
-    g.lineTo(q.x, y);
-    g.stroke();
-    g.fillStyle = color ?? (open ? '#7a2a2a' : '#555');
-    g.strokeStyle = pol.s.threats.some((t) => t.place === p.id) ? '#ff3a2a' : '#fff4dc';
-    this.drawBuilding(p.monster ? 'monster' : p.kind, q.x, y, r);
-    g.fill();
-    g.stroke();
+    if (pol.s.threats.some((t) => t.place === p.id)) {
+      g.strokeStyle = '#ff3a2a';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.ellipse(q.x, q.y, r * 1.2, r * 0.46, 0, 0, Math.PI * 2);
+      g.stroke();
+    }
+    const tone = color ?? (open ? '#7a2a2a' : '#555555');
+    const icon = placeIcon(p.monster ? 'monster' : p.kind, tone);
+    const d = r * 2;
+    g.globalAlpha = open ? 1 : 0.72;
+    g.drawImage(icon, q.x - d / 2, y - d * 0.88, d, d);
+    g.globalAlpha = 1;
     if (q.s < LABEL_MIN_SCALE) return;
     g.font = `700 15px ${FONT}`;
     g.lineWidth = 5;
-        g.lineJoin = 'round';
+    g.lineJoin = 'round';
     g.strokeStyle = OUTLINE;
-    g.strokeText(p.name, q.x, y + r + 9);
-    g.fillText(p.name, q.x, y + r + 9);
-  }
-
-  /** 地點建築輪廓，由中心點畫 */
-  private drawBuilding(kind: PlaceKind | 'monster', x: number, y: number, r: number) {
-    const g = this.g;
-    const poly = (points: [number, number][]) => {
-      points.forEach(([a, b], i) => (i ? g.lineTo(x + a * r, y + b * r) : g.moveTo(x + a * r, y + b * r)));
-      g.closePath();
-    };
-    g.beginPath();
-    switch (kind) {
-      case 'monster':
-        // 獠牙寨城：一排尖刺
-        poly([[-1.3, 1], [-1.3, -0.3], [-1, -1], [-0.65, -0.2], [-0.3, -1.3], [0, -0.3], [0.3, -1.3], [0.65, -0.2], [1, -1], [1.3, -0.3], [1.3, 1]]);
-        break;
-      case 'town':
-        // 三座塔加城牆
-        poly([[-1.2, 1], [-1.2, -0.7], [-0.75, -0.7], [-0.75, -0.2], [-0.3, -0.2], [-0.3, -1.1], [0.3, -1.1], [0.3, -0.2], [0.75, -0.2], [0.75, -0.7], [1.2, -0.7], [1.2, 1]]);
-        break;
-      case 'castle':
-        poly([[-0.8, 1], [-0.8, -1], [-0.45, -1], [-0.45, -0.7], [-0.15, -0.7], [-0.15, -1], [0.15, -1], [0.15, -0.7], [0.45, -0.7], [0.45, -1], [0.8, -1], [0.8, 1]]);
-        break;
-      case 'village':
-        poly([[-1, 1], [-1, 0], [-1.25, 0], [-0.45, -0.8], [0.3, 0], [0.05, 0], [0.05, 1]]);
-        poly([[0.15, 1], [0.15, 0.2], [0, 0.2], [0.6, -0.4], [1.2, 0.2], [1.05, 0.2], [1.05, 1]]);
-        break;
-      case 'lair':
-        poly([[-1.1, 1], [0, -1], [1.1, 1], [0.3, 1], [0, 0.3], [-0.3, 1]]);
-        break;
-      default:
-        // 地下城同迷宮：石拱門
-        poly([[-1, 1], [-1, -0.2], [-0.6, -0.9], [0.6, -0.9], [1, -0.2], [1, 1], [0.4, 1], [0.4, 0], [-0.4, 0], [-0.4, 1]]);
-        break;
-    }
+    g.fillStyle = tone;
+    g.strokeText(p.name, q.x, y + 12);
+    g.fillText(p.name, q.x, y + 12);
   }
 
   private drawBar() {

@@ -9,6 +9,8 @@ export const BATTLEFIELD = {
   arenaRadius: 170,
   hillAmplitude: 2.4,
   treeCount: 240,
+  /** 草叢數 */
+  grassCount: 16000,
   /** 中央保留空地半徑 */
   clearRadius: 90,
   /** 場內散落樹數 */
