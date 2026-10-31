@@ -22,6 +22,8 @@ const dotRadius = (men: number) => Math.min(PARTY.dotMax, PARTY.dotBase + Math.s
 export class WorldView {
   private g: CanvasRenderingContext2D;
   private base: HTMLCanvasElement;
+  /** 左右鏡像，鋪地圖外嘅遠方陸地 */
+  private flipped: HTMLCanvasElement;
   /** 鏡頭焦點（地圖像素） */
   private focusX = 0;
   private focusY = 0;
@@ -40,6 +42,12 @@ export class WorldView {
     this.g = canvas.getContext('2d')!;
     this.base = world.terrain.render(PX);
     this.drawCoast();
+    this.flipped = document.createElement('canvas');
+    this.flipped.width = this.base.width;
+    this.flipped.height = this.base.height;
+    const flip = this.flipped.getContext('2d')!;
+    flip.scale(-1, 1);
+    flip.drawImage(this.base, -this.base.width, 0);
     this.bar = document.getElementById('mapbar')!;
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => this.onKey(e));
@@ -216,18 +224,24 @@ export class WorldView {
     const bw = this.base.width;
     const bh = this.base.height;
     const rowY = (y: number) => this.focusY - depth * (reach / (y - horizon) - 1);
+    const odd = (n: number) => ((n % 2) + 2) % 2 === 1;
     for (let y = Math.ceil(horizon) + 1; y < height; y += rowStep) {
       const top = rowY(y);
-      const bottom = rowY(y + rowStep);
-      if (bottom <= 0 || top >= bh) continue;
+      const rows = Math.max(1, rowY(y + rowStep) - top);
+      // 地圖外面用鏡像鋪返遠方陸地，隔住海岸似海峽對岸
+      const j = Math.floor(top / bh);
+      const inTile = top - j * bh;
+      const sT = Math.max(0, Math.min(bh - 1, odd(j) ? bh - inTile - rows : inTile));
+      const sH = Math.min(rows, bh - sT);
       const s = ((y - horizon) / reach) * zoom;
       const left = this.focusX - cx / s;
-      const sL = Math.max(0, left);
-      const sR = Math.min(bw, left + width / s);
-      if (sR <= sL) continue;
-      const sT = Math.max(0, top);
-      const sH = Math.max(1, Math.min(bh, bottom) - sT);
-      g.drawImage(this.base, sL, sT, sR - sL, sH, (sL - left) * s, y, (sR - sL) * s, rowStep + 1);
+      const right = left + width / s;
+      for (let i = Math.floor(left / bw); i * bw < right; i++) {
+        const tile = i * bw;
+        const a = Math.max(left, tile);
+        const b = Math.min(right, tile + bw);
+        g.drawImage(odd(i) ? this.flipped : this.base, a - tile, sT, b - a, sH, (a - left) * s, y, (b - a) * s, rowStep + 1);
+      }
     }
   }
 

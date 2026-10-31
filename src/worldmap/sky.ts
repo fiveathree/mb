@@ -105,11 +105,12 @@ export class Sky {
   /** 地面霧氣，令遠方融入天空 */
   drawHaze(g: CanvasRenderingContext2D, width: number, horizon: number, height: number, hour: number) {
     const low = MAP_VIEW.sky[this.period(hour)][1];
-    const grad = g.createLinearGradient(0, horizon, 0, horizon + height * 0.14);
+    const band = height * 0.05;
+    const grad = g.createLinearGradient(0, horizon, 0, horizon + band);
     grad.addColorStop(0, low);
     grad.addColorStop(1, `${low}00`);
     g.fillStyle = grad;
-    g.fillRect(0, horizon, width, height * 0.14);
+    g.fillRect(0, horizon, width, band);
   }
 
   drawFlyers(g: CanvasRenderingContext2D, project: (x: number, y: number) => Projected | null, horizon: number) {
