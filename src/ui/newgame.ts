@@ -74,7 +74,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
     const diff = `難度 <select id="ngDiff">${(Object.keys(DIFFICULTY) as Difficulty[]).map((k) => `<option value="${k}" ${k === c.difficulty ? 'selected' : ''}>${DIFFICULTY[k].name}</option>`).join('')}</select>`;
     const body = c.crown ? `
         <div class="pick-title ng-picks">冠位角色　${diff}</div>
-        <div class="weapons">${crowns.map((k) => chip('crown', k.id, shortName(k), k === c.crown)).join('')}</div>
+        <div class="weapons crown-list">${crowns.map((k) => chip('crown', k.id, shortName(k), k === c.crown)).join('')}</div>
         ${crownPanel(c.crown)}` : `
         <div class="pick-title">種族</div>
         <div class="weapons">${racesOf().map((k) => chip('race', k, PLAYABLE[k].name, k === c.race)).join('')}</div>

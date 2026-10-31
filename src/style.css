@@ -472,3 +472,5 @@ kbd { background: linear-gradient(180deg, #4a3a2a, #2a2018); border: 1px solid r
 #bossbar i { display: block; height: 100%; transform-origin: left; background: linear-gradient(180deg, #ff6a4a, #8a1a12); }
 .sc-list { grid-template-columns: repeat(9, 1fr); gap: 2px; }
 .sc-list .wp { font-size: 11px; padding-left: 0; padding-right: 0; white-space: nowrap; }
+.crown-list { grid-template-columns: repeat(9, 1fr); gap: 2px; }
+.crown-list .wp { font-size: 11px; padding-left: 0; padding-right: 0; white-space: nowrap; overflow: hidden; }
