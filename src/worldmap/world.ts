@@ -70,6 +70,8 @@ export interface WorldSave {
   arenaUntil: Record<string, number>;
   arenaWins: number;
   mapVersion?: number;
+  /** 冠位角色本扮緊邊位 */
+  crown?: string;
   /** 主線去到第幾章 */
   storyChapter?: number;
   difficulty?: Difficulty;

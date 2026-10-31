@@ -350,3 +350,21 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 .guide-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; text-align: left; font-size: 12px; }
 .guide-list b { display: block; color: var(--gold); }
 .guide-list span { color: var(--dim); }
+
+/* 開局：模式同冠位數值 */
+.card.newgame { display: flex; flex-direction: column; }
+.card.newgame > .row:last-child { margin-top: auto; }
+.ng-head { display: flex; align-items: center; gap: 6px; flex: none; }
+.ng-head .wp { padding: 2px 10px; }
+.ng-head label { margin-left: auto; font-size: 12px; color: var(--dim); }
+.ng-head input { width: 110px; padding: 1px 6px; font-size: 13px; color: var(--ink); background: #1b2230; border: 1px solid var(--line); border-radius: 4px; }
+.crown-panel { display: grid; grid-template-columns: 200px 1fr; gap: 14px; text-align: left; font-size: 12px; }
+.crown-bar { display: grid; grid-template-columns: 34px 1fr 22px; align-items: center; gap: 6px; margin: 5px 0; }
+.crown-bar i { height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden; }
+.crown-bar b { display: block; height: 100%; background: var(--gold); }
+.crown-bar em { font-style: normal; color: var(--gold); text-align: right; }
+.crown-info { display: grid; gap: 3px; align-content: start; }
+.card.newgame { padding-top: 5px; padding-bottom: 5px; }
+.card.newgame .row button { padding-top: 6px; padding-bottom: 6px; }
+.ng-head h2 { margin: 0; }
+.ng-head .wp { padding-top: 0; padding-bottom: 0; }

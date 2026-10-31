@@ -74,7 +74,7 @@ export class GearPanel {
     this.page = Math.min(this.page, pages - 1);
     const shown = list.slice(this.page * PEOPLE_PER_PAGE, (this.page + 1) * PEOPLE_PER_PAGE);
     const cells = [
-      `<button class="wp ${s ? '' : 'on'}" data-who="${PLAYER_ID}">主角</button>`,
+      `<button class="wp ${s ? '' : 'on'}" data-who="${PLAYER_ID}">${this.roster.hero.name}</button>`,
       ...shown.map((x) => `<button class="wp ${x === s ? 'on' : ''}" data-who="${x.id}">${UNITS[x.unit].name}</button>`),
     ].join('');
     const pager = pages > 1 ? `<button class="mini" data-gp="1">下一組英雄（${this.page + 1}／${pages}）</button>` : '';
@@ -88,7 +88,7 @@ export class GearPanel {
     const def = s ? applyGear(levelDef(UNITS[s.unit], s.level), s.gear) : playerDef(hero);
     const stats = s
       ? `${def.name}・Lv${s.level}・生命 ${def.hp}・護甲 ${def.armor.toFixed(1)}`
-      : `主角・生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(hero)}`;
+      : `${hero.name}・生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(hero)}`;
     const list = ARMORS.filter((a) => a.slot === this.picked && freeArmor(hero, r.soldiers, a.id) > 0)
       .map((a) => `<button class="inv" data-armor="${a.id}"><b>${a.name}</b><small>護甲 +${a.armor}・餘 ${freeArmor(hero, r.soldiers, a.id)}</small></button>`).join('');
     const weapons = hero.weapons.map((id) => {

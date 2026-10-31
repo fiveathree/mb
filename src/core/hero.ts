@@ -3,6 +3,7 @@ import {
 } from '../data/economy';
 import { ARTIFACTS, PLAYABLE, type ArtifactDef, type PlayableRace, type StartOption } from '../data/factions';
 import { HORSES, type HorseDef } from '../data/horses';
+import { sigId, type CrownDef } from '../data/crowns';
 import { BACKGROUND_JOB, jobOf } from '../data/jobs';
 import { RACES } from '../data/races';
 import { LOADOUT_SIZE } from '../data/weapons';
@@ -10,6 +11,9 @@ import { PLAYER_UNIT, type UnitDef } from '../data/units';
 import type { Soldier } from './roster';
 
 export interface Hero {
+  name: string;
+  /** 扮緊邊位冠位 */
+  crown?: string;
   level: number;
   xp: number;
   attrPoints: number;
@@ -38,6 +42,7 @@ export interface HeroStart {
 
 /** 舊存檔補上新欄位 */
 export function migrateHero(h: Hero): Hero {
+  h.name ??= '無名氏';
   h.race ??= 'human';
   h.artifacts ??= [];
   h.skills.magic ??= 0;
@@ -77,6 +82,29 @@ export function createHero(start: HeroStart): Hero {
   return h;
 }
 
+/** 冠位角色：數值、兵器、坐騎全部跟角色 */
+export function createCrownHero(c: CrownDef): Hero {
+  const h = newHero();
+  const [str, agi, int, cha] = c.attrs;
+  h.name = c.name;
+  h.crown = c.id;
+  h.race = c.race;
+  h.job = 'warrior';
+  h.attrs = { str, agi, int, cha };
+  Object.assign(h.skills, c.skills);
+  h.weapons = [sigId(c), ...c.extra];
+  h.loadout = h.weapons.slice(0, LOADOUT_SIZE);
+  h.horses = [c.horse];
+  h.horse = c.horse;
+  h.armors = [...c.armor];
+  h.equip = {};
+  for (const id of c.armor) {
+    const a = ARMORS.find((x) => x.id === id);
+    if (a) h.equip[a.slot] = id;
+  }
+  return h;
+}
+
 function artifactDefs(h: Hero): ArtifactDef[] {
   return ARTIFACTS.filter((a) => h.artifacts.includes(a.id));
 }
@@ -84,7 +112,7 @@ function artifactDefs(h: Hero): ArtifactDef[] {
 export function newHero(): Hero {
   const s = HERO.startAttr;
   const h: Hero = {
-    level: 1, xp: 0, attrPoints: 3, skillPoints: 4,
+    name: '無名氏', level: 1, xp: 0, attrPoints: 3, skillPoints: 4,
     attrs: { str: s, agi: s, int: s, cha: s },
     skills: Object.fromEntries(SKILL_ORDER.map((k) => [k, 0])) as Record<SkillId, number>,
     weapons: [...HERO.startWeapons], horses: [HERO.startHorse], armors: [...HERO.startArmor],
@@ -167,6 +195,7 @@ export function playerDef(h: Hero): UnitDef {
   const sum = (k: 'hp' | 'damage' | 'mp') => arts.reduce((s, a) => s + (a[k] ?? 0), 0);
   return {
     ...PLAYER_UNIT,
+    name: h.name,
     race: h.race,
     hp: HERO.hpBase + h.attrs.str * HERO.hpPerStr + sum('hp'),
     armor: armorValue(h),

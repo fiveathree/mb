@@ -1,11 +1,13 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
-import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
+import { createCrownHero, createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
 import { ARTIFACTS, DUNGEON, LORD_RULES, PLAYABLE, SIEGE, START_REGIONS, factionOf, lordOf } from './data/factions';
-import { showNewGame } from './ui/newgame';
+import { showNewGame, type NewGameChoice } from './ui/newgame';
+import { CROWN_RENOWN } from './data/economy';
+import type { CrownDef } from './data/crowns';
 import { showFormationPick } from './ui/formation';
 import { formationsFor, type FormationCheck } from './core/formation';
-import { applyScenario, currentScenario, isMagic, scenarioOf } from './data/scenarios';
+import { applyScenario, crownHome, currentScenario, isMagic, scenarioOf } from './data/scenarios';
 import { UNITS } from './data/units';
 import {
   addSoldier, applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
@@ -92,7 +94,7 @@ function saveGame() {
 }
 
 function useGame(r: Roster, w: WorldSave) {
-  applyScenario(w.scenario ?? 'chaos');
+  applyScenario(w.scenario ?? 'chaos', w.crown);
   roster = migrateRoster(r);
   world = new World(w, roster);
   view.setWorld(world);
@@ -101,6 +103,30 @@ function useGame(r: Roster, w: WorldSave) {
 }
 
 /** 城鎮外觀跟地域 */
+/** 冠位角色本：佢嘅主城一開始就係你 */
+function startCrown(r: Roster, crown: CrownDef, c: NewGameChoice) {
+  r.hero = createCrownHero(crown);
+  r.gold = crown.gold;
+  r.soldiers = [];
+  for (const [unit, count] of crown.army) {
+    for (let i = 0; i < count; i++) addSoldier(r, unit);
+  }
+  const w = newWorld();
+  w.difficulty = c.difficulty;
+  w.scenario = c.scenario.id;
+  w.crown = crown.id;
+  w.food = crown.food;
+  w.pol.renown = CROWN_RENOWN;
+  // 自己唔會喺大地圖撞到自己
+  w.pol.storyMet.push(crown.id);
+  const home = PLACES.find((p) => p.id === crownHome(crown, c.scenario.id))!;
+  w.pol.owners[home.id] = PLAYER;
+  w.x = home.x + 3;
+  w.y = home.y + 2;
+  useGame(r, w);
+  backToMap();
+}
+
 function townStyle(p: PlaceDef): TownStyleId {
   if (p.monster) return 'monster';
   const biome = BIOMES.find((b) => Math.hypot(p.x - b.x, p.y - b.y) < b.r);
@@ -788,10 +814,15 @@ async function showMenu() {
       }
       showNewGame(hud, (c) => {
         // 起點座標要跟劇本鏡像，所以要先套用
-        applyScenario(c.scenario.id);
+        applyScenario(c.scenario.id, c.crown?.id);
         const r = newRoster();
+        if (c.crown) {
+          startCrown(r, c.crown, c);
+          return;
+        }
         const bg = c.background;
         r.hero = createHero({ race: c.race, background: bg });
+        r.hero.name = c.name.trim() || r.hero.name;
         r.gold = bg.gold;
         r.soldiers = [];
         for (const e of bg.army) {

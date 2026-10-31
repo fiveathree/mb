@@ -1,5 +1,6 @@
 import type { Rarity } from './gacha';
 import type { Race } from './races';
+import { CROWNS, GRAND_CROWNS, sigId } from './crowns';
 
 /** 生活節奏嘅一步：去邊、做乜、做幾耐 */
 export interface RoutineStep {
@@ -214,12 +215,28 @@ export const MILESTONES: Record<string, Record<number, { text: string; seize?: b
   fig_slimelord: { 3: { text: '史萊姆王吞食咗一頭巨獸，體型暴漲' }, 6: { text: '史萊姆王宣告魔物聯邦擴張', seize: true } },
 };
 
+/** 冠位角色冇扮嗰陣就係大地圖人物 */
+for (const c of CROWNS) {
+  if (FIGURES.some((f) => f.id === c.id)) continue;
+  const base = c.sig[1];
+  const [str, agi, , cha] = c.attrs;
+  FIGURES.push({
+    id: c.id, name: c.name, desc: `${c.cls}冠位：${c.desc}`, rarity: 'ur', tier: 6,
+    role: base === 'hero_lance' ? 'cavalry' : /bow|gauss/.test(base) ? 'archer' : /hero_/.test(base) ? 'infantry' : 'mage',
+    hp: 220 + str * 12, armor: 8 + Math.round(agi / 3), weapons: [sigId(c), 'hero_blade'], color: c.color, race: c.race, horse: base === 'hero_lance' ? c.horse : undefined,
+    aura: Math.min(5, 1 + Math.round(cha / 4)), home: c.home, price: 7000 + c.attrs.reduce((a, b) => a + b, 0) * 40, renown: 40, scenario: c.scenario,
+    routine: [{ job: '操練親兵', go: 'home', wait: 10, grow: true }, { job: '巡視各地', go: 'town', wait: 8 }, { job: '追剿賊寇', go: 'forest', wait: 8, grow: true }],
+  });
+  FAVORS[c.id] = { title: `幫${c.name}掃蕩三夥賊`, kind: 'bandits', need: 3 };
+}
+
 export const figureOf = (id: string) => FIGURES.find((f) => f.id === id);
 
 /** 只喺有魔法嘅劇本出現 */
 const MAGIC_FIGURES = ['fig_immortal', 'fig_vampire', 'fig_assassin', 'fig_slimelord'];
 export const figuresFor = (magic: boolean, scenario: string, ownOnly: boolean) => FIGURES.filter((f) => (
-  f.scenario ? f.scenario === scenario : !ownOnly && (magic || !MAGIC_FIGURES.includes(f.id))
+  scenario === 'chaos' && GRAND_CROWNS.some((c) => c.id === f.id) ? true
+    : f.scenario ? f.scenario === scenario : !ownOnly && (magic || !MAGIC_FIGURES.includes(f.id))
 ));
 
 /** 招請價：愈修練愈貴 */

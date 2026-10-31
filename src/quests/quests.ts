@@ -89,10 +89,10 @@ function finish(world: World, q: Quest) {
 }
 
 /** 將故事入面嘅地名換成呢個劇本嘅叫法 */
-function storyText(text: string): string {
+function storyText(world: World, text: string): string {
   const name = (id: string) => PLACES.find((p) => p.id === id)?.name ?? '';
   return text.replace('{hook}', currentScenario().desc).replace(/\{a\}/g, name('griffon')).replace(/\{b\}/g, name('linjiang'))
-    .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair'));
+    .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair')).replace(/\{name\}/g, world.roster.hero.name);
 }
 
 /** 開新一章：主線唔過期，亦唔佔任務名額 */
@@ -103,14 +103,14 @@ export function nextChapter(world: World, index: number) {
   if (!c) {
     world.roster.gold += STORY_RULES.finalGold;
     w.pol.renown += STORY_RULES.finalRenown;
-    world.tellStory('主線完結', `${storyText(STORY_RULES.ending)}（${STORY_RULES.finalGold} 金、聲望 +${STORY_RULES.finalRenown}）`);
+    world.tellStory('主線完結', `${storyText(world, STORY_RULES.ending)}（${STORY_RULES.finalGold} 金、聲望 +${STORY_RULES.finalRenown}）`);
     return;
   }
   w.quests.unshift({
     id: 900000 + index, kind: c.kind, story: index, title: c.title, giver: 'griffon', target: c.target, need: c.need ?? 1, progress: 0, food: c.food ?? 0,
     gold: (index + 1) * STORY_RULES.goldPerChapter, relation: 0, renown: STORY_RULES.renown, deadline: 999999,
   });
-  world.tellStory(c.title, storyText(c.text));
+  world.tellStory(c.title, storyText(world, c.text));
 }
 
 /** 舊存檔同新遊戲都由呢度開始主線 */

@@ -182,6 +182,9 @@ export const SKILLS: Record<SkillId, { name: string; desc: string }> = {
   magic: { name: '魔法', desc: '法力 +10、法術傷害 +8%／級' },
 };
 
+/** 冠位角色本起步聲望 */
+export const CROWN_RENOWN = 30;
+
 export const HERO = {
   startAttr: 5,
   skillMax: 10,

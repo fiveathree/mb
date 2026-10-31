@@ -4,6 +4,8 @@ import type { Culture } from './formations';
 import { NPC } from './economy';
 import type { TicketPool } from './gacha';
 import type { PlayableRace } from './factions';
+import { GRAND_CROWNS, crownOf, shortName, type CrownDef } from './crowns';
+import { FIEF_OWNERS } from './factions';
 import { figuresFor } from './figures';
 import { BIOMES, MAP, PLACES } from './world';
 
@@ -42,8 +44,9 @@ const WEST_MERCS = ['sergeant', 'pikeman', 'archer', 'crossbowman', 'horseman', 
 
 export const SCENARIOS: Scenario[] = [
   {
-    id: 'chaos', sky: ['bird', 'griffin', 'wyvern', 'pegasus', 'dragon'], name: '大混戰', desc: '裂天大陸：中西魔幻全部同場，咩都有',
+    id: 'chaos', sky: ['bird', 'griffin', 'wyvern', 'pegasus', 'dragon'], name: '大混戰', desc: '裂天大陸應世界之惡而召喚歷代冠位：十五軍混戰，勝者要合力面對終焉',
     cultures: ['east', 'west', 'magic'], levy: 'footman', mercs: WEST_MERCS,
+    boss: { unit: 'boss_hellking', lair: '終焉王座', desc: '世界之惡盤踞嘅地方。冠位被召喚，全因為佢。' },
   },
   {
     id: 'threekingdoms', name: '三國鼎立', desc: '魏蜀吳爭天下，群雄並起', cultures: ['east'], levy: 'dao_guard', mercs: EAST_MERCS,
@@ -219,8 +222,14 @@ export const isMagic = () => current.cultures.includes('magic');
 /** 呢個劇本有邊啲人物 */
 export const currentFigures = () => figuresFor(isMagic(), current.id, !!current.ownFigures);
 
-/** 將劇本套用落勢力同地點 */
-export function applyScenario(id: string) {
+// 大混戰：十五位冠位各領一軍，主城照舊
+SCENARIOS[0].realms = GRAND_CROWNS.map((c) => [`${shortName(c)}軍`, '']);
+
+/** 呢個冠位喺呢個劇本由邊度起家 */
+export const crownHome = (c: CrownDef, scenario: string) => (scenario === 'chaos' ? HOME_PLACE[GRAND_CROWNS.indexOf(c)] : c.home);
+
+/** 將劇本套用落勢力同地點；扮冠位時，佢本身個國變舊部 */
+export function applyScenario(id: string, crownId?: string) {
   current = scenarioOf(id);
   FACTIONS.forEach((f, i) => Object.assign(f, baseFactions[i]));
   PLACES.forEach((p, i) => Object.assign(p, basePlaces[i]));
@@ -251,7 +260,7 @@ export function applyScenario(id: string) {
     realms.forEach(([faction, place], i) => {
       FACTIONS[i].name = faction;
       const p = PLACES.find((x) => x.id === HOME_PLACE[i]);
-      if (p) p.name = place;
+      if (p && place) p.name = place;
     });
   }
   if (camps) FACTIONS.forEach((f, i) => { f.garrison = camps[i % camps.length]; });
@@ -260,5 +269,10 @@ export function applyScenario(id: string) {
     lair.name = boss.lair;
     lair.desc = boss.desc;
     lair.garrison = [{ unit: boss.unit, count: 1 }];
+  }
+  const crown = crownOf(crownId);
+  if (crown) {
+    const owner = FACTIONS.find((f) => f.id === FIEF_OWNERS[crownHome(crown, current.id)]);
+    if (owner) owner.name += '舊部';
   }
 }

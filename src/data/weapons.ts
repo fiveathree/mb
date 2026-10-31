@@ -1,3 +1,4 @@
+import { CROWNS, sigId } from './crowns';
 import type { DamageType } from './combat';
 
 export type WeaponModel = 'sword' | 'axe' | 'mace' | 'lance' | 'spear' | 'bow' | 'crossbow' | 'javelin' | 'staff';
@@ -294,6 +295,14 @@ export const SPELL_GLOW: Record<string, number> = {
   lich_fire: 0x7a4ae0, witch_curse: 0xc040e0, wyrm_breath: 0x9a4ae0, frost_nova: 0x9ad8ff, ember_blast: 0xff9a3a, acid_spit: 0x9ad04a, psi_bolt: 0x4ac0d0,
   flying_sword: 0x8fe0e8, heavy_cannon: 0xffd080,
 };
+
+/** 冠位角色專屬兵器：由底本複製再加傷害 */
+for (const c of CROWNS) {
+  const [name, base, bonus] = c.sig;
+  const w = WEAPONS[base];
+  WEAPONS[sigId(c)] = { ...w, id: sigId(c), name, baseDamage: w.baseDamage + bonus };
+  if (SPELL_GLOW[base]) SPELL_GLOW[sigId(c)] = SPELL_GLOW[base];
+}
 
 /** 玩家開局可揀嘅武器，順序即選擇畫面順序 */
 export const PLAYER_ARSENAL = [

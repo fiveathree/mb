@@ -259,7 +259,7 @@ export class Camp {
       return `<button class="skill" data-id="${k}" ${h.skillPoints && h.skills[k] < HERO.skillMax ? '' : 'disabled'}><b>${SKILLS[k].name} ${h.skills[k]}${bonus ? ` +${bonus}` : ''}</b><small>${SKILLS[k].desc}</small></button>`;
     }).join('');
     return `
-      <div class="pick-title">等級 ${h.level}・經驗 ${h.xp}／${heroXpNeed(h.level)}・生命 ${def.hp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, r.soldiers)}</div>
+      <div class="pick-title">${h.name}・等級 ${h.level}・經驗 ${h.xp}／${heroXpNeed(h.level)}・生命 ${def.hp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, r.soldiers)}</div>
       <div class="pick-title">屬性點 ${h.attrPoints}</div>
       <div class="attrs">${attrs}</div>
       <div class="pick-title">技能點 ${h.skillPoints}</div>
