@@ -24,6 +24,28 @@ import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
 import type { Hud } from './hud';
 
+/** 撳實買賣掣：停一停之後連續買 */
+const HOLD_BUTTONS = /^(buy_|sell_|foodd|ticketd)/;
+const HOLD_DELAY = 350;
+const HOLD_EVERY = 90;
+let holdTimer = 0;
+const stopHold = () => window.clearTimeout(holdTimer);
+
+document.addEventListener('pointerdown', (e) => {
+  const id = (e.target as HTMLElement).closest?.('button')?.id;
+  if (!id || !HOLD_BUTTONS.test(id)) return;
+  // 每撳一次畫面會重畫，所以每次用 id 重新搵掣
+  const tick = () => {
+    const el = document.getElementById(id) as HTMLButtonElement | null;
+    if (!el || el.disabled) return;
+    el.click();
+    holdTimer = window.setTimeout(tick, HOLD_EVERY);
+  };
+  stopHold();
+  holdTimer = window.setTimeout(tick, HOLD_DELAY);
+});
+for (const type of ['pointerup', 'pointercancel', 'blur']) window.addEventListener(type, stopHold);
+
 type TownTab = 'market' | 'supply' | 'smith' | 'tavern' | 'workshop' | 'arena' | 'quest';
 const TOWN_TABS: [TownTab, string][] = [
   ['market', '市集'], ['supply', '補給'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'], ['quest', '任務'],
