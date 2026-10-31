@@ -37,7 +37,7 @@ export const CROWNS: CrownDef[] = [
   {
     id: 'crown_lubu', cls: '武力', name: '呂布', scenario: 'threekingdoms', desc: '人中呂布，天下無雙；智謀同信義就係另一回事', race: 'human', grand: true,
     attrs: [17, 12, 4, 6], skills: { riding: 6, ironskin: 4, tactics: 2 }, sig: ['方天畫戟', 'hero_lance', 16], extra: ['axe', 'horsebow'], horse: 'steppe', armor: HEAVY,
-    army: [['lancer', 8], ['horseman', 8], ['dao_guard', 6]], gold: 2500, food: 90, home: 'xuan_city', color: 0xc8342c,
+    army: [['lancer', 8], ['horseman', 8], ['dao_guard', 6]], gold: 2500, food: 150, home: 'xuan_city', color: 0xc8342c,
   },
   {
     id: 'crown_kongming', cls: '智略', name: '諸葛亮', scenario: 'threekingdoms', desc: '羽扇綸巾，算無遺策，手無縛雞之力', race: 'human',
@@ -52,7 +52,7 @@ export const CROWNS: CrownDef[] = [
   {
     id: 'crown_zhaoyun', cls: '騎術', name: '趙雲', scenario: 'threekingdoms', desc: '長坂七進七出，一身是膽', race: 'human',
     attrs: [14, 15, 9, 11], skills: { riding: 8, ironskin: 2 }, sig: ['龍膽亮銀槍', 'hero_lance', 12], extra: ['sword', 'horsebow'], horse: 'steppe', armor: MEDIUM,
-    army: [['horseman', 12], ['lancer', 4]], gold: 1800, food: 80, home: 'bashu_pass', color: 0xd8dce8,
+    army: [['horseman', 12], ['lancer', 4]], gold: 1800, food: 125, home: 'bashu_pass', color: 0xd8dce8,
   },
   {
     id: 'crown_taishici', cls: '弓術', name: '太史慈', scenario: 'threekingdoms', desc: '猿臂善射，弦不虛發', race: 'human',
@@ -62,12 +62,12 @@ export const CROWNS: CrownDef[] = [
   {
     id: 'crown_cunxiao', cls: '武力', name: '李存孝', scenario: 'fivedynasties', desc: '王不過霸，將不過李；十八騎破長安', race: 'human', grand: true,
     attrs: [16, 13, 5, 7], skills: { riding: 6, ironskin: 3, tactics: 2 }, sig: ['禹王槊', 'hero_lance', 14], extra: ['axe'], horse: 'warhorse', armor: HEAVY,
-    army: [['ya_guard', 6], ['lancer', 8], ['dao_guard', 6]], gold: 2200, food: 90, home: 'ironhelm_keep', color: 0x8a2c3a,
+    army: [['ya_guard', 6], ['lancer', 8], ['dao_guard', 6]], gold: 2200, food: 110, home: 'ironhelm_keep', color: 0x8a2c3a,
   },
   {
     id: 'crown_abaoji', cls: '騎術', name: '耶律阿保機', scenario: 'fivedynasties', desc: '統一諸部，鐵騎南望', race: 'human',
     attrs: [12, 13, 11, 13], skills: { riding: 7, leadership: 4, archery: 3 }, sig: ['鳴鏑強弓', 'hero_bow', 8], extra: ['sword', 'lance'], horse: 'steppe', armor: MEDIUM,
-    army: [['horseman', 16], ['archer', 6]], gold: 3000, food: 110, home: 'xuan_city', color: 0x9a7a4a,
+    army: [['horseman', 16], ['archer', 6]], gold: 3000, food: 150, home: 'xuan_city', color: 0x9a7a4a,
   },
   {
     id: 'crown_qianliu', cls: '弓術', name: '錢鏐', scenario: 'fivedynasties', desc: '強弩射潮，保境安民', race: 'human',
@@ -87,12 +87,12 @@ export const CROWNS: CrownDef[] = [
   {
     id: 'crown_spartacus', cls: '武力', name: '斯巴達克斯', scenario: 'rome', desc: '奴隸起義嘅領袖，鬥場入面冇對手', race: 'human',
     attrs: [16, 14, 7, 12], skills: { ironskin: 7, tactics: 2 }, sig: ['色雷斯彎刀', 'hero_blade', 14], extra: ['axe'], horse: 'hunter', armor: LIGHT,
-    army: [['barbarian', 18], ['auxilia', 4]], gold: 500, food: 70, home: 'blackfang', color: 0xb08a4a,
+    army: [['barbarian', 18], ['auxilia', 4]], gold: 800, food: 80, home: 'blackfang', color: 0xb08a4a,
   },
   {
     id: 'crown_richard', cls: '武力', name: '獅心王理查', scenario: 'crusade', desc: '永遠衝喺最前，國庫永遠係空', race: 'human', grand: true,
     attrs: [16, 11, 8, 13], skills: { riding: 5, ironskin: 5, leadership: 3 }, sig: ['獅心大斧', 'hero_axe', 10], extra: ['sword', 'lance'], horse: 'warhorse', armor: HEAVY,
-    army: [['crusader', 8], ['sergeant', 10], ['crossbowman', 6]], gold: 1500, food: 100, home: 'griffon', color: 0xc84a2c,
+    army: [['crusader', 8], ['sergeant', 10], ['crossbowman', 6]], gold: 1500, food: 125, home: 'griffon', color: 0xc84a2c,
   },
   {
     id: 'crown_saladin', cls: '統率', name: '薩拉丁', scenario: 'crusade', desc: '仁慈同用兵一樣令敵人佩服', race: 'human',
@@ -202,7 +202,7 @@ export const CROWNS: CrownDef[] = [
   {
     id: 'fig_windranger', cls: '弓術', name: '疾風射手 蘿娜', scenario: 'ancients', desc: '箭比風快', race: 'elf',
     attrs: [8, 19, 9, 10], skills: { archery: 8 }, sig: ['疾風長弓', 'hero_bow', 12], extra: ['sword'], horse: 'hunter', armor: LIGHT,
-    army: [['lane_creep', 10], ['elf_mage', 3]], gold: 1400, food: 70, home: 'songglade', color: 0x7fd06a,
+    army: [['lane_creep', 14], ['elf_mage', 4]], gold: 1400, food: 70, home: 'songglade', color: 0x7fd06a,
   },
   {
     id: 'fig_alchemist', cls: '魔導', name: '煉金師 維拉', scenario: 'emberdeep', desc: '被熾礦改造過嘅身體，隨時會爆', race: 'human', grand: true,
