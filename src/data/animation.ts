@@ -52,6 +52,8 @@ export const RANGED_POSES = {
   crossbowIdle: { rx: -0.8, ry: 0.3, rz: 0, w: 1, twist: 0 },
   javelinWind: { rx: -2.7, ry: 0, rz: 0, w: 1.9, twist: -0.4 },
   javelinIdle: { rx: -0.5, ry: 0, rz: 0, w: 0.4, twist: 0 },
+  staffCast: { rx: -2.3, ry: 0, rz: 0, w: 0.9, twist: 0 },
+  staffIdle: { rx: -0.5, ry: 0, rz: 0, w: -0.1, twist: 0 },
 };
 
 /** 姿勢追隨速度（每秒） */

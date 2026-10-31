@@ -5,7 +5,7 @@ import { COMBAT } from '../data/combat';
 import { SADDLE_HEIGHT } from '../data/horses';
 import type { WeaponDef } from '../data/weapons';
 import { clamp, flatDist, rad, type Combatant } from './entities';
-import { shotHit, type CombatWorld } from './combat';
+import { explode, shotHit, type CombatWorld } from './combat';
 import { heightAt } from './terrain';
 
 const MAX = 500;
@@ -74,7 +74,12 @@ export class Projectiles {
     const w = c.weapon;
     const r = w.ranged!;
     if ((c.ammo[w.id] ?? 0) <= 0) return;
-    c.ammo[w.id]--;
+    if (w.spell && c.mp < w.spell.mp) {
+      if (c === world.player) world.announce('法力不足', 'guard');
+      return;
+    }
+    if (w.spell) c.mp -= w.spell.mp;
+    else c.ammo[w.id]--;
 
     const muzzle = v1.set(c.pos.x, c.pos.y + MUZZLE_HEIGHT + (c.horse ? SADDLE_HEIGHT - 0.8 : 0), c.pos.z);
     const dir = v2;
@@ -115,7 +120,7 @@ export class Projectiles {
 
       const step = dt / SUBSTEPS;
       for (let k = 0; k < SUBSTEPS && s.live; k++) {
-        s.vel.y -= COMBAT.gravity * step;
+        if (!s.weapon!.spell?.flat) s.vel.y -= COMBAT.gravity * step;
         s.pos.addScaledVector(s.vel, step);
         for (const t of world.units) {
           if (t.dead || t.team === s.owner!.team) continue;
@@ -128,20 +133,28 @@ export class Projectiles {
           if (t.horse) {
             const onRider = y >= RIDER_BODY_FROM && y <= RIDER_HEIGHT && dist < R.hitRadius;
             const onHorse = y > 0 && y < RIDER_BODY_FROM && dist < 1;
+            if ((onRider || onHorse) && s.weapon!.spell?.aoe) {
+              s.live = false;
+              explode(world, s.owner!, s.weapon!, s.pos, s.mult);
+              break;
+            }
             if (onRider || onHorse) {
               shotHit(world, s.owner!, t, s.weapon!, s.mult, (y - RIDER_BODY_FROM + 0.4) / (RIDER_HEIGHT - RIDER_BODY_FROM + 0.4), onHorse, s.vel.x, s.vel.z);
               s.live = false;
               break;
             }
-          } else if (dist < R.hitRadius && y > 0 && y < HUMAN_HEIGHT) {
-            shotHit(world, s.owner!, t, s.weapon!, s.mult, y / HUMAN_HEIGHT, false, s.vel.x, s.vel.z);
+          } else if (dist < Math.max(R.hitRadius, t.def.radius) && y > 0 && y < HUMAN_HEIGHT * (t.def.boss ? 2.5 : 1)) {
+            s.live = false;
+            if (s.weapon!.spell?.aoe) explode(world, s.owner!, s.weapon!, s.pos, s.mult);
+            else shotHit(world, s.owner!, t, s.weapon!, s.mult, y / HUMAN_HEIGHT, false, s.vel.x, s.vel.z);
             s.live = false;
             break;
           }
         }
         if (s.live && s.pos.y <= heightAt(s.pos.x, s.pos.z)) {
           s.live = false;
-          s.stuck = R.stuckLife;
+          if (s.weapon!.spell?.aoe) explode(world, s.owner!, s.weapon!, s.pos, s.mult);
+          else if (!s.weapon!.spell) s.stuck = R.stuckLife;
         }
       }
 

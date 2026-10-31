@@ -1,6 +1,6 @@
 import type { DamageType } from './combat';
 
-export type WeaponModel = 'sword' | 'axe' | 'mace' | 'lance' | 'spear' | 'bow' | 'crossbow' | 'javelin';
+export type WeaponModel = 'sword' | 'axe' | 'mace' | 'lance' | 'spear' | 'bow' | 'crossbow' | 'javelin' | 'staff';
 
 export interface RangedDef {
   /** 飛行速度（公尺／秒） */
@@ -16,7 +16,20 @@ export interface RangedDef {
   minDamageMult: number;
 }
 
+export interface SpellDef {
+  mp: number;
+  /** 爆炸半徑 */
+  aoe?: number;
+  /** 直線飛行，唔受重力 */
+  flat?: boolean;
+  /** 對自己施放 */
+  self?: 'heal' | 'ward';
+  /** 治療量或者護盾秒數 */
+  power?: number;
+}
+
 export interface WeaponDef {
+  spell?: SpellDef;
   id: string;
   name: string;
   model: WeaponModel;
@@ -167,6 +180,30 @@ const WEAPON_LIST: WeaponDef[] = [
     swingTime: 0.28, recoverTime: 0.5, arcDeg: 120, length: 0.95,
   },
 
+  // ── 法術（第五類武器）──
+  ...[
+    { id: 'fireball', name: '火球術', base: 55, draw: 0.8, recover: 0.5, speed: 32, spell: { mp: 15, aoe: 4.5 } },
+    { id: 'lightning', name: '雷擊', base: 70, draw: 0.5, recover: 0.6, speed: 240, spell: { mp: 12, flat: true } },
+    { id: 'ward', name: '護盾術', base: 0, draw: 0.3, recover: 0.4, speed: 1, spell: { mp: 20, self: 'ward' as const, power: 8 } },
+    { id: 'heal', name: '治療術', base: 0, draw: 0.9, recover: 0.5, speed: 1, spell: { mp: 18, self: 'heal' as const, power: 45 } },
+    { id: 'dragon_breath', name: '龍息', base: 40, draw: 0.4, recover: 0.8, speed: 22, spell: { mp: 22, aoe: 7 } },
+    { id: 'troop_fire', name: '火球', base: 26, draw: 1.3, recover: 1.4, speed: 30, spell: { mp: 0, aoe: 3.5 } },
+    { id: 'troop_bolt', name: '枯骨雷', base: 34, draw: 1, recover: 1.5, speed: 200, spell: { mp: 0, flat: true } },
+    { id: 'dragon_fire', name: '龍炎', base: 60, draw: 1.1, recover: 1.2, speed: 34, spell: { mp: 0, aoe: 9 } },
+  ].map((s): WeaponDef => ({
+    ...melee, id: s.id, name: s.name, model: 'staff', damageType: 'blunt', baseDamage: s.base, reach: 0,
+    windupMin: Math.min(0.3, s.draw), chargeFull: s.draw, swingTime: 0, recoverTime: s.recover, arcDeg: 0, length: 1.3,
+    spell: s.spell, ranged: { speed: s.speed, spreadDeg: 0.4, undrawnSpreadDeg: 1, mountedSpreadDeg: 1, ammo: 999, minDamageMult: 0.7 },
+  })),
+  {
+    ...melee, id: 'boss_fist', name: '石拳', model: 'mace', damageType: 'blunt', baseDamage: 46, reach: 4.2, windupMin: 0.55, chargeFull: 0.5,
+    swingTime: 0.4, recoverTime: 0.7, arcDeg: 150, cleave: 4, length: 1.2,
+  },
+  {
+    ...melee, id: 'boss_club', name: '巨棒', model: 'mace', damageType: 'blunt', baseDamage: 58, reach: 5, windupMin: 0.6, chargeFull: 0.5,
+    swingTime: 0.42, recoverTime: 0.7, arcDeg: 160, cleave: 5, length: 1.8,
+  },
+
   // ── 特殊兵種同英雄 ──
   {
     ...melee, id: 'elite_sword', name: '近衛劍', model: 'sword', damageType: 'cut',
@@ -229,6 +266,7 @@ export const WEAPONS: Record<string, WeaponDef> = Object.fromEntries(WEAPON_LIST
 export const PLAYER_ARSENAL = [
   'sword', 'hand_axe', 'mace', 'axe', 'greatsword', 'lance',
   'pike', 'longbow', 'horsebow', 'crossbow', 'javelin',
+  'fireball', 'lightning', 'ward', 'heal',
 ];
 export const LOADOUT_SIZE = 4;
 export const DEFAULT_LOADOUT = ['sword', 'lance', 'longbow', 'axe'];

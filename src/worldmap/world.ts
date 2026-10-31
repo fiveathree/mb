@@ -1,6 +1,8 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
 import { GOODS, GOOD_ORDER, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { POLITICS } from '../data/factions';
+import { Politics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
 import { CAMPAIGN } from '../data/gacha';
@@ -52,6 +54,8 @@ export interface WorldSave {
   /** 城鎮 → 第幾日可以再比武 */
   arenaUntil: Record<string, number>;
   arenaWins: number;
+  pol: PoliticsSave;
+  nextDragon: number;
 }
 
 function townStock(id: string): Record<GoodId, number> {
@@ -74,6 +78,8 @@ export function migrateWorld(w: WorldSave): WorldSave {
   w.workshops ??= {};
   w.arenaUntil ??= {};
   w.arenaWins ??= 0;
+  w.pol ??= newPolitics();
+  w.nextDragon ??= NPC_RULES.dragonFirstDay;
   return w;
 }
 
@@ -123,9 +129,11 @@ export class World {
   private chasing: number | null = null;
   private rechase = 0;
   readonly npcs: NpcSystem;
+  readonly politics: Politics;
 
   constructor(public save: WorldSave, public roster: Roster) {
     migrateWorld(save);
+    this.politics = new Politics(save.pol, (t) => this.note(t));
     this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
     this.npcs.refill();
   }
@@ -215,7 +223,7 @@ export class World {
     }
   }
 
-  private note(text: string) {
+  note(text: string) {
     this.save.log.unshift(`第 ${dayOf(this.save)} 日：${text}`);
     this.save.log.length = Math.min(this.save.log.length, 6);
   }
@@ -226,6 +234,9 @@ export class World {
     for (const s of r.soldiers) if (s.hurtDays > 0) s.hurtDays--;
     this.driftMarkets();
     if (day % NPC_RULES.refillEvery === 0) this.npcs.refill();
+    this.politics.daily(day);
+    if (day % POLITICS.thinkEvery === 0) this.politics.think(day);
+    r.gold += this.politics.dailyPay();
 
     w.food -= partyFood(r);
     if (w.food <= 0) {
@@ -237,10 +248,10 @@ export class World {
     }
 
     if ((day - 1) % TIME.daysPerWeek === 0) {
-      const income = this.workshopIncome();
+      const income = this.workshopIncome() + this.politics.fiefIncome();
       if (income) {
         r.gold += income;
-        this.note(`作坊收入 ${income} 金`);
+        this.note(`作坊同領地收入 ${income} 金`);
       }
       const wage = partyWage(r);
       if (r.infiniteGold) {

@@ -30,7 +30,7 @@ const CONTROLS: [string, string][] = [
   ['E', '放平騎槍'],
   ['滾輪／Q', '切換武器'],
   ['F', '上馬／下馬'],
-  ['1 2 3 0', '選步／弓／騎／全軍'],
+  ['1 2 3 4 0', '選步弓騎法／全軍'],
   ['F1 F2 F3', '跟隨／守住／衝鋒'],
   ['F4 F5 F6', '散開／密集／停射'],
   ['Tab', '戰況表'],
@@ -65,7 +65,7 @@ export class Hud {
           <div class="charge"><i></i></div>
         </div>
         <div class="panel left">
-          ${bar('hp', '生命')}${bar('horse', '戰馬')}${bar('stam', '馬力')}${bar('shield', '盾牌')}
+          ${bar('hp', '生命')}${bar('mp', '法力')}${bar('horse', '戰馬')}${bar('stam', '馬力')}${bar('shield', '盾牌')}
         </div>
         <div class="panel right">
           <div id="speed"></div>
@@ -259,6 +259,7 @@ export class Hud {
     const p = b.player;
     const h = p.horse ?? b.lastHorse;
     this.setBar('hp', p.hp, p.def.hp);
+    this.setBar('mp', p.mp, p.def.mp ?? 1, !!p.def.mp);
     this.setBar('horse', h.hp, h.def.hp, !h.dead);
     this.setBar('stam', h.stamina, h.def.stamina, !h.dead);
     this.setBar('shield', p.shieldHp, p.shieldMax, p.weapon.hasShield);
@@ -277,10 +278,10 @@ export class Hud {
     const kmh = p.horse ? Math.round(Math.abs(p.horse.speed) * 3.6) : 0;
     this.q('#speed').innerHTML = `${kmh}<small> km/h</small>`;
     const w = p.weapon;
-    this.q('#weapon').textContent = w.ranged ? `${w.name}　箭 ${p.ammo[w.id]}` : w.name;
+    this.q('#weapon').textContent = w.spell ? `${w.name}　法力 ${w.spell.mp}` : w.ranged ? `${w.name}　箭 ${p.ammo[w.id]}` : w.name;
     const canCouch = w.couchable && p.horse && p.horse.speed >= COMBAT.couch.minSpeed;
     this.q('#hint').textContent = p.dead ? '你已倒下' : p.couched ? '騎槍已放平！瞄準馬頭前方'
-      : canCouch ? '撳 E 放平騎槍' : p.horse ? '' : '撳 F 上馬';
+      : canCouch ? '撳 E 放平騎槍' : p.horse || b.lastHorse.dead ? '' : '撳 F 上馬';
 
     const inc = p.dead ? null : this.incoming(b, p);
     const melee = !w.ranged;

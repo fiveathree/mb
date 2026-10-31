@@ -226,6 +226,7 @@ function updateFoot(c: Combatant, ai: AiState, dt: number, world: CombatWorld) {
       gx = c.pos.x;
       gz = c.pos.z;
     }
+    [gx, gz] = world.routeGoal(c, gx, gz);
     const dx = gx - c.pos.x;
     const dz = gz - c.pos.z;
     const len = Math.hypot(dx, dz);

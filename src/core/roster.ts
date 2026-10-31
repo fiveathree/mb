@@ -3,7 +3,7 @@ import { CAMPAIGN, GACHA, LEVEL, POOL_ORDER, RARITY, RARITY_ORDER, type PoolId, 
 import { RACES, UPKEEP, type Race } from '../data/races';
 import { PROMOTION, UPGRADES } from '../data/economy';
 import { UNITS, type Role, type UnitDef } from '../data/units';
-import { newHero, partyLimit, skillOf, type Hero } from './hero';
+import { migrateHero, newHero, partyLimit, skillOf, type Hero } from './hero';
 
 const AUTO_PLAYER_POWER = 8;
 
@@ -83,7 +83,7 @@ export function newRoster(): Roster {
 
 /** 舊存檔補上新欄位 */
 export function migrateRoster(r: Roster): Roster {
-  r.hero ??= newHero();
+  r.hero = migrateHero(r.hero ?? newHero());
   return r;
 }
 
@@ -197,7 +197,7 @@ export function deployment(r: Roster): Soldier[] {
 }
 
 export function roleCounts(list: Soldier[]): Record<Role, number> {
-  const c: Record<Role, number> = { infantry: 0, archer: 0, cavalry: 0 };
+  const c: Record<Role, number> = { infantry: 0, archer: 0, cavalry: 0, mage: 0 };
   for (const s of list) c[UNITS[s.unit].role]++;
   return c;
 }

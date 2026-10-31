@@ -92,6 +92,12 @@ function buildWeapon(w: WeaponDef): THREE.Group {
       g.add(limb(1), limb(-1), box(0.008, 0.008, L * 0.92, 0xe8e0cc, 0, -0.03, 0));
       break;
     }
+    case 'staff': {
+      const orb = ico(0.09, 0xff9a3c);
+      orb.position.z = L - 0.25;
+      g.add(box(0.04, 0.04, L, COLORS.wood, 0, 0, L / 2 - 0.3), orb);
+      break;
+    }
     case 'crossbow':
       g.add(box(0.06, 0.07, L, COLORS.wood, 0, 0, L / 2 - 0.15), box(0.72, 0.03, 0.05, COLORS.steel, 0, 0.03, L - 0.2));
       break;
@@ -146,6 +152,14 @@ function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
       break;
     case 'snout':
       torso.add(box(0.13, 0.1, 0.18, skin, 0, 0.78, 0.15));
+      break;
+    case 'dragon':
+      torso.add(box(0.2, 0.15, 0.42, skin, 0, 0.78, 0.26), box(0.14, 0.14, 0.9, skin, 0, 0.1, -0.55));
+      side((s) => {
+        const wing = box(1.1, 0.04, 0.6, 0x7a1a14, s * 0.75, 0.62, -0.18);
+        wing.rotation.z = s * 0.45;
+        return wing;
+      });
       break;
     default:
       break;
@@ -354,6 +368,7 @@ function targetPose(c: Combatant): { pose: ArmPose; rate: number } {
   if (w.ranged) {
     const aiming = c.phase === 'charge';
     if (w.model === 'bow') return { pose: aiming ? RANGED_POSES.bowDraw : IDLE_POSE, rate: POSE_RATE.normal };
+    if (w.model === 'staff') return { pose: aiming ? RANGED_POSES.staffCast : RANGED_POSES.staffIdle, rate: POSE_RATE.normal };
     if (w.model === 'crossbow') {
       return { pose: aiming ? RANGED_POSES.crossbowAim : RANGED_POSES.crossbowIdle, rate: POSE_RATE.normal };
     }
@@ -374,7 +389,7 @@ export function syncHuman(c: Combatant, dt: number) {
   const r = c.rig;
   const h = c.horse;
 
-  if (c.fled) {
+  if (c.fled || c.hiddenBody) {
     flushParts(r.root, r.parts, true);
     return;
   }
@@ -422,7 +437,7 @@ export function syncHuman(c: Combatant, dt: number) {
 
   const w = c.weapon;
   const shieldUp = c.phase === 'block' && c.hasActiveShield;
-  const bowUp = w.ranged && c.phase === 'charge' && w.model !== 'javelin';
+  const bowUp = w.ranged && c.phase === 'charge' && w.model !== 'javelin' && w.model !== 'staff';
   const armLTarget = shieldUp ? -1.45 : bowUp ? -1.55 : w.hasShield ? -0.75 : -0.5;
   r.armL.rotation.x += (armLTarget - r.armL.rotation.x) * (1 - Math.exp(-POSE_RATE.block * dt));
   r.armL.rotation.y = shieldUp ? -0.75 : bowUp ? 0 : -0.35;

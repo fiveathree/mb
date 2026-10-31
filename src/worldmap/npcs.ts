@@ -33,6 +33,7 @@ function nearestTown(p: PlaceDef): PlaceDef {
 }
 
 export function raiderArmy(n: Npc): ArmyEntry[] {
+  if (n.kind === 'dragon') return [{ unit: 'boss_dragon', count: 1 }];
   return NPC_RULES.raiderArmy.map((a) => ({ unit: a.unit, count: Math.max(1, Math.round(n.size * a.share)) }));
 }
 
@@ -70,6 +71,11 @@ export class NpcSystem {
       this.spawn('raider', placeOf('blackfang'));
       this.save.nextRaid = this.day() + NPC_RULES.raidEveryDays;
       this.note('黑牙堡嘅掠奪隊出動！');
+    }
+    if (this.day() >= this.save.nextDragon && count('dragon') < NPC.dragon.max) {
+      this.spawn('dragon', placeOf('dragonlair'));
+      this.save.nextDragon = this.day() + NPC_RULES.dragonEveryDays;
+      this.note('赤焰巨龍離巢！全大陸震動');
     }
   }
 
@@ -132,8 +138,9 @@ export class NpcSystem {
         break;
       }
       case 'raider':
+      case 'dragon':
         if (n.done) {
-          this.setTrip(n, home, '搶完返黑牙堡');
+          this.setTrip(n, home, n.kind === 'dragon' ? '飛返龍巢' : '搶完返黑牙堡');
         } else {
           const to = pick(villages);
           this.setTrip(n, to, `正要洗劫${to.name}`);
@@ -167,10 +174,11 @@ export class NpcSystem {
         n.wait = NPC_RULES.restSeconds;
         break;
       case 'raider':
+      case 'dragon':
         if (place?.kind === 'village' && !n.done) {
           this.save.burnedUntil[place.id] = this.day() + NPC_RULES.burnedDays;
           n.done = true;
-          this.note(`${place.name}被獸人洗劫！`);
+          this.note(`${place.name}被${n.kind === 'dragon' ? '巨龍燒毀' : '獸人洗劫'}！`);
           n.wait = 3;
         } else if (n.done) {
           this.save.npcs = this.save.npcs.filter((x) => x !== n);
@@ -264,7 +272,7 @@ export class NpcSystem {
     let best: Npc | null = null;
     let bestD: number = NPC_RULES.banditPreySight;
     for (const n of this.save.npcs) {
-      if (n.kind === 'patrol' || n.kind === 'raider') continue;
+      if (n.kind === 'patrol' || n.kind === 'raider' || n.kind === 'dragon') continue;
       const d = Math.hypot(n.x - b.x, n.y - b.y);
       if (d < bestD) {
         bestD = d;

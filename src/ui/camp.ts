@@ -1,6 +1,6 @@
 import { ATTR_DESC, ATTR_NAME, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES } from '../data/horses';
-import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type PoolId } from '../data/gacha';
+import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
 import { ROLE_LABEL, UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
@@ -9,26 +9,31 @@ import {
   applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rarityOf, roleCounts,
   sortedSoldiers, wageOf, xpToNext, type DrawResult, type Roster, type Soldier,
 } from '../core/roster';
+import { FACTIONS, POLITICS } from '../data/factions';
+import { spend } from '../core/roster';
+import { PLAYER, RANK_NAME } from '../politics/politics';
+import type { World } from '../worldmap/world';
 import type { Hud } from './hud';
 
-type Tab = 'party' | 'hero' | 'roster' | 'gacha';
+type Tab = 'party' | 'hero' | 'roster' | 'gacha' | 'realm';
 
 const PAGE_SIZE = 12;
-const TABS: [Tab, string][] = [['party', '部隊'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡']];
+const TABS: [Tab, string][] = [['party', '部隊'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力']];
 
 /** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
   private tab: Tab = 'party';
   private page = 0;
-  private pool: PoolId = 'human';
+  private pool: TicketPool = 'human';
   private lastDraw: DrawResult[] = [];
   private notice = '';
   private onBack: () => void = () => {};
 
-  constructor(private hud: Hud, private roster: Roster) {}
+  constructor(private hud: Hud, private roster: Roster, private world: World) {}
 
-  setRoster(r: Roster) {
+  setRoster(r: Roster, world: World) {
     this.roster = r;
+    this.world = world;
     this.lastDraw = [];
   }
 
@@ -40,7 +45,9 @@ export class Camp {
 
   private render() {
     const r = this.roster;
-    const body = { party: () => this.partyHtml(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml() }[this.tab]();
+    const body = {
+      party: () => this.partyHtml(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(),
+    }[this.tab]();
     this.hud.showScreen(`
       <div class="card camp">
         <div class="camp-head">
@@ -123,7 +130,7 @@ export class Camp {
     });
     this.$$('.pool', (el) => {
       el.onclick = () => {
-        this.pool = el.dataset.pool as PoolId;
+        this.pool = el.dataset.pool as TicketPool;
         this.lastDraw = [];
         this.render();
       };
@@ -132,6 +139,25 @@ export class Camp {
       el.onclick = () => {
         const res = draw(this.roster, this.pool, Number(el.dataset.n) as 1 | 10);
         if (res) this.lastDraw = res;
+        this.render();
+      };
+    });
+    const pol = this.world.politics;
+    const act = (sel: string, fn: (f: string) => void) => this.$$(sel, (el) => {
+      el.onclick = () => {
+        fn(el.dataset.f!);
+        this.render();
+      };
+    });
+    act('.contract', (f) => pol.signContract(f));
+    act('.swear', (f) => pol.swear(f));
+    act('.peace', (f) => {
+      if (spend(this.roster, POLITICS.peaceCost)) pol.makePeace(f);
+    });
+    this.$$('#crown', (el) => {
+      el.onclick = () => {
+        const name = document.querySelector<HTMLInputElement>('#screen #kname')?.value.trim() || '鐵騎王國';
+        pol.crown(name);
         this.render();
       };
     });
@@ -220,6 +246,26 @@ export class Camp {
         <span>${this.page + 1}／${pages}</span>
         <button class="alt pager" data-step="1" ${this.page < pages - 1 ? '' : 'disabled'}>下一頁</button>
       </div>`;
+  }
+
+  private realmHtml(): string {
+    const pol = this.world.politics;
+    const s = pol.s;
+    const rows = FACTIONS.map((f) => {
+      const fiefs = pol.fiefsOf(f.id).length;
+      const btns = [
+        pol.hostile(f.id) && pol.atWar(PLAYER, f.id) ? `<button class="mini peace" data-f="${f.id}">議和 ${POLITICS.peaceCost}</button>` : '',
+        pol.canContract(f.id) ? `<button class="mini contract" data-f="${f.id}">簽約</button>` : '',
+        pol.canSwear(f.id) ? `<button class="mini swear" data-f="${f.id}">效忠</button>` : '',
+      ].join('');
+      return `<tr><td style="color:${f.color === '#2c2c38' ? '#9a9ab0' : f.color}">${f.name}</td><td>${fiefs}</td><td>${pol.relation(f.id)}</td><td>${pol.hostile(f.id) ? '敵對' : s.liege === f.id ? '宗主' : ''}</td><td>${btns}</td></tr>`;
+    }).join('');
+    const crown = pol.canCrown() ? `<div class="cheat"><input id="kname" placeholder="國號" maxlength="8" /><button class="go small" id="crown">自立為王</button></div>` : '';
+    return `
+      <div class="pick-title">身份：${RANK_NAME[s.rank]}${s.liege ? `（${pol.nameOf(s.liege)}）` : ''}${s.kingdom ? `・${s.kingdom}` : ''}・聲望 ${s.renown}・領地 ${pol.fiefsOf(PLAYER).length}${s.won ? '・已統一大陸！' : ''}</div>
+      <table class="report trade"><tr><th>勢力</th><th>領地</th><th>好感</th><th>關係</th><th></th></tr>${rows}</table>
+      <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。攻下第一塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
+      ${crown}`;
   }
 
   private drawCard(d: DrawResult, i: number): string {

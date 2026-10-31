@@ -30,6 +30,8 @@ export interface CombatWorld {
   onUnitDown(t: Combatant, by: Combatant): void;
   /** 玩家瞄準方向（鏡頭準星） */
   playerAim(muzzle: Vector3, out: Vector3): void;
+  /** 圍城時將行軍目標改去最近缺口 */
+  routeGoal(c: Combatant, gx: number, gz: number): [number, number];
 }
 
 const tmp = new Vector3();
@@ -59,7 +61,32 @@ export function stagger(c: Combatant, time: number) {
   c.couched = false;
 }
 
+const MP_REGEN = 2.5;
+
+function castSelf(c: Combatant, world: CombatWorld) {
+  const s = c.weapon.spell!;
+  if (c.mp < s.mp) {
+    if (c === world.player) world.announce('法力不足', 'guard');
+    return;
+  }
+  c.mp -= s.mp;
+  tmp.set(c.pos.x, c.pos.y + 1.5, c.pos.z);
+  if (s.self === 'heal') {
+    c.hp = Math.min(c.def.hp, c.hp + (s.power ?? 0));
+    world.fx.burst(tmp, 0x7fe8a0, 16, 3);
+  } else {
+    c.wardT = s.power ?? 0;
+    world.fx.burst(tmp, 0x8fc4ff, 16, 3);
+  }
+}
+
 function beginSwing(c: Combatant, world: CombatWorld) {
+  if (c.weapon.spell?.self) {
+    castSelf(c, world);
+    c.phase = 'recover';
+    c.phaseT = 0;
+    return;
+  }
   if (c.weapon.ranged) {
     world.projectiles.fire(world, c);
     c.phase = 'recover';
@@ -204,11 +231,16 @@ export function shotHit(
   const nx = vx / speed;
   const nz = vz / speed;
   const head = !hitHorse && hitRatio >= R.headHeight;
-  const raw = w.baseDamage * (att.def.damageMult ?? 1) * mult * (head ? R.headMult : 1) * heightMult(att, t);
+  const power = w.spell ? att.def.spellMult ?? 1 : att.def.damageMult ?? 1;
+  const raw = w.baseDamage * power * mult * (head ? R.headMult : 1) * heightMult(att, t);
   const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
   const isPlayerAtt = att === world.player;
   const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2, t.pos.z);
 
+  if (t.wardT > 0) {
+    world.fx.burst(hitPos, 0x8fc4ff, 6, 3);
+    return;
+  }
   const front = Math.abs(angleDiff(Math.atan2(-vx, -vz), t.aimYaw)) < rad(COMBAT.blockArcDeg);
   if (front && t.hasActiveShield && !hitHorse
     && (t.phase === 'block' || Math.random() < R.passiveShieldChance)) {
@@ -226,6 +258,25 @@ export function shotHit(
   }
   const final = Math.round(armorCut(t.def.armor));
   applyDamage(world, att, t, final, nx, nz, clamp(raw * COMBAT.launchPerDamage * 0.35, 0, 4), head ? '爆頭' : '射中');
+}
+
+/** 火球爆炸：範圍內敵人受傷，距離愈遠愈輕 */
+export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: Vector3, mult: number) {
+  const radius = w.spell!.aoe!;
+  world.fx.burst(pos, 0xff8a2c, 34, 9);
+  for (const t of world.units) {
+    if (t.team === att.team || t.dead) continue;
+    const d = flatDist(t.pos, pos);
+    if (d > radius) continue;
+    const dist = Math.max(d, 0.01);
+    const raw = w.baseDamage * (att.def.spellMult ?? 1) * mult * (1 - (d / radius) * 0.6);
+    const nx = (t.pos.x - pos.x) / dist;
+    const nz = (t.pos.z - pos.z) / dist;
+    if (t.wardT > 0) continue;
+    const armorCut = Math.max(raw - t.def.armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
+    applyDamage(world, att, t, Math.round(armorCut), nx, nz, clamp(raw * COMBAT.launchPerDamage, 0, 8), '爆炸');
+    if (t.dead) continue;
+  }
 }
 
 function applyDamage(
@@ -322,6 +373,8 @@ export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Comba
 export function updateAction(c: Combatant, dt: number, world: CombatWorld) {
   const w = c.weapon;
   c.phaseT += dt * (c.def.actionSpeed ?? 1);
+  if (c.def.mp) c.mp = Math.min(c.def.mp, c.mp + MP_REGEN * dt);
+  if (c.wardT > 0) c.wardT -= dt;
   switch (c.phase) {
     case 'charge':
       c.charge = clamp(c.phaseT / w.chargeFull, 0, 1);

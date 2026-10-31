@@ -82,7 +82,7 @@ export function thinkEnemy(groups: Group[], foes: Combatant[], time: number) {
   cx /= alive.length;
   cz /= alive.length;
 
-  const [inf, arc, cav] = groups;
+  const [inf, arc, cav, mage] = groups;
   const infAlive = inf.alive;
   // 冇步兵嘅敵軍，弓兵照樣用自己位置判斷
   let ix = cx;
@@ -108,9 +108,11 @@ export function thinkEnemy(groups: Group[], foes: Combatant[], time: number) {
     const ax = arcAlive.reduce((s, m) => s + m.pos.x, 0) / arcAlive.length;
     const az = arcAlive.reduce((s, m) => s + m.pos.z, 0) / arcAlive.length;
     const d = Math.hypot(cx - ax, cz - az);
-    const go = clamp(d - ENEMY_COMMAND.archerStandoff, 0, ENEMY_COMMAND.advanceStep);
+    const standoff = arcAlive.some((m) => m.def.boss) ? ENEMY_COMMAND.bossStandoff : ENEMY_COMMAND.archerStandoff;
+    const go = clamp(d - standoff, 0, ENEMY_COMMAND.advanceStep);
     const fa = Math.atan2(cx - ax, cz - az);
     arc.setAnchor(ax + Math.sin(fa) * go, az + Math.cos(fa) * go, fa);
+    mage.setAnchor(ax + Math.sin(fa) * go + 8, az + Math.cos(fa) * go - 6, fa);
   }
 
   if (time >= ENEMY_COMMAND.cavalryDelay) cav.order = 'charge';

@@ -1,6 +1,8 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
-import { gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
+import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
+import { ARTIFACTS, DUNGEON, PLAYABLE, START_REGIONS, factionOf } from './data/factions';
+import { showNewGame } from './ui/newgame';
 import {
   applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
 } from './core/roster';
@@ -8,7 +10,7 @@ import { SLOT_COUNT, deleteSlot, readSlots, writeSlot, type GameSave } from './c
 import type { ArmyEntry } from './data/battlefield';
 import { ARENA, HERO, NPC_RULES } from './data/economy';
 import { CAMPAIGN, POOLS } from './data/gacha';
-import { MORALE_PARTY, type BattleTheme, type PlaceDef } from './data/world';
+import { MORALE_PARTY, PLACES, type BattleTheme, type PlaceDef } from './data/world';
 import { Camp } from './ui/camp';
 import { Hud } from './ui/hud';
 import { PlaceScreens } from './ui/place';
@@ -24,7 +26,7 @@ const battle = new Battle(canvas, hud);
 let slot = 0;
 let roster: Roster = newRoster();
 let world = new World(newWorld(), roster);
-const camp = new Camp(hud, roster);
+const camp = new Camp(hud, roster, world);
 let inBattle = false;
 let ignoreUnlock = false;
 let afterBattle: (win: boolean) => string = () => '';
@@ -41,6 +43,8 @@ const screens = new PlaceScreens(hud, world, roster, {
   onEscaped: () => backToMap(),
   onArena: (town, bet) => fightArena(town, bet),
   onRaider: (n) => fightRaider(n),
+  onSiege: (p, breaches) => assaultFief(p, breaches),
+  onDefend: (p, by) => defendFief(p, by),
 });
 const view = new WorldView(mapCanvas, world);
 
@@ -57,7 +61,7 @@ function useGame(r: Roster, w: WorldSave) {
   roster = migrateRoster(r);
   world = new World(w, roster);
   view.setWorld(world);
-  camp.setRoster(roster);
+  camp.setRoster(roster, world);
   screens.bind(world, roster);
 }
 
@@ -112,6 +116,7 @@ function releaseMouse() {
 
 async function startBattle(
   enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
+  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean } = {},
 ) {
   afterBattle = done;
   view.stop();
@@ -119,19 +124,58 @@ async function startBattle(
   hud.hideScreen();
   const h = roster.hero;
   battle.start({
-    playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(),
+    playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
   });
   inBattle = true;
   await lockMouse();
 }
 
+function placeReward(p: PlaceDef): string {
+  const out: string[] = [];
+  if (p.gold) {
+    roster.gold += p.gold;
+    out.push(`${p.gold} 金`);
+  }
+  if (p.pool && p.tickets) {
+    roster.tickets[p.pool] += p.tickets;
+    out.push(`${POOLS[p.pool].ticket} ×${p.tickets}`);
+  }
+  const art = ARTIFACTS.find((a) => a.id === p.artifact);
+  if (art && !roster.hero.artifacts.includes(art.id)) {
+    roster.hero.artifacts.push(art.id);
+    out.push(`神器 ${art.name}`);
+  }
+  return out.join('、');
+}
+
 function attackPlace(p: PlaceDef) {
+  const crawl = p.kind === 'dungeon' || p.kind === 'maze';
+  const party = crawl ? deployment(roster).slice(0, DUNGEON.partySize) : deployment(roster);
   void startBattle(p.garrison!, p.garrisonLevel ?? 1, p.theme ?? 'plains', (win) => {
     if (!win) return '';
     world.markCleared(p);
-    if (p.gold) roster.gold += p.gold;
-    if (p.pool && p.tickets) roster.tickets[p.pool] += p.tickets;
-    return p.pool ? `${POOLS[p.pool].ticket} ×${p.tickets}、${p.gold} 金` : '';
+    return placeReward(p);
+  }, party, crawl ? { dismount: true, firstPerson: true } : {});
+}
+
+function assaultFief(p: PlaceDef, breaches: number) {
+  const pol = world.politics;
+  const g = pol.garrisonOf(p)!;
+  void startBattle(g.army, g.level, p.theme ?? 'fort', (win) => {
+    if (!win) return '';
+    pol.capture(p);
+    const reward = placeReward(p);
+    return `攻陷${p.name}${reward ? `、${reward}` : ''}`;
+  }, deployment(roster), { breaches, dismount: true });
+}
+
+function defendFief(p: PlaceDef, by: string) {
+  const pol = world.politics;
+  const f = factionOf(by)!;
+  void startBattle(f.garrison, f.level, 'plains', (win) => {
+    if (!win) return '';
+    pol.s.threats = pol.s.threats.filter((t) => t.place !== p.id);
+    return `成功保衛${p.name}`;
   });
 }
 
@@ -155,9 +199,14 @@ function fightBandit(b: BanditParty, auto: boolean) {
 }
 
 function fightRaider(n: Npc) {
-  void startBattle(raiderArmy(n), NPC_RULES.raiderLevel, 'plains', (win) => {
+  void startBattle(raiderArmy(n), n.kind === 'dragon' ? 6 : NPC_RULES.raiderLevel, n.kind === 'dragon' ? 'night' : 'plains', (win) => {
     if (!win) return '';
     world.npcs.remove(n);
+    if (n.kind === 'dragon') {
+      if (!roster.hero.artifacts.includes('dragon_bone')) roster.hero.artifacts.push('dragon_bone');
+      roster.gold += 3000;
+      return '討伐巨龍！神器 龍骨刃、3000 金';
+    }
     roster.gold += NPC_RULES.raiderGold;
     return `截擊掠奪隊 ${NPC_RULES.raiderGold} 金`;
   });
@@ -226,7 +275,10 @@ battle.onEnd = (result: BattleResult) => {
   releaseMouse();
   const gold = arenaFight ? 0 : Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
   const progress = applyBattle(roster, result.outcomes, gold, result.win);
-  if (!arenaFight) world.winMorale(result.win);
+  if (!arenaFight) {
+    world.winMorale(result.win);
+    world.politics.s.renown += result.renown;
+  }
   arenaFight = false;
   const xp = result.playerKills * HERO.xpPerKill + (result.win ? HERO.xpBattleWin : 0);
   const ups = gainHeroXp(roster.hero, xp);
@@ -272,9 +324,27 @@ async function showMenu() {
     el.onclick = () => {
       slot = Number(el.dataset.load);
       const s = slots[slot];
-      if (s) useGame(s.roster, s.world);
-      else useGame(newRoster(), newWorld());
-      backToMap();
+      if (s) {
+        useGame(s.roster, s.world);
+        backToMap();
+        return;
+      }
+      showNewGame(hud, (c) => {
+        const r = newRoster();
+        r.hero = createHero({ race: c.race, background: c.background });
+        r.gold = c.background.gold;
+        const w = newWorld();
+        const start = START_REGIONS[c.region];
+        const place = PLACES.find((p) => p.id === start.place)!;
+        w.x = place.x + 3;
+        w.y = place.y + 2;
+        w.pol.relations[start.relation] = 15;
+        const race = PLAYABLE[c.race];
+        if (race.friend) w.pol.relations[race.friend] += 20;
+        if (race.foe) w.pol.relations[race.foe] -= 20;
+        useGame(r, w);
+        backToMap();
+      }, () => void showMenu());
     };
   });
   document.querySelectorAll<HTMLElement>('#screen [data-del]').forEach((el) => {

@@ -1,5 +1,5 @@
 export type Rarity = 'common' | 'fine' | 'special' | 'hero';
-export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair';
+export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair' | 'boss';
 
 export const RARITY_ORDER: Rarity[] = ['common', 'fine', 'special', 'hero'];
 
@@ -10,14 +10,16 @@ export const RARITY: Record<Rarity, { name: string; color: string; rate: number 
   hero: { name: '英雄', color: '#f2c14e', rate: 0.01 },
 };
 
-export const POOLS: Record<PoolId, { name: string; ticket: string; source: string }> = {
+export type TicketPool = Exclude<PoolId, 'boss'>;
+
+export const POOLS: Record<TicketPool, { name: string; ticket: string; source: string }> = {
   human: { name: '四方豪傑', ticket: '通用招募令', source: '城鎮購買、清剿賊巢' },
   orc: { name: '獸人部落', ticket: '獸牙令', source: '攻陷黑牙堡' },
   undead: { name: '亡靈軍團', ticket: '骸骨令', source: '攻破枯骨墓穴' },
   beast: { name: '迷宮異族', ticket: '牛角令', source: '闖過牛角迷宮' },
   fair: { name: '精靈與矮人', ticket: '山林令', source: '攻下鐵砧山城' },
 };
-export const POOL_ORDER: PoolId[] = ['human', 'orc', 'undead', 'beast', 'fair'];
+export const POOL_ORDER: TicketPool[] = ['human', 'orc', 'undead', 'beast', 'fair'];
 
 export const GACHA = {
   /** 十連用幾多張招募令 */

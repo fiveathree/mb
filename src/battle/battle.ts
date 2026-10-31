@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
+import { SIEGE } from '../data/factions';
 import { THEMES, type BattleTheme } from '../data/world';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
@@ -52,6 +53,12 @@ export interface BattleSetup {
   theme: BattleTheme;
   /** 部隊士氣對戰鬥士氣嘅倍率 */
   moraleMult: number;
+  /** 圍城：缺口數 */
+  breaches?: number;
+  /** 全員步行 */
+  dismount?: boolean;
+  /** 第一身鏡頭 */
+  firstPerson?: boolean;
 }
 
 export interface BattleResult {
@@ -77,7 +84,13 @@ export class Battle implements CombatWorld {
   private sun = new THREE.DirectionalLight(0xfff0d6, 2.3);
   private hemi = new THREE.HemisphereLight(0xcfe6ff, 0x6a6a4a, 1.5);
   private obstacles: Obstacle[];
+  private baseObstacles: Obstacle[];
   private batches: Batches;
+  private wall = new THREE.Group();
+  /** 城牆缺口 X 位置，空陣列代表唔係圍城 */
+  private gaps: number[] = [];
+  private firstPerson = false;
+  private siege = false;
   fx: Fx;
   projectiles: Projectiles;
 
@@ -133,7 +146,9 @@ export class Battle implements CombatWorld {
     this.sun.shadow.bias = -0.0008;
     this.scene.add(this.sun, this.sun.target);
 
-    this.obstacles = buildTerrain(this.scene);
+    this.baseObstacles = buildTerrain(this.scene);
+    this.obstacles = this.baseObstacles;
+    this.scene.add(this.wall);
     this.batches = new Batches(this.scene);
     this.fx = new Fx(this.scene);
     this.projectiles = new Projectiles(this.scene);
@@ -148,6 +163,38 @@ export class Battle implements CombatWorld {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** 起城牆：石牆段之間留缺口 */
+  private buildWall(breaches: number) {
+    this.wall.clear();
+    this.gaps = [];
+    this.siege = breaches > 0;
+    this.obstacles = this.baseObstacles;
+    if (!this.siege) return;
+    const { wallZ: Z, wallHalfWidth: W, breachWidth } = SIEGE;
+    for (let i = 0; i < breaches; i++) this.gaps.push(-W * 0.7 + ((i + 0.5) / breaches) * W * 1.4);
+    const stone = new THREE.MeshLambertMaterial({ color: 0x8a8678, flatShading: true });
+    const extra: Obstacle[] = [];
+    for (let x = -W; x < W; x += 2) {
+      if (this.gaps.some((g) => Math.abs(g - x) < breachWidth / 2)) continue;
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(2.05, 7, 2.4), stone);
+      seg.position.set(x, heightAt(x, Z) + 3, Z);
+      seg.castShadow = true;
+      this.wall.add(seg);
+      extra.push({ x, z: Z, r: 1.3 });
+    }
+    this.obstacles = [...this.baseObstacles, ...extra];
+  }
+
+  routeGoal(c: Combatant, gx: number, gz: number): [number, number] {
+    if (!this.siege) return [gx, gz];
+    const Z = SIEGE.wallZ;
+    const inside = c.pos.z > Z;
+    if (inside === (gz > Z)) return [gx, gz];
+    const gap = this.gaps.reduce((b, g) => (Math.abs(g - c.pos.x) < Math.abs(b - c.pos.x) ? g : b), this.gaps[0]);
+    const through = Math.abs(c.pos.x - gap) < SIEGE.breachWidth / 2 - 1;
+    return [gap, through ? Z + (inside ? -8 : 8) : Z + (inside ? 5 : -5)];
   }
 
   private createUnit(def: UnitDef, team: number, weaponIds: string[]): Combatant {
@@ -179,6 +226,8 @@ export class Battle implements CombatWorld {
     this.hemi.intensity = 1.5 * theme.light;
     this.sun.intensity = 2.3 * theme.light;
 
+    this.buildWall(setup.breaches ?? 0);
+    this.firstPerson = !!setup.firstPerson;
     this.batches.reset();
     this.projectiles.reset();
     this.units = [];
@@ -197,7 +246,15 @@ export class Battle implements CombatWorld {
     const player = this.createUnit(setup.playerDef, 0, loadout);
     player.pos.set(0, heightAt(0, pz), pz);
     this.player = player;
+    player.hiddenBody = this.firstPerson;
     this.lastHorse = this.createHorse(horseDef, player);
+    if (setup.dismount) {
+      const h = this.lastHorse;
+      h.rider = null;
+      player.horse = null;
+      h.dead = true;
+      h.pos.y = -60;
+    }
 
     const recruit = (unit: string, team: number, level: number, soldier: Soldier | null) => {
       const def = levelDef(UNITS[unit], level);
@@ -218,11 +275,15 @@ export class Battle implements CombatWorld {
     [0, 1].forEach((team) => {
       for (const g of this.groups[team]) {
         deployGroup(g);
+        if (this.siege && team === 1) {
+          // 守軍喺牆後面
+          g.setAnchor(g.anchorX, SIEGE.wallZ + SIEGE.defenderOffset + (g.role === 'infantry' ? 0 : 6), Math.PI);
+        }
         for (const c of g.members) {
           const ai = c.ai!;
           c.pos.set(ai.slotX, heightAt(ai.slotX, ai.slotZ), ai.slotZ);
           c.yaw = c.aimYaw = g.facing;
-          if (c.def.horse) this.createHorse(HORSES.find((h) => h.id === c.def.horse)!, c);
+          if (c.def.horse && !setup.dismount) this.createHorse(HORSES.find((h) => h.id === c.def.horse)!, c);
         }
       }
     });
@@ -359,7 +420,7 @@ export class Battle implements CombatWorld {
     this.thinkT -= dt;
     if (this.thinkT <= 0) {
       this.thinkT = ENEMY_COMMAND.thinkEvery;
-      thinkEnemy(this.groups[1], this.units.filter((u) => u.team === 0), this.stats.time);
+      if (!this.siege) thinkEnemy(this.groups[1], this.units.filter((u) => u.team === 0), this.stats.time);
     }
     this.followT -= dt;
     if (this.followT <= 0) {
@@ -409,7 +470,6 @@ export class Battle implements CombatWorld {
     ROLE_KEYS.forEach((r, n) => {
       if (i.pressed(`Digit${n + 1}`)) this.selected = new Set([r]);
     });
-    if (i.pressed('Digit4')) this.hud.announce('呢場冇法師', 'guard');
     if (i.pressed('F1')) this.setOrder('follow');
     if (i.pressed('F2')) this.setOrder('hold');
     if (i.pressed('F3')) this.setOrder('charge');
@@ -762,6 +822,17 @@ export class Battle implements CombatWorld {
     const h = p.horse;
     const pos = h ? h.pos : p.pos;
     const aiming = p.phase === 'charge' && !!p.weapon.ranged;
+    if (this.firstPerson && !p.dead) {
+      const eye = p.pos.y + 1.62;
+      const cp = Math.cos(this.camPitch);
+      this.camera.position.set(p.pos.x, eye, p.pos.z);
+      this.camera.lookAt(
+        p.pos.x + Math.sin(this.camYaw) * cp * 10, eye - Math.sin(this.camPitch) * 10, p.pos.z + Math.cos(this.camYaw) * cp * 10,
+      );
+      this.sun.target.position.set(p.pos.x, p.pos.y, p.pos.z);
+      this.sun.position.set(p.pos.x + 50, p.pos.y + 90, p.pos.z + 30);
+      return;
+    }
     const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1);
     const height = h ? CAMERA.heightMounted : CAMERA.heightOnFoot;
     const yaw = this.camYaw;

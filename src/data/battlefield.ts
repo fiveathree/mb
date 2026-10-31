@@ -34,6 +34,7 @@ export const FORMATION = {
     infantry: { side: 0, forward: 0 },
     archer: { side: 0, forward: -14 },
     cavalry: { side: 34, forward: -6 },
+    mage: { side: -14, forward: -18 },
   } as Record<Role, { side: number; forward: number }>,
   /** 跟隨時排喺玩家身後幾遠 */
   followBehind: 9,

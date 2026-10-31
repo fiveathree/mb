@@ -1,5 +1,5 @@
 import type { ArmyEntry } from './battlefield';
-import type { PoolId } from './gacha';
+import type { TicketPool } from './gacha';
 
 export const MAP = {
   width: 160,
@@ -109,13 +109,15 @@ export interface PlaceDef {
   garrisonLevel?: number;
   theme?: BattleTheme;
   /** 攻陷獎勵 */
-  pool?: PoolId;
+  pool?: TicketPool;
   tickets?: number;
   gold?: number;
   /** 幾多日後守軍重整，可以再打 */
   respawnDays?: number;
   /** 隱藏地點：行近先見到 */
   hidden?: boolean;
+  /** 攻破掉落神器 */
+  artifact?: string;
 }
 
 export const PLACE_ICON: Record<PlaceKind, string> = {
@@ -130,35 +132,43 @@ export const PLACES: PlaceDef[] = [
   { id: 'stonebridge', name: '石橋村', kind: 'village', x: 58, y: 18 },
   { id: 'bamboo', name: '竹溪村', kind: 'village', x: 108, y: 28 },
   { id: 'southpond', name: '南塘村', kind: 'village', x: 112, y: 88 },
+  { id: 'ironhelm_keep', name: '鐵盔堡', kind: 'castle', x: 46, y: 38, theme: 'fort', desc: '鐵盔公國嘅主堡。' },
+  { id: 'xuan_city', name: '玄都', kind: 'castle', x: 96, y: 10, theme: 'fort', desc: '中原北方大城。' },
+  { id: 'bashu_pass', name: '巴山關', kind: 'castle', x: 84, y: 34, theme: 'fort', desc: '扼守入蜀山道。' },
+  { id: 'chishui_fort', name: '赤水寨', kind: 'castle', x: 150, y: 62, theme: 'fort', desc: '南域水邊軍寨。' },
+  { id: 'qingcheng_pass', name: '青城關', kind: 'castle', x: 118, y: 64, theme: 'fort', desc: '青城國門戶。' },
+  { id: 'songglade', name: '林歌谷', kind: 'castle', x: 150, y: 40, theme: 'fort', desc: '精靈林國嘅聖地。' },
+  { id: 'spire', name: '亡靈尖塔', kind: 'castle', x: 128, y: 8, theme: 'night', desc: '亡靈法師會嘅黑塔。' },
   {
     id: 'blackfang', name: '黑牙堡', kind: 'castle', x: 50, y: 76, theme: 'fort', pool: 'orc', tickets: 5, gold: 900,
-    desc: '獸人部落嘅木石大寨。', garrisonLevel: 3, respawnDays: 18,
-    garrison: [
-      { unit: 'goblin_spear', count: 10 }, { unit: 'orc_warrior', count: 10 }, { unit: 'orc_berserker', count: 4 },
-      { unit: 'wolf_rider', count: 4 },
-    ],
-  },
-  {
-    id: 'bonecrypt', name: '枯骨墓穴', kind: 'dungeon', x: 142, y: 20, theme: 'crypt', pool: 'undead', tickets: 5, gold: 800,
-    desc: '地底傳出刀劍摩擦聲。', garrisonLevel: 4, respawnDays: 18,
-    garrison: [
-      { unit: 'skeleton', count: 14 }, { unit: 'skeleton_archer', count: 8 }, { unit: 'grave_knight', count: 6 },
-    ],
-  },
-  {
-    id: 'bullmaze', name: '牛角迷宮', kind: 'maze', x: 80, y: 90, theme: 'maze', pool: 'beast', tickets: 5, gold: 1000,
-    desc: '入得去，未必出得返。', garrisonLevel: 4, respawnDays: 22,
-    garrison: [
-      { unit: 'lizard_warrior', count: 10 }, { unit: 'lizard_javelin', count: 8 }, { unit: 'kobold_miner', count: 6 },
-      { unit: 'minotaur_guard', count: 3 },
-    ],
+    desc: '獸人部落嘅木石大寨。',
   },
   {
     id: 'anvilhold', name: '鐵砧山城', kind: 'castle', x: 14, y: 86, theme: 'fort', pool: 'fair', tickets: 5, gold: 1100,
-    desc: '矮人同精靈共守嘅古老山城。', garrisonLevel: 5, respawnDays: 24,
+    desc: '矮人世代鎮守嘅古老山城。',
+  },
+  {
+    id: 'bonecrypt', name: '枯骨墓穴', kind: 'dungeon', x: 142, y: 20, theme: 'crypt', pool: 'undead', tickets: 5, gold: 800,
+    desc: '地底傳出刀劍摩擦聲。只可以帶幾個精兵入去。', garrisonLevel: 3, respawnDays: 18, artifact: 'bone_crown',
+    garrison: [{ unit: 'skeleton', count: 8 }, { unit: 'skeleton_archer', count: 4 }, { unit: 'boss_golem', count: 1 }],
+  },
+  {
+    id: 'bullmaze', name: '牛角迷宮', kind: 'maze', x: 80, y: 90, theme: 'maze', pool: 'beast', tickets: 5, gold: 1000,
+    desc: '入得去，未必出得返。只可以帶幾個精兵入去。', garrisonLevel: 3, respawnDays: 22, artifact: 'horn_axe',
     garrison: [
-      { unit: 'dwarf_guard', count: 14 }, { unit: 'dwarf_crossbow', count: 6 }, { unit: 'elf_scout', count: 8 },
+      { unit: 'lizard_warrior', count: 6 }, { unit: 'lizard_javelin', count: 3 }, { unit: 'minotaur_guard', count: 2 },
+      { unit: 'boss_giant', count: 1 },
     ],
+  },
+  {
+    id: 'abyss', name: '深淵裂口', kind: 'dungeon', x: 8, y: 30, theme: 'crypt', tickets: 0, gold: 3000,
+    desc: '大陸裂縫最深處，惡魔領主喺度。', garrisonLevel: 6, respawnDays: 40, artifact: 'demon_heart',
+    garrison: [{ unit: 'grave_knight', count: 8 }, { unit: 'necromancer', count: 3 }, { unit: 'boss_demon', count: 1 }],
+  },
+  {
+    id: 'dragonlair', name: '龍巢', kind: 'dungeon', x: 148, y: 90, theme: 'night', tickets: 0, gold: 4000,
+    desc: '巨龍盤踞之地，定期出巢燒村。', garrisonLevel: 6, respawnDays: 30, artifact: 'dragon_scale', hidden: false,
+    garrison: [{ unit: 'boss_dragon', count: 1 }],
   },
   {
     id: 'lair_a', name: '山賊巢穴', kind: 'lair', x: 40, y: 8, theme: 'night', pool: 'human', tickets: 1, gold: 300,

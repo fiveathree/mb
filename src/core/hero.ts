@@ -1,6 +1,7 @@
 import {
   ARMORS, COMPANIONS, HERO, HORSE_PRICE, SKILL_ORDER, WEAPON_PRICE, type ArmorDef, type ArmorSlot, type AttrId, type SkillId,
 } from '../data/economy';
+import { ARTIFACTS, PLAYABLE, type ArtifactDef, type PlayableRace, type StartOption } from '../data/factions';
 import { HORSES, type HorseDef } from '../data/horses';
 import { PLAYER_UNIT, type UnitDef } from '../data/units';
 import type { Soldier } from './roster';
@@ -18,6 +19,42 @@ export interface Hero {
   equip: Partial<Record<ArmorSlot, string>>;
   horse: string;
   loadout: string[];
+  race: PlayableRace;
+  artifacts: string[];
+}
+
+export interface HeroStart {
+  race: PlayableRace;
+  background: StartOption;
+}
+
+/** 舊存檔補上新欄位 */
+export function migrateHero(h: Hero): Hero {
+  h.race ??= 'human';
+  h.artifacts ??= [];
+  h.skills.magic ??= 0;
+  return h;
+}
+
+/** 按種族同出身開主角 */
+export function createHero(start: HeroStart): Hero {
+  const h = newHero();
+  const race = PLAYABLE[start.race];
+  h.race = start.race;
+  for (const part of [race.attrs, start.background.attrs]) {
+    for (const [k, v] of Object.entries(part)) h.attrs[k as AttrId] += v;
+  }
+  if (race.spell) {
+    h.weapons.push(race.spell);
+    h.loadout.push(race.spell);
+  }
+  if (start.race === 'human') h.skillPoints += 2;
+  if (start.race === 'halfling') h.skills.trade += 2;
+  return h;
+}
+
+function artifactDefs(h: Hero): ArtifactDef[] {
+  return ARTIFACTS.filter((a) => h.artifacts.includes(a.id));
 }
 
 export function newHero(): Hero {
@@ -27,7 +64,7 @@ export function newHero(): Hero {
     attrs: { str: s, agi: s, int: s, cha: s },
     skills: Object.fromEntries(SKILL_ORDER.map((k) => [k, 0])) as Record<SkillId, number>,
     weapons: [...HERO.startWeapons], horses: [HERO.startHorse], armors: [...HERO.startArmor],
-    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout],
+    equip: {}, horse: HERO.startHorse, loadout: [...HERO.startLoadout], race: 'human', artifacts: [],
   };
   h.equip.body = HERO.startArmor[0];
   return h;
@@ -63,7 +100,8 @@ function worn(h: Hero): ArmorDef[] {
 }
 
 export function armorValue(h: Hero): number {
-  return HERO.armorBase + worn(h).reduce((s, a) => s + a.armor, 0) + h.skills.ironskin;
+  return HERO.armorBase + worn(h).reduce((s, a) => s + a.armor, 0) + h.skills.ironskin
+    + artifactDefs(h).reduce((s, a) => s + (a.armor ?? 0), 0);
 }
 
 export function armorWeight(h: Hero): number {
@@ -73,13 +111,18 @@ export function armorWeight(h: Hero): number {
 /** 主角嘅實際屬性 */
 export function playerDef(h: Hero): UnitDef {
   const speed = (1 + h.attrs.agi * HERO.speedPerAgi) * (1 - armorWeight(h));
+  const arts = artifactDefs(h);
+  const sum = (k: 'hp' | 'damage' | 'mp') => arts.reduce((s, a) => s + (a[k] ?? 0), 0);
   return {
     ...PLAYER_UNIT,
-    hp: HERO.hpBase + h.attrs.str * HERO.hpPerStr,
+    race: h.race,
+    hp: HERO.hpBase + h.attrs.str * HERO.hpPerStr + sum('hp'),
     armor: armorValue(h),
+    mp: 30 + h.attrs.int * 6 + h.skills.magic * 10 + sum('mp'),
+    spellMult: 1 + h.skills.magic * 0.08 + h.attrs.int * 0.02,
     walkSpeed: PLAYER_UNIT.walkSpeed * speed,
     runSpeed: PLAYER_UNIT.runSpeed * speed,
-    damageMult: 1 + h.attrs.str * HERO.damagePerStr,
+    damageMult: 1 + h.attrs.str * HERO.damagePerStr + sum('damage'),
     spreadMult: Math.max(0.3, 1 - h.skills.archery * 0.08),
     actionSpeed: 1 + h.attrs.agi * HERO.speedPerAgi,
   };

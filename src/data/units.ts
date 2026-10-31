@@ -1,11 +1,11 @@
 import type { PoolId, Rarity } from './gacha';
 import type { Race } from './races';
 
-export type Role = 'infantry' | 'archer' | 'cavalry';
+export type Role = 'infantry' | 'archer' | 'cavalry' | 'mage';
 
-export const ROLE_LABEL: Record<Role, string> = { infantry: '步兵', archer: '弓兵', cavalry: '騎兵' };
-/** 指揮用數字鍵對應兵種（4 法師留待魔法階段） */
-export const ROLE_KEYS: Role[] = ['infantry', 'archer', 'cavalry'];
+export const ROLE_LABEL: Record<Role, string> = { infantry: '步兵', archer: '弓兵', cavalry: '騎兵', mage: '法師' };
+/** 指揮用數字鍵對應兵種 */
+export const ROLE_KEYS: Role[] = ['infantry', 'archer', 'cavalry', 'mage'];
 
 export interface UnitDef {
   id: string;
@@ -52,12 +52,17 @@ export interface UnitDef {
   aura?: number;
   /** 由等級計出嚟嘅傷害倍率 */
   damageMult?: number;
-  /** 遠程散布倍率 */
+  /** 法術傷害倍率 */
   spreadMult?: number;
+  spellMult?: number;
   /** 出招速度倍率 */
   actionSpeed?: number;
   /** 酒館同伴，唔喺卡池 */
   companion?: boolean;
+  /** 傳說級 Boss */
+  boss?: boolean;
+  /** 最大法力 */
+  mp?: number;
 }
 
 /** 兩軍外觀：顏色同盔型都要一眼分到 */
@@ -381,6 +386,26 @@ export const UNITS: Record<string, UnitDef> = {
   },
 };
 
+// 法師同傳說級
+const caster = (id: string, name: string, desc: string, race: Race, pool: PoolId, rarity: Rarity, weapon: string, tier: number, trimColor: number): UnitDef => ({
+  id, name, desc, role: 'mage', race, pool, rarity, tier, trimColor, hp: 60 + tier * 6, armor: 3, walkSpeed: 2.2, runSpeed: 4.3, radius: 0.44,
+  weapons: [weapon, 'short_sword'], morale: 70, blockSkill: 0.3, blockChance: 0.2, reaction: 0.3, attackCooldown: [1.4, 2.4], dodgeChance: 0.2,
+  plumeColor: trimColor,
+});
+UNITS.elf_mage = caster('elf_mage', '精靈法師', '遠程火球', 'elf', 'fair', 'fine', 'troop_fire', 3, 0x8fd0e8);
+UNITS.necromancer = caster('necromancer', '死靈法師', '枯骨雷擊', 'undead', 'undead', 'special', 'troop_bolt', 4, 0x7a4fc0);
+UNITS.demon_cultist = caster('demon_cultist', '惡魔教徒', '邪火祭司', 'demon', 'beast', 'fine', 'troop_fire', 3, 0xc04a3a);
+
+const boss = (id: string, name: string, race: Race, weapon: string, hp: number, armor: number, radius: number, speed: number): UnitDef => ({
+  id, name, role: 'infantry', race, tier: 8, hp, armor, walkSpeed: speed * 0.6, runSpeed: speed, radius, weapons: [weapon], morale: 9999,
+  blockSkill: 0, blockChance: 0, reaction: 0.3, attackCooldown: [1.1, 1.9], dodgeChance: 0, trimColor: 0x2a2228, boss: true, hero: true,
+  rarity: 'hero', pool: 'boss' as PoolId,
+});
+UNITS.boss_golem = boss('boss_golem', '遠古魔像', 'golem', 'boss_fist', 700, 24, 1.1, 3.2);
+UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 900, 12, 1.3, 3.8);
+UNITS.boss_demon = boss('boss_demon', '惡魔領主', 'demon', 'boss_club', 1500, 20, 1, 4.6);
+UNITS.boss_dragon = { ...boss('boss_dragon', '赤焰巨龍', 'dragon', 'dragon_fire', 2400, 22, 2.2, 4), weapons: ['dragon_fire', 'boss_club'], role: 'archer' };
+
 // 酒館同伴
 const companion = (id: string, name: string, desc: string, role: Role, weapons: string[], trimColor: number): UnitDef => ({
   id, name, desc, role, weapons, trimColor, tier: 4, hp: 130, armor: 10, walkSpeed: 2.4, runSpeed: 4.8, radius: 0.46, morale: 110,
@@ -483,6 +508,8 @@ export const ENEMY_COMMAND = {
   infantryChargeDist: 34,
   /** 弓兵保持同我軍嘅距離 */
   archerStandoff: 55,
+  /** 噴火 Boss 會逼到呢個距離 */
+  bossStandoff: 18,
   /** 開局幾耐後騎兵出擊（秒） */
   cavalryDelay: 7,
   /** 檢查間隔（秒） */

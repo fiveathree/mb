@@ -75,6 +75,11 @@ export class Combatant {
   spin = 0;
   /** 已逃離戰場 */
   fled = false;
+  /** 第一身時唔畫自己 */
+  hiddenBody = false;
+  mp = 0;
+  /** 魔法護盾剩餘秒數 */
+  wardT = 0;
   /** 倒下但只係受傷 */
   wounded = false;
   morale: number;
@@ -113,6 +118,7 @@ export class Combatant {
 
   constructor(public def: UnitDef, public team: number, public rig: HumanRig, weaponIds: string[]) {
     this.hp = def.hp;
+    this.mp = def.mp ?? 0;
     this.morale = def.morale;
     this.weapons = weaponIds.map((id) => WEAPONS[id]);
     for (const w of this.weapons) if (w.ranged) this.ammo[w.id] = w.ranged.ammo;

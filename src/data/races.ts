@@ -1,7 +1,8 @@
 export type Race =
-  | 'human' | 'elf' | 'dwarf' | 'orc' | 'goblin' | 'undead' | 'lizard' | 'minotaur' | 'dragonkin';
+  | 'human' | 'elf' | 'dwarf' | 'orc' | 'goblin' | 'undead' | 'lizard' | 'minotaur' | 'dragonkin'
+  | 'beastkin' | 'halfling' | 'demon' | 'golem' | 'giant' | 'dragon';
 
-export type RaceLook = 'plain' | 'ears' | 'tusks' | 'skull' | 'bull' | 'snout';
+export type RaceLook = 'plain' | 'ears' | 'tusks' | 'skull' | 'bull' | 'snout' | 'dragon';
 
 export interface RaceDef {
   name: string;
@@ -25,6 +26,12 @@ export const RACES: Record<Race, RaceDef> = {
   lizard: { name: '蜥蜴人', skin: 0x3f8f70, scale: 1.04, look: 'snout', food: 0.9, wage: 0.8 },
   minotaur: { name: '牛頭人', skin: 0x6b4630, scale: 1.34, look: 'bull', food: 2.6, wage: 1.5 },
   dragonkin: { name: '龍人', skin: 0xa8442c, scale: 1.14, look: 'snout', food: 1.9, wage: 1.6 },
+  beastkin: { name: '獸人族', skin: 0xb88a58, scale: 0.98, look: 'ears', food: 1, wage: 1 },
+  halfling: { name: '半身人', skin: 0xe6bc94, scale: 0.72, look: 'plain', food: 1.1, wage: 0.8 },
+  demon: { name: '魔族', skin: 0xa03048, scale: 1.05, look: 'bull', food: 1, wage: 1.5 },
+  golem: { name: '魔像', skin: 0x7c7f88, scale: 2.4, look: 'plain', food: 0, wage: 1 },
+  giant: { name: '巨人', skin: 0x9a7a58, scale: 2.8, look: 'tusks', food: 4, wage: 2 },
+  dragon: { name: '龍', skin: 0xb02a1e, scale: 3.4, look: 'dragon', food: 6, wage: 3 },
 };
 
 /** 組團消耗 */

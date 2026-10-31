@@ -86,6 +86,7 @@ export const ARMORS: ArmorDef[] = [
 export const WEAPON_PRICE: Record<string, number> = {
   sword: 0, lance: 0, horsebow: 0, hand_axe: 350, mace: 380, axe: 520, greatsword: 800,
   pike: 300, longbow: 650, crossbow: 900, javelin: 280,
+  fireball: 1800, lightning: 2200, ward: 1400, heal: 1600,
 };
 
 export const HORSE_PRICE: Record<string, number> = { hunter: 0, pack: 300, steppe: 900, warhorse: 2400 };
@@ -97,8 +98,8 @@ export const ATTR_DESC: Record<AttrId, string> = {
   str: '生命、近戰傷害', agi: '出招速度、走路', int: '技能點', cha: '帶兵上限',
 };
 
-export type SkillId = 'riding' | 'archery' | 'ironskin' | 'leadership' | 'tactics' | 'medicine' | 'trade';
-export const SKILL_ORDER: SkillId[] = ['riding', 'archery', 'ironskin', 'leadership', 'tactics', 'medicine', 'trade'];
+export type SkillId = 'riding' | 'archery' | 'ironskin' | 'leadership' | 'tactics' | 'medicine' | 'trade' | 'magic';
+export const SKILL_ORDER: SkillId[] = ['riding', 'archery', 'ironskin', 'leadership', 'tactics', 'medicine', 'trade', 'magic'];
 export const SKILLS: Record<SkillId, { name: string; desc: string }> = {
   riding: { name: '騎術', desc: '馬速 +3%／級' },
   archery: { name: '強弓', desc: '散布 −8%／級' },
@@ -107,6 +108,7 @@ export const SKILLS: Record<SkillId, { name: string; desc: string }> = {
   tactics: { name: '戰術', desc: '部隊戰鬥士氣 +3%／級' },
   medicine: { name: '醫療', desc: '傷兵休養 −1 日（每 2 級）' },
   trade: { name: '交易', desc: '買賣差價 +2%／級' },
+  magic: { name: '魔法', desc: '法力 +10、法術傷害 +8%／級' },
 };
 
 export const HERO = {
@@ -184,7 +186,7 @@ export const ARENA = {
 };
 
 // ── 大地圖 NPC ──
-export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider';
+export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon';
 
 export const NPC: Record<NpcKind, { name: string; max: number; size: [number, number]; speed: number; color: string }> = {
   caravan: { name: '商隊', max: 4, size: [5, 9], speed: 3, color: '#e8b84a' },
@@ -193,6 +195,7 @@ export const NPC: Record<NpcKind, { name: string; max: number; size: [number, nu
   messenger: { name: '信使', max: 2, size: [1, 1], speed: 6.5, color: '#f4f0e4' },
   patrol: { name: '巡邏隊', max: 3, size: [10, 16], speed: 4.2, color: '#5aa0ee' },
   raider: { name: '獸人掠奪隊', max: 1, size: [9, 13], speed: 3.8, color: '#e0603a' },
+  dragon: { name: '赤焰巨龍', max: 1, size: [1, 1], speed: 7, color: '#ff4020' },
 };
 
 export const NPC_RULES = {
@@ -214,6 +217,9 @@ export const NPC_RULES = {
   burnedDays: 8,
   /** 掠奪隊幾多日出動一次 */
   raidEveryDays: 9,
+  dragonEveryDays: 21,
+  /** 第幾日開始有龍出巢 */
+  dragonFirstDay: 24,
   /** 截擊掠奪隊獎勵 */
   raiderGold: 350,
   raiderArmy: [{ unit: 'goblin_spear', share: 0.4 }, { unit: 'orc_warrior', share: 0.5 }, { unit: 'wolf_rider', share: 0.1 }],

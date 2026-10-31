@@ -2,7 +2,9 @@ import {
   ARENA, ARMORS, COMPANIONS, GOODS, GOOD_ORDER, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
   type GoodId,
 } from '../data/economy';
+import { ARTIFACTS, SIEGE } from '../data/factions';
 import { GACHA, POOLS } from '../data/gacha';
+import { PLAYER } from '../politics/politics';
 import { HORSES } from '../data/horses';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
@@ -30,6 +32,8 @@ export interface PlaceActions {
   onEscaped: () => void;
   onArena: (town: PlaceDef, bet: boolean) => void;
   onRaider: (n: Npc) => void;
+  onSiege: (p: PlaceDef, breaches: number) => void;
+  onDefend: (p: PlaceDef, by: string) => void;
 }
 
 function strengthText(mine: number, theirs: number): string {
@@ -91,6 +95,7 @@ export class PlaceScreens {
         refresh();
       };
     }
+    const fief = this.fiefActions(p, handlers);
     const body = {
       market: () => this.marketTab(p, handlers, refresh),
       smith: () => this.smithTab(handlers, refresh),
@@ -100,7 +105,7 @@ export class PlaceScreens {
     }[this.townTab]();
     this.show(p.name, p.desc ?? '', `
       <div class="tabs center">${TOWN_TABS.map(([k, v]) => `<button class="tab ${k === this.townTab ? 'on' : ''}" id="t_${k}">${v}</button>`).join('')}</div>
-      ${body}
+      ${fief}${body}
       <div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
   }
 
@@ -302,8 +307,64 @@ export class PlaceScreens {
     });
   }
 
+  /** 領地：城鎮同城堡共用嘅勢力區 */
+  private fiefActions(p: PlaceDef, h: Record<string, () => void>): string {
+    const pol = this.world.politics;
+    const owner = pol.ownerOf(p.id);
+    if (!owner) return '';
+    if (owner === PLAYER) {
+      const t = pol.s.threats.find((x) => x.place === p.id);
+      if (!t) return '<div class="pick-title">呢度係你嘅領地，每週收稅。</div>';
+      h.defend = () => this.act.onDefend(p, t.by);
+      return `<div class="pick-title">${pol.nameOf(t.by)}圍攻緊呢度，第 ${t.deadline} 日前要解圍！</div>
+        <div class="row"><button class="go" id="defend">保衛領地</button></div>`;
+    }
+    const g = pol.garrisonOf(p)!;
+    const line = `<div class="pick-title">屬於${pol.nameOf(owner)}（好感 ${pol.relation(owner)}）・守軍 ${armySize(g.army)} 人，約 ${g.level} 級・形勢：${strengthText(rosterPower(this.roster), armyPower(g.army, g.level))}</div>`;
+    if (pol.hostile(owner)) {
+      h.siege = () => this.siege(p, 0);
+      return `${line}<div class="row"><button class="go" id="siege">圍城</button></div>`;
+    }
+    if (pol.s.rank === 'free' || pol.s.rank === 'king') {
+      h.war = () => {
+        pol.declareWar(owner);
+        this.notice = `已向${pol.nameOf(owner)}宣戰`;
+        this.site(p);
+      };
+      return `${line}<div class="row"><button class="alt" id="war">宣戰</button></div>`;
+    }
+    return line;
+  }
+
+  /** 圍城：紮營造雲梯，缺口愈多愈易攻 */
+  siege(p: PlaceDef, built: number) {
+    const breaches = Math.min(SIEGE.maxBreaches, SIEGE.baseBreaches + built);
+    const g = this.world.politics.garrisonOf(p)!;
+    this.show(`圍攻 ${p.name}`, '紮營打造攻城器械，每日耗糧；城牆缺口愈多，守軍愈難堵。', `
+      <div class="pick-title">守軍 ${armySize(g.army)} 人・已有 ${breaches} 個突破口（最多 ${SIEGE.maxBreaches}）</div>
+      <div class="row">
+        <button class="alt" id="camp" ${breaches >= SIEGE.maxBreaches ? 'disabled' : ''}>紮營一日</button>
+        <button class="go" id="assault">強攻</button>
+        <button class="alt" id="leave">解圍</button>
+      </div>`, {
+      camp: () => {
+        this.world.rest();
+        this.siege(p, built + SIEGE.perDay);
+      },
+      assault: () => this.act.onSiege(p, breaches),
+      leave: this.act.onLeave,
+    });
+  }
+
   site(p: PlaceDef) {
     const w = this.world.save;
+    if (this.world.politics.ownerOf(p.id)) {
+      const h: Record<string, () => void> = { party: this.act.onParty, leave: this.act.onLeave };
+      const body = this.fiefActions(p, h);
+      this.show(p.name, p.desc ?? '', `${body}
+        <div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="alt" id="leave">離開</button></div>`, h);
+      return;
+    }
     const garrison = p.garrison!;
     const level = p.garrisonLevel ?? 1;
     if (!isOpen(w, p)) {
@@ -312,10 +373,12 @@ export class PlaceScreens {
       return;
     }
     const pool = p.pool ? POOLS[p.pool] : null;
+    const art = ARTIFACTS.find((a) => a.id === p.artifact && !this.roster.hero.artifacts.includes(a.id));
     this.show(p.name, p.desc ?? '', `
       <div class="pick-title">守軍 ${armySize(garrison)} 人，約 ${level} 級：${garrison.map((g) => `${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
       <div class="pick-title">形勢：${strengthText(rosterPower(this.roster), armyPower(garrison, level))}</div>
       ${pool ? `<div class="pick-title">攻陷獎勵：${pool.ticket} ×${p.tickets}、${p.gold} 金</div>` : ''}
+      ${art ? `<div class="pick-title">神器：${art.name}（${art.desc}）</div>` : ''}
       <div class="row"><button class="go" id="attack">進攻</button><button class="alt" id="party">部隊／抽卡</button><button class="alt" id="leave">撤離</button></div>`, {
       attack: () => this.act.onAttack(p),
       party: this.act.onParty,
@@ -412,6 +475,10 @@ export class PlaceScreens {
       case 'patrol':
         h.rumor = rumor;
         body = `<button class="alt" id="rumor">問隊長消息（${NPC_RULES.rumorCost} 金）</button>`;
+        break;
+      case 'dragon':
+        h.fight = () => this.act.onRaider(n);
+        body = `<p class="sub">討伐巨龍可以得到龍骨刃同大量金幣。</p><button class="go" id="fight">討伐</button>`;
         break;
       case 'raider':
         h.fight = () => this.act.onRaider(n);

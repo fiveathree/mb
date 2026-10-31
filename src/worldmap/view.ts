@@ -1,5 +1,7 @@
 import { MAP, PLACES, PLACE_ICON, type PlaceDef } from '../data/world';
 import { NPC, NPC_RULES } from '../data/economy';
+import { factionOf } from '../data/factions';
+import { PLAYER } from '../politics/politics';
 import { partyFood, partyWage } from '../core/roster';
 import { dayOf, hourOf, isNight, isOpen, type World, type WorldEvent } from './world';
 
@@ -216,9 +218,11 @@ export class WorldView {
   private drawPlace(p: PlaceDef, x: number, y: number) {
     const g = this.g;
     const open = isOpen(this.world.save, p);
-    const hostile = p.garrison !== undefined;
-    g.fillStyle = hostile ? (open ? '#7a2a2a' : '#555') : p.kind === 'town' ? '#2f5d9e' : '#6a5a3a';
-    g.strokeStyle = '#fff4dc';
+    const pol = this.world.politics;
+    const owner = pol.ownerOf(p.id);
+    const color = owner === PLAYER ? '#f2c14e' : factionOf(owner ?? '')?.color;
+    g.fillStyle = color ?? (open ? '#7a2a2a' : '#555');
+    g.strokeStyle = pol.s.threats.some((t) => t.place === p.id) ? '#ff3a2a' : '#fff4dc';
     g.lineWidth = 2;
     g.beginPath();
     g.arc(x, y, p.kind === 'town' ? 15 : 12, 0, Math.PI * 2);
@@ -246,6 +250,7 @@ export class WorldView {
       `餉 ${partyWage(r)}／週`,
       `兵 ${r.soldiers.length}${hurt ? `（傷 ${hurt}）` : ''}`,
       `士氣 ${Math.round(w.morale)}`,
+      `聲望 ${w.pol.renown}`,
     ];
     const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　Tab 部隊　空白鍵暫停　Esc 選單';
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;
