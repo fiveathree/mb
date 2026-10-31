@@ -66,6 +66,25 @@ export class Sfx {
     this.burst(1100, 0.7, 0.13, 0.17);
   }
 
+  arrow() {
+    this.burst(2200, 3, 0.1, 0.1);
+  }
+
+  boom() {
+    this.tone(70, 0.6, 0.4, 'sine');
+    this.burst(320, 0.7, 0.5, 0.35);
+  }
+
+  ui() {
+    this.tone(880, 0.05, 0.06, 'triangle');
+  }
+
+  /** 勝負音：上行三和弦或者下行 */
+  fanfare(win: boolean) {
+    const notes = win ? [392, 494, 587, 784] : [392, 330, 262];
+    notes.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.16, 0.45, 'triangle'), i * 170));
+  }
+
   hoof(strength: number) {
     this.burst(180, 1.2, 0.06 + strength * 0.1, 0.07, 'lowpass');
   }

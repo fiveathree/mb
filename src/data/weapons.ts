@@ -189,7 +189,7 @@ const WEAPON_LIST: WeaponDef[] = [
     { id: 'dragon_breath', name: '龍息', base: 40, draw: 0.4, recover: 0.8, speed: 22, spell: { mp: 22, aoe: 7 } },
     { id: 'troop_fire', name: '火球', base: 26, draw: 1.3, recover: 1.4, speed: 30, spell: { mp: 0, aoe: 3.5 } },
     { id: 'troop_bolt', name: '枯骨雷', base: 34, draw: 1, recover: 1.5, speed: 200, spell: { mp: 0, flat: true } },
-    { id: 'dragon_fire', name: '龍炎', base: 60, draw: 1.1, recover: 1.2, speed: 34, spell: { mp: 0, aoe: 9 } },
+    { id: 'dragon_fire', name: '龍炎', base: 26, draw: 1.4, recover: 2.2, speed: 30, spell: { mp: 0, aoe: 6 } },
     { id: 'flying_sword', name: '飛劍', base: 38, draw: 0.9, recover: 1.1, speed: 120, spell: { mp: 0, flat: true } },
   ].map((s): WeaponDef => ({
     ...melee, id: s.id, name: s.name, model: 'staff', damageType: 'blunt', baseDamage: s.base, reach: 0,

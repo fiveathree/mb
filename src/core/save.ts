@@ -48,6 +48,28 @@ export async function readSlots(): Promise<(GameSave | null)[]> {
   }
 }
 
+/** 存檔碼：JSON → gzip → Base64 */
+export async function exportCode(save: GameSave): Promise<string> {
+  const stream = new Blob([JSON.stringify(save)]).stream().pipeThrough(new CompressionStream('gzip'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+/** 解碼存檔碼；壞咗回傳 null */
+export async function importCode(code: string): Promise<GameSave | null> {
+  try {
+    const bin = atob(code.trim());
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const save = JSON.parse(await new Response(stream).text()) as GameSave;
+    return save.roster && save.world ? save : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteSlot(slot: number): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve) => {

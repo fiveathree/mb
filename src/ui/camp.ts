@@ -261,7 +261,11 @@ export class Camp {
       return `<tr><td style="color:${f.color === '#2c2c38' ? '#9a9ab0' : f.color}">${f.name}</td><td>${fiefs}</td><td>${pol.relation(f.id)}</td><td>${pol.hostile(f.id) ? '敵對' : s.liege === f.id ? '宗主' : ''}</td><td>${btns}</td></tr>`;
     }).join('');
     const crown = pol.canCrown() ? `<div class="cheat"><input id="kname" placeholder="國號" maxlength="8" /><button class="go small" id="crown">自立為王</button></div>` : '';
+    const quests = this.world.save.quests.map((q) => q.title).join('、') || '冇';
+    const news = this.world.save.log.slice(0, 3).join('　') || '暫時冇消息';
     return `
+      <div class="pick-title">任務：${quests}</div>
+      <div class="pick-title">近況：${news}</div>
       <div class="pick-title">身份：${RANK_NAME[s.rank]}${s.liege ? `（${pol.nameOf(s.liege)}）` : ''}${s.kingdom ? `・${s.kingdom}` : ''}・聲望 ${s.renown}・領地 ${pol.fiefsOf(PLAYER).length}${s.won ? '・已統一大陸！' : ''}</div>
       <table class="report trade"><tr><th>勢力</th><th>領地</th><th>好感</th><th>關係</th><th></th></tr>${rows}</table>
       <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。攻下第一塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>

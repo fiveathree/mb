@@ -2,6 +2,9 @@ import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
 import { GOODS, GOOD_ORDER, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS } from '../data/factions';
+import type { StoryEvent } from '../data/quests';
+import { rollEvent } from '../quests/events';
+import { expireQuests, type Quest } from '../quests/quests';
 import { Politics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
@@ -57,6 +60,9 @@ export interface WorldSave {
   pol: PoliticsSave;
   nextDragon: number;
   scenario: string;
+  quests: Quest[];
+  questsDone: number;
+  endingSeen?: boolean;
 }
 
 function townStock(id: string): Record<GoodId, number> {
@@ -82,6 +88,8 @@ export function migrateWorld(w: WorldSave): WorldSave {
   w.pol ??= newPolitics();
   w.nextDragon ??= NPC_RULES.dragonFirstDay;
   w.scenario ??= 'chaos';
+  w.quests ??= [];
+  w.questsDone ??= 0;
   return w;
 }
 
@@ -96,7 +104,8 @@ export function newWorld(): WorldSave {
 export type WorldEvent =
   | { type: 'place'; place: PlaceDef }
   | { type: 'bandit'; bandit: BanditParty }
-  | { type: 'npc'; npc: Npc };
+  | { type: 'npc'; npc: Npc }
+  | { type: 'story'; event: StoryEvent };
 
 export function banditArmy(b: BanditParty): ArmyEntry[] {
   return BANDIT.army.map((a) => ({ unit: a.unit, count: Math.max(1, Math.round(b.size * a.share)) }));
@@ -130,6 +139,7 @@ export class World {
   /** 跟緊邊隊 NPC */
   private chasing: number | null = null;
   private rechase = 0;
+  private pendingStory: StoryEvent | null = null;
   readonly npcs: NpcSystem;
   readonly politics: Politics;
 
@@ -181,6 +191,11 @@ export class World {
     if (this.paused) return null;
     this.advanceTime(dt);
     this.npcs.update(dt, this.save.bandits);
+    if (this.pendingStory) {
+      const event = this.pendingStory;
+      this.pendingStory = null;
+      return { type: 'story', event };
+    }
     return this.updateChase(dt) ?? this.move(dt) ?? this.updateBandits(dt);
   }
 
@@ -239,6 +254,8 @@ export class World {
     if (day % NPC_RULES.refillEvery === 0) this.npcs.refill();
     this.politics.daily(day);
     if (day % POLITICS.thinkEvery === 0) this.politics.think(day);
+    expireQuests(this, day);
+    this.pendingStory ??= rollEvent(this, day);
     r.gold += this.politics.dailyPay();
 
     w.food -= partyFood(r);

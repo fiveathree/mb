@@ -401,10 +401,10 @@ const boss = (id: string, name: string, race: Race, weapon: string, hp: number, 
   blockSkill: 0, blockChance: 0, reaction: 0.3, attackCooldown: [1.1, 1.9], dodgeChance: 0, trimColor: 0x2a2228, boss: true, hero: true,
   rarity: 'hero', pool: 'boss' as PoolId,
 });
-UNITS.boss_golem = boss('boss_golem', '遠古魔像', 'golem', 'boss_fist', 700, 24, 1.1, 3.2);
-UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 900, 12, 1.3, 3.8);
+UNITS.boss_golem = boss('boss_golem', '遠古魔像', 'golem', 'boss_fist', 380, 16, 1.1, 3.2);
+UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 480, 10, 1.3, 3.8);
 UNITS.boss_demon = boss('boss_demon', '惡魔領主', 'demon', 'boss_club', 1500, 20, 1, 4.6);
-UNITS.boss_dragon = { ...boss('boss_dragon', '赤焰巨龍', 'dragon', 'dragon_fire', 2400, 22, 2.2, 4), weapons: ['dragon_fire', 'boss_club'], role: 'archer' };
+UNITS.boss_dragon = { ...boss('boss_dragon', '赤焰巨龍', 'dragon', 'dragon_fire', 1500, 16, 2.2, 4), weapons: ['dragon_fire', 'boss_club'], role: 'archer' };
 
 // 各劇本兵種
 const troop = (

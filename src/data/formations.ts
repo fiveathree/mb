@@ -93,4 +93,10 @@ export const FORMATION_RULES = {
   minEfficiency: 0.4,
   /** 戰鬥中換陣冷卻（秒） */
   switchCooldown: 8,
+  /** 敵軍陣法效果 */
+  enemyEfficiency: 0.8,
+  /** 離自己位置幾遠算散咗（公尺） */
+  cohesionDist: 12,
+  /** 全軍散晒時仲有幾多成加成 */
+  minCohesion: 0.25,
 };

@@ -232,7 +232,8 @@ export class Hud {
       return `<div class="${b.selected.has(g.role) ? 'sel' : ''}"><kbd>${i + 1}</kbd><span>${ROLE_LABEL[g.role]} ${alive}</span><em>${tags}</em></div>`;
     }).join('');
     const form = b.formations[0];
-    const formLine = form ? `<div class="mor">陣法 ${form.def.name} ${Math.round(form.efficiency * 100)}%${b.formations.length > 1 ? '　G 變陣' : ''}</div>` : '';
+    const foeForm = b.enemyFormation ? `<div class="mor">敵陣 ${b.enemyFormation.def.name}</div>` : '';
+    const formLine = (form ? `<div class="mor">陣法 ${form.def.name} ${Math.round(form.efficiency * b.cohesion[0] * 100)}%${b.formations.length > 1 ? '　G 變陣' : ''}</div>` : '') + foeForm;
     return `${rows}${formLine}<div class="mor">士氣 ${Math.round(b.moraleOf(0) * 100)}%　敵 ${Math.round(b.moraleOf(1) * 100)}%</div>`;
   }
 

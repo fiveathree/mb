@@ -6,6 +6,9 @@ import { ARTIFACTS, SIEGE } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { GACHA, POOLS } from '../data/gacha';
 import { PLAYER } from '../politics/politics';
+import { accept, offersAt } from '../quests/quests';
+import { applyChoice } from '../quests/events';
+import type { StoryEvent } from '../data/quests';
 import { HORSES } from '../data/horses';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
@@ -18,9 +21,9 @@ import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
 import type { Hud } from './hud';
 
-type TownTab = 'market' | 'smith' | 'tavern' | 'workshop' | 'arena';
+type TownTab = 'market' | 'smith' | 'tavern' | 'workshop' | 'arena' | 'quest';
 const TOWN_TABS: [TownTab, string][] = [
-  ['market', '市集'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'],
+  ['market', '市集'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'], ['quest', '任務'],
 ];
 
 export interface PlaceActions {
@@ -54,6 +57,11 @@ export class PlaceScreens {
   bind(world: World, roster: Roster) {
     this.world = world;
     this.roster = roster;
+  }
+
+  /** 下一個畫面顯示一句提示 */
+  say(text: string) {
+    this.notice = text;
   }
 
   private goldText(): string {
@@ -101,11 +109,27 @@ export class PlaceScreens {
       tavern: () => this.tavernTab(p, handlers, refresh),
       workshop: () => this.workshopTab(p, handlers, refresh),
       arena: () => this.arenaTab(p, handlers),
+      quest: () => this.questTab(p, handlers, refresh),
     }[this.townTab]();
     this.show(p.name, p.desc ?? '', `
       <div class="tabs center">${TOWN_TABS.map(([k, v]) => `<button class="tab ${k === this.townTab ? 'on' : ''}" id="t_${k}">${v}</button>`).join('')}</div>
       ${fief}${body}
       <div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
+  }
+
+  private questTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
+    const w = this.world.save;
+    const rows = offersAt(w, p).map((q, i) => {
+      const taken = w.quests.some((x) => x.id === q.id);
+      h[`q${i}`] = () => {
+        this.notice = accept(this.world, q);
+        refresh();
+      };
+      return `<button class="alt" id="q${i}" ${taken ? 'disabled' : ''}>${q.title}（${q.gold} 金，${q.deadline - dayOf(w)} 日內）${taken ? '　已接' : ''}</button>`;
+    }).join('');
+    const active = w.quests.map((q) => `<div>${q.title}${q.kind === 'bandits' ? ` ${q.progress}／${q.need}` : ''}・第 ${q.deadline} 日前</div>`).join('');
+    return `<div class="pick-title">城中告示</div><div class="row wrap">${rows}</div>
+      <div class="pick-title">進行中</div><div class="progress">${active || '<div>冇任務</div>'}</div>`;
   }
 
   private tradeRatio(): number {
@@ -417,6 +441,19 @@ export class PlaceScreens {
         }
       },
     });
+  }
+
+  /** 突發事件 */
+  story(e: StoryEvent) {
+    const h: Record<string, () => void> = {};
+    const btns = e.choices.map((c, i) => {
+      h[`c${i}`] = () => {
+        const text = applyChoice(this.world, c.effect);
+        this.show(e.title, text, '<div class="row"><button class="go" id="bye">繼續</button></div>', { bye: this.act.onLeave });
+      };
+      return `<button class="alt" id="c${i}">${c.label}</button>`;
+    }).join('');
+    this.show(e.title, e.text, `<div class="row wrap">${btns}</div>`, h);
   }
 
   /** 同 NPC 傾偈：每種都有唔同用處 */

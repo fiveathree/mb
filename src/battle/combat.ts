@@ -33,7 +33,7 @@ export interface CombatWorld {
   playerAim(muzzle: Vector3, out: Vector3): void;
   /** 圍城時將行軍目標改去最近缺口 */
   routeGoal(c: Combatant, gx: number, gz: number): [number, number];
-  /** 陣法加成，敵軍回傳 0 */
+  /** 陣法加成，按隊形凝聚度打折 */
   formationBonus(team: number, key: keyof FormationBonus): number;
 }
 
@@ -271,6 +271,7 @@ export function shotHit(
 export function explode(world: CombatWorld, att: Combatant, w: WeaponDef, pos: Vector3, mult: number) {
   const radius = w.spell!.aoe!;
   world.fx.burst(pos, 0xff8a2c, 34, 9);
+  world.sfx.boom();
   for (const t of world.units) {
     if (t.team === att.team || t.dead) continue;
     const d = flatDist(t.pos, pos);

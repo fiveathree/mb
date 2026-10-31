@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import { BATTLEFIELD as F, COLORS, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
 import { SIEGE } from '../data/factions';
-import { FORMATION_RULES, type FormationBonus, type FormationDef } from '../data/formations';
+import {
+  FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
+} from '../data/formations';
 import { THEMES, type BattleTheme } from '../data/world';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
@@ -33,6 +35,8 @@ const JUMP_SPEED = 5.5;
 const MOUNT_RANGE = 3.2;
 const MAX_DISMOUNT_SPEED = 6;
 const RESULT_DELAY = 2;
+/** 自動畫質：連續幾次（每半秒）低過 lowFps 就降一級 */
+const QUALITY = { lowFps: 40, patience: 8 };
 const SLOT_REFRESH = 2;
 
 export interface ReportRow {
@@ -62,6 +66,8 @@ export interface BattleSetup {
   firstPerson?: boolean;
   /** 可用陣法，第一個係開局用嘅 */
   formations?: { def: FormationDef; efficiency: number }[];
+  /** 敵軍用邊啲文化嘅陣法 */
+  enemyCultures?: Culture[];
 }
 
 export interface BattleResult {
@@ -96,7 +102,14 @@ export class Battle implements CombatWorld {
   private siege = false;
   /** 陣法：index 0 係用緊嘅 */
   formations: { def: FormationDef; efficiency: number }[] = [];
+  enemyFormation: { def: FormationDef; efficiency: number } | null = null;
+  /** 兩軍隊形凝聚度 */
+  cohesion = [1, 1];
   private formationT = 0;
+  /** 教學用：每幀回呼 */
+  onTick: ((b: Battle) => void) | null = null;
+  private slowFrames = 0;
+  private quality = 2;
   fx: Fx;
   projectiles: Projectiles;
 
@@ -194,9 +207,9 @@ export class Battle implements CombatWorld {
   }
 
   formationBonus(team: number, key: keyof FormationBonus): number {
-    const f = this.formations[0];
-    if (team !== 0 || !f) return 0;
-    return (f.def.bonus[key] ?? 0) * f.efficiency;
+    const f = team === 0 ? this.formations[0] : this.enemyFormation;
+    if (!f) return 0;
+    return (f.def.bonus[key] ?? 0) * f.efficiency * this.cohesion[team];
   }
 
   private applyFormation() {
@@ -205,6 +218,34 @@ export class Battle implements CombatWorld {
     for (const g of this.groups[0]) {
       g.shape = f.def.shape;
       g.assignSlots();
+    }
+  }
+
+  /** 敵軍按編成揀最強嘅可用陣法 */
+  private pickEnemyFormation(cultures: Culture[]) {
+    const count = (role: Role) => this.groups[1].find((g) => g.role === role)?.members.length ?? 0;
+    const spears = this.units.filter((u) => u.team === 1 && WEAPONS[u.def.weapons[0]].model === 'spear').length;
+    const options = FORMATIONS.filter((f) => f.id !== 'plain' && cultures.includes(f.culture)
+      && Object.entries(f.needRole ?? {}).every(([r, n]) => count(r as Role) >= n)
+      && spears >= (f.needSpears ?? 0));
+    const def = options[Math.floor(Math.random() * options.length)];
+    this.enemyFormation = def ? { def, efficiency: FORMATION_RULES.enemyEfficiency } : null;
+    if (def) for (const g of this.groups[1]) g.shape = def.shape;
+  }
+
+  /** 隊形凝聚度：幾多人仲喺自己位置附近 */
+  private updateCohesion() {
+    for (const team of [0, 1]) {
+      let inPlace = 0;
+      let total = 0;
+      for (const g of this.groups[team]) {
+        for (const m of g.alive) {
+          total++;
+          if (m.ai && Math.hypot(m.pos.x - m.ai.slotX, m.pos.z - m.ai.slotZ) < FORMATION_RULES.cohesionDist) inPlace++;
+        }
+      }
+      const ratio = total ? inPlace / total : 0;
+      this.cohesion[team] = FORMATION_RULES.minCohesion + (1 - FORMATION_RULES.minCohesion) * ratio;
     }
   }
 
@@ -324,6 +365,8 @@ export class Battle implements CombatWorld {
 
     this.formations = setup.formations ? [...setup.formations] : [];
     this.formationT = 0;
+    this.cohesion = [1, 1];
+    this.pickEnemyFormation(setup.enemyCultures ?? []);
     this.applyFormation();
     for (const u of this.units) {
       if (u.team === 0 && u.ai) {
@@ -403,6 +446,7 @@ export class Battle implements CombatWorld {
       this.fps = Math.round(this.fpsN / this.fpsT);
       this.fpsN = 0;
       this.fpsT = 0;
+      if (this.running) this.adaptQuality();
     }
 
     if (this.running && this.player) {
@@ -453,7 +497,30 @@ export class Battle implements CombatWorld {
     this.fx.update(dt);
     this.syncModels(dt);
     this.hoofSound(dt);
+    this.onTick?.(this);
     this.checkEnd(real);
+  }
+
+  /** 幀率長期低過標準就降畫質 */
+  private adaptQuality() {
+    if (this.fps === 0 || this.fps >= QUALITY.lowFps) {
+      this.slowFrames = 0;
+      return;
+    }
+    this.slowFrames++;
+    if (this.slowFrames < QUALITY.patience || this.quality === 0) return;
+    this.slowFrames = 0;
+    this.quality--;
+    if (this.quality === 1) this.renderer.setPixelRatio(1);
+    else {
+      this.renderer.shadowMap.enabled = false;
+      this.sun.castShadow = false;
+      this.scene.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+        if (m) m.needsUpdate = true;
+      });
+    }
+    this.resize();
   }
 
   private tickCommand(dt: number) {
@@ -462,6 +529,7 @@ export class Battle implements CombatWorld {
     if (this.moraleT <= 0) {
       this.moraleT = 1;
       tickMorale(this.units);
+      this.updateCohesion();
     }
     this.thinkT -= dt;
     if (this.thinkT <= 0) {

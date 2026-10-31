@@ -160,14 +160,13 @@ export const PLACES: PlaceDef[] = [
   {
     id: 'bonecrypt', name: '枯骨墓穴', kind: 'dungeon', x: 142, y: 20, theme: 'crypt', pool: 'undead', tickets: 5, gold: 800,
     desc: '地底傳出刀劍摩擦聲。只可以帶幾個精兵入去。', garrisonLevel: 3, respawnDays: 18, artifact: 'bone_crown',
-    garrison: [{ unit: 'skeleton', count: 8 }, { unit: 'skeleton_archer', count: 4 }, { unit: 'boss_golem', count: 1 }],
+    garrison: [{ unit: 'skeleton', count: 4 }, { unit: 'skeleton_archer', count: 2 }, { unit: 'boss_golem', count: 1 }],
   },
   {
     id: 'bullmaze', name: '牛角迷宮', kind: 'maze', x: 80, y: 90, theme: 'maze', pool: 'beast', tickets: 5, gold: 1000,
     desc: '入得去，未必出得返。只可以帶幾個精兵入去。', garrisonLevel: 3, respawnDays: 22, artifact: 'horn_axe',
     garrison: [
-      { unit: 'lizard_warrior', count: 6 }, { unit: 'lizard_javelin', count: 3 }, { unit: 'minotaur_guard', count: 2 },
-      { unit: 'boss_giant', count: 1 },
+      { unit: 'lizard_warrior', count: 4 }, { unit: 'lizard_javelin', count: 2 }, { unit: 'boss_giant', count: 1 },
     ],
   },
   {

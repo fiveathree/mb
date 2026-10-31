@@ -9,7 +9,10 @@ import { applyScenario, currentScenario, scenarioOf } from './data/scenarios';
 import {
   addSoldier, applyBattle, autoResolve, deployment, migrateRoster, newRoster, racePenalty, type BattleProgress, type Roster, type Soldier,
 } from './core/roster';
-import { SLOT_COUNT, deleteSlot, readSlots, writeSlot, type GameSave } from './core/save';
+import { SLOT_COUNT, deleteSlot, exportCode, importCode, readSlots, writeSlot, type GameSave } from './core/save';
+import { ENDINGS } from './data/quests';
+import { onArrive, onBanditBeaten } from './quests/quests';
+import { Tutorial } from './ui/tutorial';
 import type { ArmyEntry } from './data/battlefield';
 import { ARENA, HERO, NPC_RULES } from './data/economy';
 import { CAMPAIGN, POOLS } from './data/gacha';
@@ -37,6 +40,7 @@ let ignoreUnlock = false;
 let afterBattle: (win: boolean) => string = () => '';
 /** 競技場唔計部隊戰利品 */
 let arenaFight = false;
+let tutorial: Tutorial | null = null;
 /** 而家喺邊個地點入面，返回用 */
 let currentPlace: PlaceDef | null = null;
 
@@ -76,7 +80,30 @@ function backToMap() {
   hud.hideHud();
   hud.closeScreen();
   saveGame();
+  if (world.save.pol.won && !world.save.endingSeen) {
+    world.save.endingSeen = true;
+    showEnding();
+    return;
+  }
   view.start();
+}
+
+function showEnding() {
+  const pol = world.politics;
+  hud.showScreen(`
+    <div class="card">
+      <h1>${ENDINGS.title}</h1>
+      <p class="sub">${ENDINGS.text}</p>
+      <div class="stats">
+        <div><small>國號</small><b>${pol.s.kingdom ?? '無名'}</b></div>
+        <div><small>用時</small><b>${dayOf(world.save)} 日</b></div>
+        <div><small>勝仗</small><b>${roster.wins}</b></div>
+        <div><small>任務</small><b>${world.save.questsDone}</b></div>
+      </div>
+      <div class="row"><button class="go" id="next">繼續統治</button></div>
+    </div>`);
+  battle.sfx.fanfare(true);
+  document.getElementById('next')!.onclick = backToMap;
 }
 
 function reopenPlace() {
@@ -91,6 +118,8 @@ function reopenPlace() {
 function openPlace(p: PlaceDef) {
   currentPlace = p;
   view.stop();
+  const done = onArrive(world, p);
+  if (done.length) screens.say(done.join('　'));
   saveGame();
   if (p.kind === 'town') screens.town(p);
   else if (p.kind === 'village') screens.village(p);
@@ -132,7 +161,7 @@ async function startBattle(
     hud.hideScreen();
     battle.start({
       playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
-      formations,
+      formations, enemyCultures: arenaFight ? [] : currentScenario().cultures,
     });
     inBattle = true;
     await lockMouse();
@@ -201,14 +230,18 @@ function fightBandit(b: BanditParty, auto: boolean) {
     const progress = applyBattle(roster, res.outcomes, res.gold, res.win);
     if (res.win) gainHeroXp(roster.hero, HERO.xpBattleWin);
     world.winMorale(res.win);
-    if (res.win) world.removeBandit(b);
-    else world.escape(b);
+    if (res.win) {
+      world.removeBandit(b);
+      onBanditBeaten(world);
+    } else world.escape(b);
     showAutoResult(res.win, progress);
     return;
   }
   void startBattle(army, b.level, isNight(world.save) ? 'night' : 'plains', (win) => {
-    if (win) world.removeBandit(b);
-    else world.escape(b);
+    if (win) {
+      world.removeBandit(b);
+      onBanditBeaten(world);
+    } else world.escape(b);
     return '';
   });
 }
@@ -295,6 +328,20 @@ battle.onEnd = (result: BattleResult) => {
     world.politics.s.renown += result.renown;
   }
   arenaFight = false;
+  battle.sfx.fanfare(result.win);
+  if (tutorial) {
+    tutorial.close();
+    tutorial = null;
+    battle.onTick = null;
+    hud.showScreen(`
+      <div class="card">
+        <h2 class="${result.win ? 'win' : 'lose'}">${result.win ? '教學完成' : '再試一次'}</h2>
+        <p class="sub">行軍、指揮同經營喺正式遊戲慢慢學，Tab 同 Esc 入面有操作表。</p>
+        <div class="row"><button class="go" id="next">返回主選單</button></div>
+      </div>`);
+    document.getElementById('next')!.onclick = () => void showMenu();
+    return;
+  }
   const xp = result.playerKills * HERO.xpPerKill + (result.win ? HERO.xpBattleWin : 0);
   const ups = gainHeroXp(roster.hero, xp);
   const extra = [afterBattle(result.win), `主角經驗 +${xp}`, ups ? `主角升到 ${roster.hero.level} 級！` : ''].filter(Boolean).join('、');
@@ -306,9 +353,59 @@ view.onEvent = (e) => {
   else {
     view.stop();
     if (e.type === 'bandit') screens.bandit(e.bandit);
-    else screens.npc(e.npc);
+    else if (e.type === 'npc') screens.npc(e.npc);
+    else screens.story(e.event);
   }
 };
+
+async function startTutorial() {
+  const r = newRoster();
+  const steps = new Tutorial();
+  tutorial = steps;
+  battle.onTick = (b) => steps.tick(b);
+  battle.sfx.unlock();
+  hud.hideScreen();
+  afterBattle = () => '';
+  battle.start({
+    playerDef: playerDef(r.hero), horse: playerHorse(r.hero), loadout: r.hero.loadout, soldiers: [],
+    enemy: [{ unit: 'kobold', count: 4 }], enemyLevel: 1, theme: 'plains', moraleMult: 1,
+  });
+  inBattle = true;
+  await lockMouse();
+}
+
+function showSaveCode(code: string) {
+  hud.showScreen(`
+    <div class="card">
+      <h2>存檔碼</h2>
+      <p class="sub">複製呢段碼，就可以喺另一部機匯入。</p>
+      <textarea class="code-box" id="code" readonly>${code}</textarea>
+      <div class="row"><button class="alt" id="copy">複製</button><button class="go" id="back">返回</button></div>
+    </div>`);
+  document.getElementById('copy')!.onclick = () => void navigator.clipboard?.writeText(code);
+  document.getElementById('back')!.onclick = () => void showMenu();
+}
+
+function showImport(target: number) {
+  hud.showScreen(`
+    <div class="card">
+      <h2>匯入存檔 ${target + 1}</h2>
+      <p class="sub" id="msg">貼上存檔碼，會覆蓋呢個存檔槽。</p>
+      <textarea class="code-box" id="code"></textarea>
+      <div class="row"><button class="go" id="ok">匯入</button><button class="alt" id="back">返回</button></div>
+    </div>`);
+  document.getElementById('back')!.onclick = () => void showMenu();
+  document.getElementById('ok')!.onclick = async () => {
+    const text = (document.getElementById('code') as HTMLTextAreaElement).value;
+    const save = await importCode(text);
+    if (!save) {
+      document.getElementById('msg')!.textContent = '存檔碼唔啱，請再檢查。';
+      return;
+    }
+    await writeSlot(target, save);
+    await showMenu();
+  };
+}
 view.onParty = () => {
   view.stop();
   camp.show(() => reopenPlace());
@@ -326,6 +423,8 @@ async function showMenu() {
     const info = s ? `${scenarioOf(s.world.scenario ?? 'chaos').name}・第 ${dayOf(s.world)} 日・兵 ${s.roster.soldiers.length}・勝 ${s.roster.wins}` : '空';
     return `<div class="slot"><span>存檔 ${i + 1}：${info}</span>
       <button class="go small" data-load="${i}">${s ? '繼續' : '新遊戲'}</button>
+      ${s ? `<button class="alt small" data-exp="${i}">匯出</button>` : ''}
+      <button class="alt small" data-imp="${i}">匯入</button>
       ${s ? `<button class="alt small" data-del="${i}">刪除</button>` : ''}</div>`;
   };
   hud.hideHud();
@@ -334,7 +433,15 @@ async function showMenu() {
       <h1>鐵騎風雲</h1>
       <p class="sub">由無名傭兵開始，帶隊遊走裂天大陸，攻城闖迷宮，招募四方豪傑。</p>
       ${Array.from({ length: SLOT_COUNT }, (_, i) => line(i)).join('')}
+      <div class="row"><button class="alt" id="tut">教學關</button></div>
     </div>`);
+  document.getElementById('tut')!.onclick = () => void startTutorial();
+  document.querySelectorAll<HTMLElement>('#screen [data-exp]').forEach((el) => {
+    el.onclick = () => void exportCode(slots[Number(el.dataset.exp)]!).then(showSaveCode);
+  });
+  document.querySelectorAll<HTMLElement>('#screen [data-imp]').forEach((el) => {
+    el.onclick = () => showImport(Number(el.dataset.imp));
+  });
   document.querySelectorAll<HTMLElement>('#screen [data-load]').forEach((el) => {
     el.onclick = () => {
       slot = Number(el.dataset.load);

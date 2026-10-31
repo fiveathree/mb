@@ -85,7 +85,7 @@ export class Projectiles {
     const dir = v2;
     if (c === world.player) {
       world.playerAim(muzzle, dir);
-      world.sfx.whoosh();
+      world.sfx.arrow();
     } else {
       aiAim(c, muzzle, r.speed, dir);
     }
