@@ -1,7 +1,7 @@
 import type { ArmyEntry } from './battlefield';
 import { FACTIONS } from './factions';
 import type { Culture } from './formations';
-import { PLACES } from './world';
+import { BIOMES, MAP, PLACES } from './world';
 
 export interface Scenario {
   id: string;
@@ -137,7 +137,9 @@ const HOME_PLACE = [
 
 // 記低原本資料，切換劇本時可以還原
 const baseFactions = FACTIONS.map((f) => ({ name: f.name, garrison: f.garrison }));
-const basePlaces = PLACES.map((p) => ({ name: p.name, desc: p.desc, garrison: p.garrison }));
+const basePlaces = PLACES.map((p) => ({ name: p.name, desc: p.desc, garrison: p.garrison, x: p.x }));
+const baseBiomes = BIOMES.map((b) => b.x);
+const baseRiver = MAP.riderX;
 
 let current: Scenario = SCENARIOS[0];
 export const currentScenario = () => current;
@@ -147,6 +149,15 @@ export function applyScenario(id: string) {
   current = scenarioOf(id);
   FACTIONS.forEach((f, i) => Object.assign(f, baseFactions[i]));
   PLACES.forEach((p, i) => Object.assign(p, basePlaces[i]));
+  // 單數劇本左右鏡像，城鎮同地域布局唔同
+  if (SCENARIOS.indexOf(current) % 2 === 1) {
+    for (const p of PLACES) p.x = MAP.width - 1 - p.x;
+    BIOMES.forEach((b, i) => { b.x = MAP.width - 1 - baseBiomes[i]; });
+    MAP.riderX = MAP.width - 1 - baseRiver;
+  } else {
+    BIOMES.forEach((b, i) => { b.x = baseBiomes[i]; });
+    MAP.riderX = baseRiver;
+  }
   const { realms, camps, boss } = current;
   if (realms) {
     realms.forEach(([faction, place], i) => {

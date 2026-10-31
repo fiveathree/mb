@@ -1,6 +1,7 @@
 import { ARMORS, SLOT_NAME, type ArmorDef, type ArmorSlot } from '../data/economy';
 import { ARTIFACTS } from '../data/factions';
-import { HORSES } from '../data/horses';
+import { HORSES, HORSE_RANK } from '../data/horses';
+import { RARITY } from '../data/gacha';
 import { RACES } from '../data/races';
 import { UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
@@ -97,7 +98,7 @@ export class GearPanel {
     const noRide = RACES[(s ? UNITS[s.unit].race : hero.race) ?? 'human'].noRide;
     const horses = HORSES.filter((h) => !noRide && hero.horses.includes(h.id)).map((h) => {
       const on = s ? s.gear?.horse === h.id : hero.horse === h.id;
-      return `<button class="mini ${on ? 'on' : ''}" data-horse="${h.id}">${h.name}</button>`;
+      return `<button class="mini ${on ? 'on' : ''}" data-horse="${h.id}">[${RARITY[HORSE_RANK[h.id]].name}] ${h.name}</button>`;
     }).join('');
     const arts = ARTIFACTS.filter((a) => hero.artifacts.includes(a.id)).map((a) => a.name).join('、');
 

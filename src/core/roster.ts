@@ -68,6 +68,10 @@ export interface DrawResult {
 }
 
 export const rarityOf = (def: UnitDef): Rarity => def.rarity ?? 'common';
+/** SR 或以上，做得守將同帶隊 */
+export const isElite = (def: UnitDef) => CAMPAIGN.protectedRarities.includes(rarityOf(def));
+/** 名前嘅冠位 */
+export const rankTag = (def: UnitDef) => `[${RARITY[rarityOf(def)].name}]`;
 export const raceOf = (def: UnitDef): Race => def.race ?? 'human';
 
 export function addSoldier(r: Roster, unit: string): Soldier {
@@ -226,7 +230,10 @@ function rollRarity(): Rarity {
 }
 
 function grant(r: Roster, pool: PoolId, rarity: Rarity): DrawResult {
-  const list = poolUnits(pool, rarity);
+  // 呢個卡池冇呢個冠位，就退去最接近嗰級
+  const from = RARITY_ORDER.indexOf(rarity);
+  const near = [...RARITY_ORDER].sort((a, b) => Math.abs(RARITY_ORDER.indexOf(a) - from) - Math.abs(RARITY_ORDER.indexOf(b) - from));
+  const list = near.map((k) => poolUnits(pool, k)).find((x) => x.length)!;
   const unit = list[Math.floor(Math.random() * list.length)];
   if (unit.hero && r.soldiers.some((s) => s.unit === unit.id)) {
     r.gold += GACHA.duplicateHeroRefund;
@@ -244,7 +251,7 @@ export function draw(r: Roster, pool: PoolId, count: 1 | 10): DrawResult[] | nul
   for (let i = 0; i < count; i++) {
     r.pity[pool]++;
     const rarity: Rarity = r.pity[pool] >= GACHA.pity ? 'hero' : rollRarity();
-    if (rarity === 'hero') r.pity[pool] = 0;
+    if (rarity === 'hero' || rarity === 'ur') r.pity[pool] = 0;
     rarities.push(rarity);
   }
   if (count === 10 && !rarities.some((x) => x !== 'common')) rarities[9] = 'fine';

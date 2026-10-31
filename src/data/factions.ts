@@ -165,6 +165,13 @@ export const SIEGE = {
   catapultX: [-34, 34],
   catapultRadius: 5,
   catapultBreak: 4,
+  /** 每部投石機派幾多人去拆 */
+  raiders: 3,
+  /** 守方埋身幾耐毀攻城塔、幾多嚿石毀塔、掟塔機率 */
+  towerBreak: 5,
+  towerHits: 3,
+  towerRockChance: 0.3,
+  towerRadius: 6,
   /** 幾秒掟一嚿石、石飛幾耐 */
   rockEvery: 6,
   rockFlight: 2.2,
@@ -180,6 +187,9 @@ export const DUNGEON = {
   zMin: -72,
   zMax: 66,
   startZ: -62,
+  ceiling: 9,
+  torchRange: 44,
+  torchPower: 70,
   /** 門位左右偏移範圍（房闊比例） */
   doorMin: 0.3,
   doorMax: 0.7,

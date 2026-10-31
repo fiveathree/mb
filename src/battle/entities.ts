@@ -43,6 +43,8 @@ export class Horse {
 }
 
 export interface AiState {
+  /** 專責拆投石機 */
+  raid?: { x: number; z: number } | null;
   group: Group;
   target: Combatant | null;
   retarget: number;

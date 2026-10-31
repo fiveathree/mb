@@ -6,7 +6,7 @@ import { ROLE_LABEL, UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
 import { armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
 import {
-  applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rarityOf, roleCounts,
+  applyCheat, deployment, draw, foodOf, partyFood, partyWage, promote, promotions, raceOf, racePenalty, rankTag, rarityOf, roleCounts,
   sortedSoldiers, wageOf, xpToNext, type DrawResult, type Roster, type Soldier,
 } from '../core/roster';
 import { FACTIONS, POLITICS, lordOf } from '../data/factions';
@@ -255,7 +255,7 @@ export class Camp {
     const state = s.post === EXPEDITION_POST ? '・遠征' : s.post ? '・駐守' : s.hurtDays > 0 ? `・傷 ${s.hurtDays} 日` : s.benched ? '・候補' : '';
     const promos = promotions(s).map((p) => `<span class="promo" data-id="${s.id}" data-to="${p.to.id}">升 ${p.to.name} ${p.cost}</span>`).join('');
     return `<button class="sold ${s.benched || s.post || s.hurtDays > 0 ? 'bench' : ''}" data-id="${s.id}" style="--r:${rarity.color}">
-      <b>${def.name}</b>
+      <b>${rankTag(def)} ${def.name}</b>
       <small>Lv${s.level}・${RACES[raceOf(def)].name}・殺 ${s.kills}${state}</small>
       <small>糧 ${foodOf(def).toFixed(2)}・餉 ${wageOf(def)}</small>
       <i class="xp"><u style="width:${pct}%"></u></i>
@@ -308,7 +308,7 @@ export class Camp {
       <div class="pick-title">效忠要 ${POLITICS.vassalRenown} 聲望。有 ${POLITICS.kingFiefs} 塊領地就可以自立為王，${POLITICS.victoryFiefs} 塊統一大陸。</div>
       <div class="pick-title">遠征：${this.world.save.expeditionUntil
         ? `隊伍第 ${this.world.save.expeditionUntil} 日返嚟`
-        : `<button class="mini" id="expedition">英雄帶 ${EXPEDITION.size} 人出發（${EXPEDITION.days} 日，帶金幣同經驗返）</button>`}</div>
+        : `<button class="mini" id="expedition">英雄帶 ${EXPEDITION.size} 人出發（${EXPEDITION.days} 日，沿路打山賊，帶金幣同經驗返）</button>`}</div>
       ${s.lords.length ? `<div class="pick-title">領主俘虜 ${s.lords.length} 人（${lordOf(s.lords[0])}）：
         <button class="mini" id="ransom">收贖金 ${POLITICS.ransomGold}</button>
         <button class="mini" id="freeLord">無條件放人</button></div>` : ''}
@@ -327,7 +327,7 @@ export class Camp {
   private gachaHtml(): string {
     const r = this.roster;
     const pool = POOLS[this.pool];
-    const rates = RARITY_ORDER.map((k) => `<span style="color:${RARITY[k].color}">${RARITY[k].name} ${(RARITY[k].rate * 100).toFixed(0)}%</span>`).join('');
+    const rates = RARITY_ORDER.map((k) => `<span style="color:${RARITY[k].color}">${RARITY[k].name} ${(RARITY[k].rate * 100).toFixed(1)}%</span>`).join('');
     const have = r.tickets[this.pool];
     return `
       <div class="pools">${POOL_ORDER.map((p) => `<button class="pool ${p === this.pool ? 'on' : ''}" data-pool="${p}"><b>${POOLS[p].name}</b><small>${POOLS[p].ticket} ${r.tickets[p]}</small></button>`).join('')}</div>

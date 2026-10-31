@@ -6,18 +6,19 @@ import { ARTIFACTS, LORD_RULES, POLITICS, SIEGE, lordOf } from '../data/factions
 import { HONOR, type StoryHero } from '../data/honor';
 import { TOMB } from '../data/tomb';
 import { currentScenario } from '../data/scenarios';
-import { GACHA, POOLS, POOL_ORDER } from '../data/gacha';
+import { GACHA, POOLS, POOL_ORDER, RARITY } from '../data/gacha';
 import { PLAYER } from '../politics/politics';
 import { accept, offersAt } from '../quests/quests';
 import { applyChoice } from '../quests/events';
 import type { StoryEvent } from '../data/quests';
-import { HORSES } from '../data/horses';
+import { HORSES, HORSE_RANK, MARKET_RANKS, STABLES } from '../data/horses';
+import { FIGURE_MAX_LEVEL, FIGURE_TOWN_DIST, figureOf, figurePrice } from '../data/figures';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
 import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
 import { freeArmor, horsePrice, skillOf, weaponPrice } from '../core/hero';
 import {
-  addSoldier, armyPower, armySize, canAfford, rarityOf, rosterPower, sortedSoldiers, spend, wageOf, type Roster,
+  addSoldier, armyPower, armySize, canAfford, isElite, rankTag, rosterPower, sortedSoldiers, spend, wageOf, type Roster,
 } from '../core/roster';
 import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
@@ -149,7 +150,7 @@ export class PlaceScreens {
     const body = {
       market: () => this.marketTab(p, handlers, refresh),
       supply: () => this.supplyTab(p, handlers, refresh),
-      smith: () => this.smithTab(handlers, refresh),
+      smith: () => this.smithTab(p, handlers, refresh),
       tavern: () => this.tavernTab(p, handlers, refresh),
       workshop: () => this.workshopTab(p, handlers, refresh),
       arena: () => this.arenaTab(p, handlers),
@@ -344,7 +345,7 @@ export class PlaceScreens {
       <div class="row wrap"><button class="alt" id="rest">休息一日</button></div>`;
   }
 
-  private smithTab(h: Record<string, () => void>, refresh: () => void): string {
+  private smithTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
     const r = this.roster;
     const hero = r.hero;
     const buy = (id: string, price: number, fn: () => void) => {
@@ -375,15 +376,36 @@ export class PlaceScreens {
       return `<button class="mini" id="s_${a.id}">賣 ${a.name} ${price}</button>`;
     }).join('');
     const magic = currentScenario().cultures.includes('magic');
-    const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic)).map((d) => {
+    const stable = STABLES[p.id] ?? [];
+    const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic) && (MARKET_RANKS.includes(HORSE_RANK[d.id]) || stable.includes(d.id))).map((d) => {
       const owned = hero.horses.includes(d.id);
       if (!owned) buy(`h_${d.id}`, horsePrice(d.id), () => hero.horses.push(d.id));
-      return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>${d.name} ${owned ? '已有' : horsePrice(d.id)}</button>`;
+      return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>[${RARITY[HORSE_RANK[d.id]].name}] ${d.name} ${owned ? '已有' : horsePrice(d.id)}</button>`;
     }).join('');
     return `
       <div class="pick-title">武器</div><div class="shop">${weapons}</div>
       <div class="pick-title">護甲（買完喺 Tab「裝備」頁著）</div><div class="shop">${armors}${spare}</div>
-      <div class="pick-title">坐騎</div><div class="shop">${horses}</div>`;
+      <div class="pick-title">坐騎（SSR、UR 要攻陷地下城或者討伐災厄先有）</div><div class="shop">${horses}</div>`;
+  }
+
+  /** 招請人物嘅掣：大地圖撞到同酒館都用 */
+  private figureButton(n: Npc, id: string, h: Record<string, () => void>, refresh: () => void): string {
+    const f = figureOf(n.figure!)!;
+    const price = figurePrice(f, n.growth ?? 0);
+    const r = this.roster;
+    const pol = this.world.politics;
+    const ok = pol.s.renown >= f.renown && canAfford(r, price);
+    h[id] = () => {
+      if (pol.s.renown >= f.renown && spend(r, price)) {
+        addSoldier(r, f.id).level = Math.min(FIGURE_MAX_LEVEL, 1 + (n.growth ?? 0));
+        pol.s.storyMet.push(f.id);
+        this.world.npcs.remove(n);
+        this.notice = `${f.name}加入咗隊伍`;
+      }
+      refresh();
+    };
+    const need = pol.s.renown < f.renown ? `，要聲望 ${f.renown}` : '';
+    return `<button class="alt" id="${id}" ${ok ? '' : 'disabled'}>${rankTag(UNITS[f.id])} ${f.name}：${n.job}（${price} 金${need}）</button>`;
   }
 
   private mercOffers(p: PlaceDef): UnitDef[] {
@@ -403,7 +425,7 @@ export class PlaceScreens {
         }
         refresh();
       };
-      return `<button class="alt" id="merc${i}" ${canAfford(r, price) ? '' : 'disabled'}>${d.name}（${price} 金・週餉 ${wageOf(d)}）</button>`;
+      return `<button class="alt" id="merc${i}" ${canAfford(r, price) ? '' : 'disabled'}>${rankTag(d)} ${d.name}（${price} 金・週餉 ${wageOf(d)}）</button>`;
     }).join('');
     const comps = COMPANIONS.map((c, i) => {
       const def = UNITS[c.unit];
@@ -417,7 +439,10 @@ export class PlaceScreens {
       };
       return `<button class="alt" id="comp${i}" ${have || !canAfford(r, c.price) ? 'disabled' : ''}>${def.name}：${def.desc}（${have ? '已入隊' : `${c.price} 金`}）</button>`;
     }).join('');
+    const near = this.world.save.npcs.filter((n) => n.kind === 'figure' && Math.hypot(n.x - p.x, n.y - p.y) < FIGURE_TOWN_DIST);
+    const guests = near.map((n, i) => this.figureButton(n, `fig${i}`, h, refresh)).join('');
     return `
+      ${guests ? `<div class="pick-title">城中人物</div><div class="row wrap">${guests}</div>` : ''}
       <div class="pick-title">傭兵</div><div class="row wrap">${offers}</div>
       <div class="pick-title">同伴（入隊後提供技能加成）</div><div class="row wrap">${comps}</div>`;
   }
@@ -531,8 +556,8 @@ export class PlaceScreens {
       return `<div class="pick-title">你嘅領地，守將 ${UNITS[guard.unit].name}，收入 +${Math.round((POLITICS.governorIncome - 1) * 100)}%。
         <button class="mini" id="recall">召回</button></div>`;
     }
-    const next = sortedSoldiers(this.roster).find((s) => !s.post && ['special', 'hero'].includes(rarityOf(UNITS[s.unit])));
-    if (!next) return '<div class="pick-title">呢度係你嘅領地，每週收稅。特殊或者英雄級可以做守將。</div>';
+    const next = sortedSoldiers(this.roster).find((s) => !s.post && isElite(UNITS[s.unit]));
+    if (!next) return '<div class="pick-title">呢度係你嘅領地，每週收稅。SR 或以上先做得守將。</div>';
     h.assign = () => {
       next.post = p.id;
       pol.s.governors[p.id] = UNITS[next.unit].name;
@@ -613,7 +638,7 @@ export class PlaceScreens {
     this.show(p.name, p.desc ?? '', `
       <div class="pick-title">進度：${floor} ／ ${TOMB.floors.length} 層。打贏先落得下一層，輸咗要重打呢層。</div>
       <div class="pick-title">${f.name}：${f.desc}</div>
-      <div class="pick-title">守軍約 ${level} 級：${f.enemy.map((g) => `${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
+      <div class="pick-title">守軍約 ${level} 級：${f.enemy.map((g) => `${rankTag(UNITS[g.unit])}${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
       <div class="pick-title">形勢：${strengthText(rosterPower(this.roster), armyPower(f.enemy, level))}</div>
       <div class="row"><button class="go" id="down">落去</button><button class="alt" id="party">部隊／抽卡</button><button class="alt" id="leave">撤離</button></div>`, {
       ...leave,
@@ -644,7 +669,7 @@ export class PlaceScreens {
     const pool = p.pool ? POOLS[p.pool] : null;
     const art = ARTIFACTS.find((a) => a.id === p.artifact && !this.roster.hero.artifacts.includes(a.id));
     this.show(p.name, p.desc ?? '', `
-      <div class="pick-title">守軍 ${armySize(garrison)} 人，約 ${level} 級：${garrison.map((g) => `${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
+      <div class="pick-title">守軍 ${armySize(garrison)} 人，約 ${level} 級：${garrison.map((g) => `${rankTag(UNITS[g.unit])}${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
       <div class="pick-title">形勢：${strengthText(rosterPower(this.roster), armyPower(garrison, level))}</div>
       ${pool ? `<div class="pick-title">攻陷獎勵：${pool.ticket} ×${p.tickets}、${p.gold} 金</div>` : ''}
       ${art ? `<div class="pick-title">神器：${art.name}（${art.desc}）</div>` : ''}
@@ -706,7 +731,8 @@ export class PlaceScreens {
     const refresh = () => this.npc(n);
     const r = this.roster;
     const w = this.world.save;
-    const name = NPC[n.kind].name;
+    const person = n.figure ? figureOf(n.figure) : null;
+    const name = person ? `${rankTag(UNITS[person.id])} ${person.name}` : NPC[n.kind].name;
     const h: Record<string, () => void> = { bye: this.act.onLeave };
     let body = '';
     const rumor = () => {
@@ -783,6 +809,16 @@ export class PlaceScreens {
       case 'expedition':
         body = '<p class="sub">你嘅遠征隊，揾緊金幣同經驗。</p>';
         break;
+      case 'fisher':
+      case 'miner':
+        h.rumor = rumor;
+        body = `<button class="alt" id="rumor">傾下偈（${NPC_RULES.rumorCost} 金）</button>`;
+        break;
+      case 'figure': {
+        const f = figureOf(n.figure!)!;
+        body = `<p class="sub">${f.desc}</p>${this.figureButton(n, 'hire', h, () => this.act.onLeave())}`;
+        break;
+      }
       case 'lord': {
         const pol = this.world.politics;
         const owner = pol.ownerOf(n.home);
@@ -809,6 +845,6 @@ export class PlaceScreens {
           <button class="go" id="fight">截擊</button>`;
         break;
     }
-    this.show(`${name}（${n.size} 人）`, n.job, `<div class="row wrap">${body}<button class="alt" id="bye">離開</button></div>`, h);
+    this.show(person ? name : `${name}（${n.size} 人）`, n.job, `<div class="row wrap">${body}<button class="alt" id="bye">離開</button></div>`, h);
   }
 }

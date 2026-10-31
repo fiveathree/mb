@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { COMBAT, type AttackDir } from '../data/combat';
 import { BATTLEFIELD } from '../data/battlefield';
-import type { BattleProgress } from '../core/roster';
+import { rankTag, type BattleProgress } from '../core/roster';
 import { ROLE_LABEL, TEAM_NAMES } from '../data/units';
 import { mirrorDir } from '../battle/combat';
 import { flatDist, rad, type Combatant } from '../battle/entities';
@@ -264,7 +264,7 @@ export class Hud {
       }
       TAG_POS.set(u.pos.x, u.pos.y + (u.horse ? 4.1 : 2.9), u.pos.z).project(b.camera);
       el.hidden = TAG_POS.z > 1;
-      el.textContent = u.def.name;
+      el.textContent = `${rankTag(u.def)} ${u.def.name}`;
       el.className = u.team === 0 ? 'ally' : 'foe';
       el.style.transform = `translate(calc(${(TAG_POS.x * 0.5 + 0.5) * window.innerWidth}px - 50%), ${(0.5 - TAG_POS.y * 0.5) * window.innerHeight}px)`;
     });

@@ -1,3 +1,5 @@
+import type { Rarity } from './gacha';
+
 export interface HorseDef {
   id: string;
   name: string;
@@ -113,6 +115,23 @@ export const HORSES: HorseDef[] = [
   mount('pegasus', '天馬', '翼拍一下跳到半空', 9, 17, 5.5, 125, 3, 12, 0.8, 0xe8ecf4, { fantasy: true, look: 'wings', flight: true }),
   mount('griffin_mount', '獅鷲', '飛撲最高，撞擊最狠嘅翼獸', 9, 16.5, 6, 210, 9, 13, 1.5, 0xb08a4a, { fantasy: true, look: 'wings', flight: true }),
 ];
+
+/** 坐騎冠位 */
+export const HORSE_RANK: Record<string, Rarity> = {
+  hunter: 'common', pack: 'common', wolf: 'common', steppe: 'fine', camel: 'fine', elk: 'fine', warhorse: 'special', dire_wolf: 'special', tiger: 'special',
+  drake: 'hero', rhino: 'hero', unicorn: 'hero', nightmare: 'hero', pegasus: 'hero', griffin_mount: 'ur',
+};
+
+/** 普通市場只賣到 R；地域馬房先有 SR */
+export const MARKET_RANKS: Rarity[] = ['common', 'fine'];
+export const STABLES: Record<string, string[]> = {
+  griffon: ['warhorse'], linjiang: ['warhorse'], wuyi: ['tiger'], frostfang: ['dire_wolf'], shadowspire: ['dire_wolf'], monsterhold: ['dire_wolf', 'tiger'],
+};
+
+/** SSR、UR 坐騎只靠攻陷同討伐：地點或者災厄 id → 坐騎 */
+export const MOUNT_REWARD: Record<string, string> = {
+  bonecrypt: 'nightmare', bullmaze: 'rhino', abyss: 'drake', dragonlair: 'griffin_mount', witch: 'unicorn', wyrm: 'griffin_mount', tomb: 'pegasus',
+};
 
 /** 受傷馬匹最低速度比例 */
 export const HORSE_INJURED_MIN_SPEED = 0.6;

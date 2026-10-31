@@ -1,4 +1,5 @@
 import type { PoolId, Rarity } from './gacha';
+import { FIGURES } from './figures';
 import type { Race } from './races';
 
 export type Role = 'infantry' | 'archer' | 'cavalry' | 'mage';
@@ -405,7 +406,7 @@ UNITS.demon_cultist = caster('demon_cultist', '惡魔教徒', '邪火祭司', 'd
 const boss = (id: string, name: string, race: Race, weapon: string, hp: number, armor: number, radius: number, speed: number): UnitDef => ({
   id, name, role: 'infantry', race, tier: 8, hp, armor, walkSpeed: speed * 0.6, runSpeed: speed, radius, weapons: [weapon], morale: 9999,
   blockSkill: 0, blockChance: 0, reaction: 0.3, attackCooldown: [1.1, 1.9], dodgeChance: 0, trimColor: 0x2a2228, boss: true, hero: true,
-  rarity: 'hero', pool: 'boss' as PoolId,
+  rarity: 'ur', pool: 'boss' as PoolId,
 });
 UNITS.boss_golem = boss('boss_golem', '遠古魔像', 'golem', 'boss_fist', 380, 16, 1.1, 3.2);
 UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 480, 10, 1.3, 3.8);
@@ -501,12 +502,25 @@ UNITS.comp_medic = companion('comp_medic', '軍醫 白薇', '傷兵好得快', '
 UNITS.comp_trader = companion('comp_trader', '行商 錢滿', '識講價', 'infantry', ['infantry_sword'], 0xd9b24a);
 UNITS.comp_veteran = companion('comp_veteran', '老兵 鐵叔', '百戰餘生，部下信服', 'infantry', ['elite_sword'], 0x8a8a92);
 
+// 有名有姓嘅人物
+for (const f of FIGURES) {
+  UNITS[f.id] = troop(f.id, f.name, f.role, f.tier, f.hp, f.armor, f.weapons, f.color, {
+    desc: f.desc, hero: true, aura: f.aura, rarity: f.rarity, plumeColor: f.color, race: f.race, horse: f.horse, morale: 130,
+    blockSkill: 0.75, blockChance: 0.6, reaction: 0.18, attackCooldown: [0.8, 1.4], dodgeChance: 0.25, runSpeed: 5, companion: true,
+  });
+}
+
+// 每個卡池最強嗰位係 UR
+for (const id of ['hero_barn', 'hero_morvain', 'hero_asterion', 'hero_reynard', 'hero_gorak']) UNITS[id].rarity = 'ur';
+
 // 原有精靈同矮人歸入山林卡池
 for (const id of ['elf_longbow', 'hero_sylvia']) Object.assign(UNITS[id], { race: 'elf', pool: 'fair' });
 for (const id of ['dwarf_breaker', 'hero_barn']) Object.assign(UNITS[id], { race: 'dwarf', pool: 'fair' });
 
 /** 步兵同弓兵行為參數 */
 export const AI = {
+  /** 拆投石機途中，敵人近過呢個就先打 */
+  raidEngage: 4,
   /** 地下城跟隨時，同房幾遠就主動打 */
   roomEngageDist: 30,
   turnRate: 5,

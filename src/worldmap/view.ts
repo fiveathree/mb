@@ -1,6 +1,7 @@
 import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef, type PlaceKind } from '../data/world';
 import type { Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
+import { figureOf } from '../data/figures';
 import { factionOf } from '../data/factions';
 import { currentScenario } from '../data/scenarios';
 import { PLAYER } from '../politics/politics';
@@ -199,7 +200,7 @@ export class WorldView {
         run: () => this.visit(p),
       })),
       ...this.near(seen(w.npcs), e, NPC_CLICK_PX).map((n) => ({
-        label: `截住 ${NPC[n.kind].name} ${n.size} 人`,
+        label: n.figure ? `見 ${figureOf(n.figure)!.name}` : `截住 ${NPC[n.kind].name} ${n.size} 人`,
         run: () => this.world.chase(n),
       })),
       ...this.near(seen(w.bandits), e, NPC_CLICK_PX).map((b) => ({
@@ -494,7 +495,7 @@ export class WorldView {
       g.fill();
       g.stroke();
       if (dist < NPC_RULES.labelDist && q.s > LABEL_MIN_SCALE) {
-        const text = `${def.name} ${n.size} 人：${n.job}`;
+        const text = n.figure ? `${figureOf(n.figure)!.name}：${n.job}` : `${def.name} ${n.size} 人：${n.job}`;
         g.lineWidth = 3;
         g.strokeStyle = 'rgba(12,15,22,.85)';
         g.strokeText(text, q.x, q.y - radius - 7);

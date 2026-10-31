@@ -1,13 +1,14 @@
-export type Rarity = 'common' | 'fine' | 'special' | 'hero';
+export type Rarity = 'common' | 'fine' | 'special' | 'hero' | 'ur';
 export type PoolId = 'human' | 'orc' | 'undead' | 'beast' | 'fair' | 'boss' | 'scenario';
 
-export const RARITY_ORDER: Rarity[] = ['common', 'fine', 'special', 'hero'];
+export const RARITY_ORDER: Rarity[] = ['common', 'fine', 'special', 'hero', 'ur'];
 
 export const RARITY: Record<Rarity, { name: string; color: string; rate: number }> = {
-  common: { name: '普通', color: '#b9b4a8', rate: 0.7 },
-  fine: { name: '精良', color: '#6fd08c', rate: 0.22 },
-  special: { name: '特殊', color: '#8fb4ff', rate: 0.07 },
-  hero: { name: '英雄', color: '#f2c14e', rate: 0.01 },
+  common: { name: 'C', color: '#b9b4a8', rate: 0.68 },
+  fine: { name: 'R', color: '#6fd08c', rate: 0.23 },
+  special: { name: 'SR', color: '#8fb4ff', rate: 0.075 },
+  hero: { name: 'SSR', color: '#f2c14e', rate: 0.013 },
+  ur: { name: 'UR', color: '#ff6a8a', rate: 0.002 },
 };
 
 export type TicketPool = Exclude<PoolId, 'boss' | 'scenario'>;
@@ -65,7 +66,7 @@ export const CAMPAIGN = {
   /** 戰敗或者撤退時，戰利品保留比例 */
   loseGoldRatio: 0.3,
   /** 呢啲稀有度倒下都唔會永久陣亡 */
-  protectedRarities: ['special', 'hero'] as Rarity[],
+  protectedRarities: ['special', 'hero', 'ur'] as Rarity[],
   /** 密令 */
   cheatCode: 'ironhorse',
 };

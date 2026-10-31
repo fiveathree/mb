@@ -191,6 +191,7 @@ html, body {
 .dcard small { color: var(--r); font-size: 11px; }
 .dcard b { font-size: 14px; color: var(--r); }
 .dcard em { font-style: normal; font-size: 11px; color: var(--dim); }
+.dcard.ur { background: rgba(255, 106, 138, 0.2); box-shadow: 0 0 18px rgba(255, 106, 138, 0.7); }
 .dcard.hero { background: rgba(242, 193, 78, 0.18); box-shadow: 0 0 14px rgba(242, 193, 78, 0.55); }
 .dcard.special { background: rgba(143, 180, 255, 0.12); }
 @keyframes flip {

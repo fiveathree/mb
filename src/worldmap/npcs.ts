@@ -1,4 +1,5 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
+import { FIGURES, GROWTH_CHANCE, ROUTINES, ROUTINE_WAIT, figureOf, type RoutineStep } from '../data/figures';
 import { HONOR } from '../data/honor';
 import { CALAMITY } from '../data/tomb';
 import { DRAGON_BREEDS } from '../data/units';
@@ -23,6 +24,12 @@ export interface Npc {
   wait: number;
   /** 掠奪隊：搶完未 */
   done: boolean;
+  /** 人物 id */
+  figure?: string;
+  /** 生活節奏做到邊一步 */
+  step?: number;
+  /** 修練累積 */
+  growth?: number;
 }
 
 const towns = PLACES.filter((p) => p.kind === 'town');
@@ -50,8 +57,11 @@ export function raiderArmy(n: Npc): ArmyEntry[] {
 /** 大地圖 NPC：每隊都有工作，做完會影響世界 */
 export class NpcSystem {
   private paths = new Map<number, { x: number; y: number }[]>();
+  private bandits: BanditParty[] | null = null;
   /** 災厄毀城，由世界交畀政治系統處理 */
   onDoom: ((place: string) => void) | null = null;
+  /** 遠征隊打到山賊 */
+  onRaid: ((b: BanditParty) => void) | null = null;
 
   constructor(
     private save: WorldSave,
@@ -92,6 +102,15 @@ export class NpcSystem {
     while (count('hunter') < NPC.hunter.max) this.spawn('hunter', pick(villages));
     while (count('messenger') < NPC.messenger.max) this.spawn('messenger', pick(towns));
     while (count('patrol') < NPC.patrol.max) this.spawn('patrol', towns[count('patrol') % towns.length]);
+    while (count('fisher') < NPC.fisher.max) this.spawn('fisher', pick(villages));
+    while (count('miner') < NPC.miner.max) this.spawn('miner', pick(villages));
+    for (const f of FIGURES) {
+      if (this.save.pol.storyMet.includes(f.id) || list.some((n) => n.figure === f.id)) continue;
+      const n = this.spawn('figure', placeOf(f.home));
+      n.figure = f.id;
+      n.step = 0;
+      n.growth = 0;
+    }
     while (count('lord') < NPC.lord.max) this.spawn('lord', pick(PLACES.filter((p) => p.kind === 'town' || p.kind === 'castle')));
     if (this.day() >= this.save.nextRaid && count('raider') < NPC.raider.max) {
       this.spawn('raider', placeOf('blackfang'));
@@ -124,10 +143,71 @@ export class NpcSystem {
     this.paths.set(n.id, path);
   }
 
+  private routineOf(n: Npc): RoutineStep[] {
+    return n.figure ? figureOf(n.figure)!.routine : ROUTINES[n.kind as 'fisher' | 'miner'];
+  }
+
+  /** 搵做嘢地點：森林入面、河邊或者山腳 */
+  private workSpot(home: PlaceDef, go: RoutineStep['go']): { x: number; y: number } | null {
+    const t = this.terrain;
+    const beside = (x: number, y: number, tile: string) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => t.inside(x + a, y + b) && t.at(x + a, y + b) === tile);
+    for (let i = 0; i < 400; i++) {
+      const r = 6 + (i / 400) * 70;
+      const a = Math.random() * Math.PI * 2;
+      const x = Math.round(home.x + Math.cos(a) * r);
+      const y = Math.round(home.y + Math.sin(a) * r);
+      if (!t.passable(x, y)) continue;
+      if (go === 'forest' ? t.at(x, y) === 'forest' : beside(x, y, go === 'water' ? 'water' : 'mountain')) return { x, y };
+    }
+    return null;
+  }
+
+  /** 人物同平民：按生活節奏去下一步 */
+  private nextRoutine(n: Npc, home: PlaceDef) {
+    const list = this.routineOf(n);
+    const step = list[(n.step ?? 0) % list.length];
+    if (step.go === 'home') {
+      this.setTrip(n, home, `返${home.name}：${step.job}`);
+      return;
+    }
+    if (step.go === 'town') {
+      const to = pick(towns);
+      this.setTrip(n, to, `去${to.name}：${step.job}`);
+      return;
+    }
+    const spot = this.workSpot(home, step.go);
+    const path = spot && this.terrain.path(n.x, n.y, spot.x, spot.y);
+    if (!path) {
+      n.step = (n.step ?? 0) + 1;
+      n.wait = 2;
+      return;
+    }
+    n.dest = null;
+    n.job = `出發：${step.job}`;
+    this.paths.set(n.id, path);
+  }
+
+  private arriveRoutine(n: Npc, place: PlaceDef | null | undefined) {
+    const list = this.routineOf(n);
+    const step = list[(n.step ?? 0) % list.length];
+    n.step = (n.step ?? 0) + 1;
+    n.job = step.job;
+    n.wait = step.wait * ROUTINE_WAIT;
+    if (step.grow && Math.random() < GROWTH_CHANCE) n.growth = (n.growth ?? 0) + 1;
+    if (!place || !this.save.stock[place.id]) return;
+    if (step.haul === 'food') this.save.townFood[place.id] = (this.save.townFood[place.id] ?? 0) + NPC_RULES.farmerFood;
+    if (step.haul === 'iron') this.save.stock[place.id].iron += 2;
+  }
+
   /** 決定下一份工 */
   private nextJob(n: Npc) {
     const home = placeOf(n.home);
     switch (n.kind) {
+      case 'figure':
+      case 'fisher':
+      case 'miner':
+        this.nextRoutine(n, home);
+        break;
       case 'caravan': {
         const to = pick(towns.filter((t) => t.id !== n.dest));
         this.setTrip(n, to, `運貨去${to.name}`);
@@ -175,6 +255,16 @@ export class NpcSystem {
       }
       case 'expedition': {
         const to = pick(PLACES.filter((p) => p.kind === 'lair' || p.kind === 'village'));
+        // 有賊就追賊
+        const prey = this.bandits?.[0];
+        if (prey) {
+          const path = this.terrain.path(n.x, n.y, prey.x, prey.y);
+          if (path) {
+            n.job = '追擊山賊';
+            this.paths.set(n.id, path);
+            break;
+          }
+        }
         this.setTrip(n, to, `遠征去${to.name}`);
         break;
       }
@@ -207,6 +297,11 @@ export class NpcSystem {
   private arrive(n: Npc) {
     const place = n.dest ? PLACES.find((p) => p.id === n.dest) : null;
     switch (n.kind) {
+      case 'figure':
+      case 'fisher':
+      case 'miner':
+        this.arriveRoutine(n, place);
+        break;
       case 'caravan':
         if (place) this.deliver(place, n);
         n.wait = NPC_RULES.restSeconds;
@@ -258,12 +353,17 @@ export class NpcSystem {
   }
 
   update(dt: number, bandits: BanditParty[]) {
+    this.bandits = bandits;
     for (const n of [...this.save.npcs]) {
       if (n.wait > 0) {
         n.wait -= dt;
         continue;
       }
       if (n.kind === 'patrol' && (this.pursue(n, dt) || this.hunt(n, bandits, dt))) continue;
+      if (n.kind === 'expedition') {
+        const prey = bandits.find((b) => Math.hypot(b.x - n.x, b.y - n.y) < NPC_RULES.contactDist * 2);
+        if (prey) this.onRaid?.(prey);
+      }
       const path = this.paths.get(n.id);
       if (!path || !path.length) {
         if (path) {
@@ -354,7 +454,7 @@ export class NpcSystem {
     let best: Npc | null = null;
     let bestD: number = NPC_RULES.banditPreySight;
     for (const n of this.save.npcs) {
-      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition', 'lord'].includes(n.kind)) continue;
+      if (['patrol', 'raider', 'dragon', 'witch', 'wyrm', 'expedition', 'lord', 'figure'].includes(n.kind)) continue;
       const d = Math.hypot(n.x - b.x, n.y - b.y);
       if (d < bestD) {
         bestD = d;

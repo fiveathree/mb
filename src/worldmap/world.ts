@@ -14,7 +14,7 @@ import { CALAMITY } from '../data/tomb';
 import { CAMPAIGN } from '../data/gacha';
 import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
-  addXp, sortedSoldiers,
+  addXp, isElite, sortedSoldiers,
 } from '../core/roster';
 import { WorldTerrain } from './terrain';
 
@@ -74,6 +74,7 @@ export interface WorldSave {
   tournamentUntil?: number;
   /** 遠征隊幾時返 */
   expeditionUntil?: number;
+  expeditionKills?: number;
   pol: PoliticsSave;
   nextDragon: number;
   scenario: string;
@@ -197,6 +198,11 @@ export class World {
     this.politics = new Politics(save.pol, (t) => this.note(t));
     this.npcs = new NpcSystem(save, this.terrain, (t) => this.note(t), () => dayOf(this.save));
     this.npcs.onDoom = (id) => this.politics.doom(id, dayOf(this.save));
+    this.npcs.onRaid = (b) => {
+      this.removeBandit(b);
+      this.save.expeditionKills = (this.save.expeditionKills ?? 0) + 1;
+      this.note('遠征隊打散一夥山賊');
+    };
     this.npcs.refill();
   }
 
@@ -373,7 +379,7 @@ export class World {
   startExpedition(): number {
     const r = this.roster;
     const free = sortedSoldiers(r).filter((s) => !s.post && !s.benched && s.hurtDays <= 0);
-    const leader = free.find((s) => ['special', 'hero'].includes(rarityOf(UNITS[s.unit])));
+    const leader = free.find((s) => isElite(UNITS[s.unit]));
     if (!leader || this.save.expeditionUntil) return 0;
     const team = [leader, ...free.filter((s) => s !== leader).reverse()].slice(0, EXPEDITION.size);
     for (const s of team) s.post = EXPEDITION_POST;
@@ -388,12 +394,14 @@ export class World {
     this.save.expeditionUntil = undefined;
     this.npcs.recallExpedition();
     const team = r.soldiers.filter((s) => s.post === EXPEDITION_POST);
-    const gold = team.length * EXPEDITION.goldPerMan;
+    const kills = this.save.expeditionKills ?? 0;
+    this.save.expeditionKills = 0;
+    const gold = team.length * EXPEDITION.goldPerMan + kills * EXPEDITION.goldPerRaid;
     r.gold += gold;
     let lost = 0;
     for (const s of team) {
       s.post = undefined;
-      addXp(s, EXPEDITION.xpEach);
+      addXp(s, EXPEDITION.xpEach + kills * EXPEDITION.xpPerRaid);
       if (rarityOf(UNITS[s.unit]) === 'common' && Math.random() < EXPEDITION.loseChance) {
         r.soldiers.splice(r.soldiers.indexOf(s), 1);
         lost++;
@@ -401,7 +409,7 @@ export class World {
         s.hurtDays = EXPEDITION.hurtDays;
       }
     }
-    this.note(`遠征隊返嚟，帶回 ${gold} 金${lost ? `，折咗 ${lost} 人` : ''}`);
+    this.note(`遠征隊返嚟，打散 ${kills} 夥山賊，帶回 ${gold} 金${lost ? `，折咗 ${lost} 人` : ''}`);
   }
 
   /** 唔夾嘅同伴嗌交 */

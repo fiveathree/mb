@@ -18,7 +18,8 @@ import { Tutorial } from './ui/tutorial';
 import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
 import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { CALAMITY, TOMB } from './data/tomb';
-import { CAMPAIGN, POOLS } from './data/gacha';
+import { HORSES, HORSE_RANK, MOUNT_REWARD } from './data/horses';
+import { CAMPAIGN, POOLS, RARITY } from './data/gacha';
 import { RACES } from './data/races';
 import { BIOMES, MORALE_PARTY, PLACES, type BattleTheme, type BiomeTile, type PlaceDef } from './data/world';
 import { Camp } from './ui/camp';
@@ -323,8 +324,19 @@ function fieldTheme(): BattleTheme {
   return best && best[1] >= BIOME_TILES ? best[0] : 'plains';
 }
 
+/** 強力坐騎只靠攻陷同討伐 */
+function grantMount(key: string): string {
+  const id = MOUNT_REWARD[key];
+  const def = HORSES.find((h) => h.id === id);
+  if (!def || roster.hero.horses.includes(id)) return '';
+  roster.hero.horses.push(id);
+  return `[${RARITY[HORSE_RANK[id]].name}] 坐騎 ${def.name}`;
+}
+
 function placeReward(p: PlaceDef): string {
   const out: string[] = [];
+  const mount = grantMount(p.id);
+  if (mount) out.push(mount);
   if (p.gold) {
     roster.gold += p.gold;
     out.push(`${p.gold} 金`);
@@ -438,7 +450,8 @@ function fightCalamity(n: Npc, kind: 'witch' | 'wyrm') {
     world.politics.s.renown += 25;
     const art = ARTIFACTS.find((a) => a.id === rule.artifact)!;
     if (!roster.hero.artifacts.includes(art.id)) roster.hero.artifacts.push(art.id);
-    return `討伐${NPC[kind].name}！神器 ${art.name}、${rule.gold} 金`;
+    const mount = grantMount(kind);
+    return `討伐${NPC[kind].name}！神器 ${art.name}、${rule.gold} 金${mount ? `、${mount}` : ''}`;
   });
 }
 
@@ -491,7 +504,7 @@ function fightTomb(p: PlaceDef) {
     roster.gold += TOMB.clearGold;
     if (!roster.hero.artifacts.includes(TOMB.artifact)) roster.hero.artifacts.push(TOMB.artifact);
     world.politics.s.renown += 40;
-    return `骸骨魔導王倒下！${p.name}攻破，${gold + TOMB.clearGold} 金、神器 魔導王冠`;
+    return `骸骨魔導王倒下！${p.name}攻破，${gold + TOMB.clearGold} 金、神器 魔導王冠、${grantMount(p.id)}`;
   }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true, traps: DUNGEON.traps + floor, rooms: 3 + (floor % 3) });
 }
 
