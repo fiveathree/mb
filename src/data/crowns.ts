@@ -25,6 +25,8 @@ export interface CrownDef {
   food: number;
   home: string;
   color: number;
+  /** 魔王陣營：大地圖撳 X 放滅世魔法 */
+  doom?: boolean;
   /** 大混戰領一軍 */
   grand?: boolean;
 }
@@ -554,6 +556,36 @@ export const CROWNS: CrownDef[] = [
     attrs: [14, 14, 16, 10], skills: { magic: 5, ironskin: 4 }, sig: ['死霧之刃', 'hero_blade', 15], extra: ['frost_nova'], horse: 'nightmare', armor: MEDIUM,
     army: [['grave_knight', 5], ['skeleton', 10]], gold: 2500, food: 60, home: 'chishui_fort', color: 0x5a6a8a,
   },
+  {
+    id: 'crown_zanghun', cls: '魔導', name: '葬魂王', scenario: 'doomlord', desc: '枯骨冠冕下嘅不死帝王，要將世界帶入永眠', race: 'undead', doom: true,
+    attrs: [10, 9, 20, 16], skills: { magic: 8, leadership: 5 }, sig: ['歸寂魔杖', 'lich_fire', 18], extra: ['lightning', 'ward', 'heal'], horse: 'nightmare', armor: MEDIUM,
+    army: [['death_rider', 4], ['grave_knight', 6], ['skeleton', 14]], gold: 5000, food: 40, home: 'griffon', color: 0x4a2a7a,
+  },
+  {
+    id: 'crown_feiye', cls: '武力', name: '血姬 緋夜', scenario: 'doomlord', desc: '活咗千年嘅吸血貴族，戰場就係佢嘅舞會', race: 'vampire', doom: true,
+    attrs: [15, 18, 12, 13], skills: { ironskin: 4, riding: 3 }, sig: ['絳血長槍', 'hero_lance', 17], extra: ['heal'], horse: 'nightmare', armor: MEDIUM,
+    army: [['vampire', 4], ['skeleton', 12]], gold: 3000, food: 40, home: 'ironhelm_keep', color: 0x8a1a2c,
+  },
+  {
+    id: 'crown_xuance', cls: '智略', name: '魔相 玄策', scenario: 'doomlord', desc: '一紙毒計勝過十萬魔軍', race: 'demon', doom: true,
+    attrs: [10, 12, 19, 15], skills: { tactics: 8, trade: 4, magic: 3 }, sig: ['業火契約', 'lich_fire', 12], extra: ['ward', 'sword'], horse: 'drake', armor: LIGHT,
+    army: [['demon_grunt', 10], ['demon_cultist', 5]], gold: 4500, food: 80, home: 'xuan_city', color: 0x7a1a24,
+  },
+  {
+    id: 'crown_heiyao', cls: '統率', name: '黑曜騎士 墨淵', scenario: 'doomlord', desc: '黑甲之下冇血肉，只有誓言', race: 'undead', doom: true,
+    attrs: [17, 11, 9, 14], skills: { leadership: 6, ironskin: 7, riding: 4 }, sig: ['黑曜巨刃', 'hero_axe', 12], extra: ['sword'], horse: 'nightmare', armor: HEAVY,
+    army: [['death_rider', 5], ['grave_knight', 8]], gold: 3000, food: 40, home: 'bashu_pass', color: 0x1c1a24,
+  },
+  {
+    id: 'crown_sheji', cls: '暗影', name: '蛇姬 鱗舞', scenario: 'doomlord', desc: '一眼望落去，石像又多一座', race: 'lizard', doom: true,
+    attrs: [10, 17, 16, 14], skills: { magic: 6 }, sig: ['石化魔瞳', 'lich_bolt', 12], extra: ['heal', 'sword'], horse: 'dire_wolf', armor: LIGHT,
+    army: [['lizard_warrior', 10], ['demon_cultist', 3]], gold: 2800, food: 90, home: 'linjiang', color: 0x3f8f70,
+  },
+  {
+    id: 'crown_wuyin', cls: '弓術', name: '影弓 無音', scenario: 'doomlord', desc: '箭到咗，先聽到弦聲', race: 'darkelf', doom: true,
+    attrs: [9, 19, 11, 9], skills: { archery: 8 }, sig: ['無音長弓', 'hero_bow', 13], extra: ['sword', 'lightning'], horse: 'dire_wolf', armor: LIGHT,
+    army: [['darkelf_blade', 8], ['skeleton_archer', 8]], gold: 2500, food: 90, home: 'wuyi', color: 0x3a2a5a,
+  },
 ];
 
 /** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
@@ -712,6 +744,12 @@ export const MUSOU: Record<string, MusouDef> = {
   crown_hecate: { name: '三相月火', style: 'rain', color: 0xc07aff },
   crown_osiris: { name: '死者復甦', style: 'rally', color: 0x7ae0a0 },
   crown_hela: { name: '死霧籠罩', style: 'nova', color: 0x8aa8c8 },
+  crown_zanghun: { name: '萬物歸寂', style: 'nova', color: 0x9a4af0 },
+  crown_feiye: { name: '血月狂宴', style: 'whirl', color: 0xe02a4a },
+  crown_xuance: { name: '業火審判', style: 'rain', color: 0xff5a2a },
+  crown_heiyao: { name: '黑潮衝鋒', style: 'charge', color: 0x7a6aa8 },
+  crown_sheji: { name: '萬蛇石化', style: 'shadow', color: 0x7ae0a0 },
+  crown_wuyin: { name: '無聲箭雨', style: 'rain', color: 0xb0a0e0 },
 };
 export const musouOf = (id: string) => MUSOU[id];
 

@@ -1,6 +1,7 @@
 /** 超巨型敵人：主角企喺腳邊，抬頭先見到個頭。height 係公尺 */
 export const COLOSSI: Record<string, { height: number; radius: number }> = {
   boss_chaos: { height: 36, radius: 5 },
+  boss_lightgod: { height: 38, radius: 5.5 },
   boss_kronos: { height: 40, radius: 5.5 },
   boss_gonggong: { height: 34, radius: 5 },
   boss_asura: { height: 34, radius: 5 },
@@ -54,8 +55,12 @@ export const STRIKES = {
   witch: { radius: 15, color: '#c84af0', scar: '#2a1040', name: '滅國詛咒' },
   wyrm: { radius: 19, color: '#ff5a1a', scar: '#2a1410', name: '滅世龍息' },
   titan: { radius: 24, color: '#ffe08a', scar: '#20140c', name: '神罰' },
+  doom: { radius: 20, color: '#a84af0', scar: '#180a28', name: '滅世魔法' },
 };
 export type StrikeKind = keyof typeof STRIKES;
+
+/** 魔王陣營親手放滅世魔法 */
+export const DOOM = { cooldown: 25, justice: -20, renown: 12, relation: -30 };
 
 /** 焦土同廢墟留幾多日 */
 export const SCAR_DAYS = 40;

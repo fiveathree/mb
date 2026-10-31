@@ -403,6 +403,16 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['marine_trooper', 12], ['flame_trooper', 5]), army(['zombie', 18], ['zombie_runner', 8], ['zombie_brute', 2])],
     boss: { unit: 'boss_mutant', lair: '地下研究所', desc: '實驗失控，培養槽入面嘅嘢爬咗出嚟。' },
   },
+  {
+    id: 'doomlord', ownFigures: true, sky: ['demonbat', 'wyvern'], name: '魔王降世', desc: '今次你做魔王：率不死大軍毀滅諸國，勇者同諸神都要來討伐你', cultures: ['west', 'magic'], levy: 'skeleton',
+    mercs: ['skeleton', 'skeleton_archer', 'grave_knight', 'necromancer', 'demon_grunt'],
+    realms: [
+      ['永夜帝國', '葬魂城'], ['血月領', '緋夜堡'], ['業火魔域', '玄策城'], ['黑曜軍團', '墨淵要塞'], ['蛇淵王國', '鱗舞宮'], ['影語林', '無音谷'],
+      ['光明王國', '聖都'], ['銀騎士團', '銀冠堡'], ['法師聯邦', '賢者塔'], ['矮人聯邦', '鐵砧城'], ['精靈王庭', '星歌城'], ['教廷', '聖座'], ['北境聯盟', '霜冠城'], ['勇者公會', '勇者城'], ['自由商港', '金港'],
+    ],
+    camps: [army(['footman', 12], ['archer', 8], ['paladin', 4]), army(['sergeant', 10], ['crossbowman', 8], ['crusader', 3])],
+    boss: { unit: 'boss_lightgod', lair: '聖光神殿', desc: '諸神派出最後嘅神祇，要親手將你送返地底。' },
+  },
 ];
 
 // 歷史劇本：只得人類同人類卡池

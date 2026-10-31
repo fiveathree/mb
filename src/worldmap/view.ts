@@ -57,6 +57,8 @@ export class WorldView {
   private picker: HTMLElement | null = null;
   private pickerClose: (() => void) | null = null;
   private follow = true;
+  /** 瞄緊滅世魔法 */
+  private aiming = false;
   private keys = new Set<string>();
   private last = 0;
   private active = false;
@@ -159,6 +161,8 @@ export class WorldView {
       this.onParty?.();
     } else if (e.code === 'KeyJ') {
       this.onJob?.();
+    } else if (e.code === 'KeyX' && this.world.canDoom && !this.world.doomWait) {
+      this.aiming = !this.aiming;
     } else if (e.code === 'Escape') {
       this.onMenu?.();
     }
@@ -209,6 +213,12 @@ export class WorldView {
     if (!this.active || e.button !== 0) return;
     if (this.picker) {
       this.closePicker();
+      return;
+    }
+    if (this.aiming) {
+      const target = this.near(this.visiblePlaces().filter((p) => p.kind === 'town' || p.kind === 'village' || p.kind === 'castle'), e, CLICK_PX * 1.5)[0];
+      if (target) this.world.castDoom(target);
+      this.aiming = false;
       return;
     }
     const m = this.toWorld(e);
@@ -752,7 +762,9 @@ export class WorldView {
       `忠誠 ${w.pol.loyalty}`,
       ...(Object.keys(w.pol.wanted).length ? ['通緝中'] : []),
     ];
-    const hint = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　J 工作　空白鍵暫停　M 靜音　Esc 選單';
+    const base = this.world.paused ? '已暫停，空白鍵繼續' : '左鍵行軍　滾輪縮放　Tab 部隊　J 工作　空白鍵暫停　M 靜音　Esc 選單';
+    const doom = !this.world.canDoom ? '' : this.aiming ? '撳一座城放滅世魔法，撳空地取消' : this.world.doomWait ? `滅世魔法 ${this.world.doomWait} 日後　` : 'X 滅世魔法　';
+    const hint = this.aiming ? doom : doom + base;
     this.bar.innerHTML = `<div class="stats-line">${items.map((t) => `<span>${t}</span>`).join('')}</div><div class="hint-line">${hint}</div>`;
   }
 }

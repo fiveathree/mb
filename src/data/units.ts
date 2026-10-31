@@ -543,6 +543,7 @@ UNITS.boss_asura = { ...boss('boss_asura', '阿修羅王', 'demon', 'boss_club',
 UNITS.boss_demongod = { ...boss('boss_demongod', '滅世魔神', 'demon', 'boss_club', 2200, 24, 1.3, 4.6) };
 UNITS.boss_voidgod = { ...boss('boss_voidgod', '虛空主宰', 'demon', 'boss_fist', 2100, 22, 1.2, 4.8) };
 UNITS.boss_jiangwang = { ...boss('boss_jiangwang', '千年殭屍王', 'undead', 'boss_fist', 1500, 20, 1, 4.4) };
+UNITS.boss_lightgod = { ...boss('boss_lightgod', '光明神', 'human', 'boss_club', 2100, 24, 1.3, 4.6) };
 UNITS.boss_mutant = { ...boss('boss_mutant', '終極突變體', 'giant', 'boss_fist', 1400, 18, 1.2, 5) };
 
 // 神話劇本兵種

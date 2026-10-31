@@ -6,12 +6,13 @@ import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
 import { ensureStory, expireQuests, type Quest } from '../quests/quests';
 import { HONOR } from '../data/honor';
-import { Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
+import { PLAYER, Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
 import { SCENARIOS } from '../data/scenarios';
 import { UNITS } from '../data/units';
 import { CALAMITY } from '../data/tomb';
-import { SCAR_DAYS, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
+import { DOOM, SCAR_DAYS, STRIKE_HURT, STRIKE_MORALE, STRIKES, type StrikeKind } from '../data/colossus';
+import { crownOf } from '../data/crowns';
 import { CAMPAIGN } from '../data/gacha';
 import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
@@ -86,6 +87,8 @@ export interface WorldSave {
   /** 大地圖上嘅焦土 */
   scars: Scar[];
   nextTitan: number;
+  /** 滅世魔法第幾日先用得 */
+  doomAt?: number;
   nextRaid: number;
   /** 城鎮 → 作坊 id */
   workshops: Record<string, string>;
@@ -383,6 +386,30 @@ export class World {
     w.morale = Math.max(0, w.morale - STRIKE_MORALE);
     for (const s of this.roster.soldiers.slice(0, STRIKE_HURT)) s.hurtDays = Math.max(s.hurtDays, SCAR_DAYS / 4);
     this.note('你嘅部隊被波及！');
+  }
+
+  /** 魔王陣營先有 */
+  get canDoom() {
+    return !!crownOf(this.roster.hero.crown)?.doom;
+  }
+
+  /** 仲要等幾多日先可以再放 */
+  get doomWait() {
+    return Math.max(0, (this.save.doomAt ?? 0) - dayOf(this.save));
+  }
+
+  /** 主角親手放滅世魔法：目標落入你手，範圍內全部崩塌 */
+  castDoom(place: PlaceDef) {
+    const w = this.save;
+    w.doomAt = dayOf(w) + DOOM.cooldown;
+    const owner = this.politics.ownerOf(place.id);
+    this.strike('doom', place);
+    w.pol.justice = Math.max(-100, w.pol.justice + DOOM.justice);
+    w.pol.renown += DOOM.renown;
+    if (!owner || owner === PLAYER) return;
+    this.politics.addRelation(owner, DOOM.relation);
+    if (!this.politics.atWar(PLAYER, owner)) this.politics.declareWar(owner);
+    w.pol.owners[place.id] = PLAYER;
   }
 
   /** 彈一段故事，下次行軍時顯示 */
