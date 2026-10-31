@@ -9,6 +9,7 @@ import { HONOR } from '../data/honor';
 import { Politics, migratePolitics, newPolitics, type PoliticsSave } from '../politics/politics';
 import { NpcSystem, type Npc } from './npcs';
 import { UNITS } from '../data/units';
+import { CALAMITY } from '../data/tomb';
 import { CAMPAIGN } from '../data/gacha';
 import {
   armyPower, partyFood, partyWage, rarityOf, rosterPower, type Roster,
@@ -64,6 +65,10 @@ export interface WorldSave {
   arenaUntil: Record<string, number>;
   arenaWins: number;
   mapVersion?: number;
+  /** 大墳墓打到第幾層 */
+  tombFloor: number;
+  nextWitch: number;
+  nextWyrm: number;
   /** 第幾日先有下一屆錦標賽 */
   tournamentUntil?: number;
   /** 遠征隊幾時返 */
@@ -96,6 +101,9 @@ export function migrateWorld(w: WorldSave): WorldSave {
     w.bandits = [];
   }
   w.mapVersion = 2;
+  w.tombFloor ??= 0;
+  w.nextWitch ??= CALAMITY.witch.firstDay;
+  w.nextWyrm ??= CALAMITY.wyrm.firstDay;
   w.npcs ??= [];
   w.stock ??= {};
   w.treasury ??= {};

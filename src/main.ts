@@ -16,7 +16,8 @@ import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import type { ArmyEntry } from './data/battlefield';
-import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC_RULES } from './data/economy';
+import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
+import { CALAMITY, TOMB } from './data/tomb';
 import { CAMPAIGN, POOLS } from './data/gacha';
 import { RACES } from './data/races';
 import { MORALE_PARTY, PLACES, type BattleTheme, type PlaceDef } from './data/world';
@@ -53,14 +54,19 @@ let tutorial: Tutorial | null = null;
 /** 而家喺邊個地點入面，返回用 */
 let currentPlace: PlaceDef | null = null;
 
+/** 行緊街嘅城鎮 */
+let walking: PlaceDef | null = null;
+
 const screens = new PlaceScreens(hud, world, roster, {
-  onLeave: () => backToMap(),
+  onLeave: () => (screens.walking ? void backToStreet() : backToMap()),
+  onWalk: (p) => (screens.walking ? void backToStreet() : walkTown(p)),
   onParty: () => camp.show(() => reopenPlace()),
   onAttack: (p) => attackPlace(p),
   onBandit: (b, auto) => fightBandit(b, auto),
   onEscaped: () => backToMap(),
   onArena: (town, bet) => fightArena(town, bet),
   onTournament: (town) => fightTournament(town),
+  onTomb: (p) => fightTomb(p),
   onRaider: (n) => fightRaider(n),
   onSiege: (p, breaches) => assaultFief(p, breaches),
   onDefend: (p, by) => defendFief(p, by),
@@ -85,6 +91,57 @@ function useGame(r: Roster, w: WorldSave) {
   camp.setRoster(roster, world);
   screens.bind(world, roster);
 }
+
+/** 入城：同打仗用同一個 3D 場景，但冇敵人 */
+function walkTown(p: PlaceDef) {
+  walking = p;
+  screens.walking = false;
+  view.stop();
+  const h = roster.hero;
+  battle.sfx.unlock();
+  hud.hideScreen();
+  battle.start({
+    playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers: [], enemy: [], enemyLevel: 1,
+    theme: isNight(world.save) ? 'night' : 'plains', moraleMult: 1, dismount: true, town: true,
+  });
+  inBattle = true;
+  void lockMouse();
+  hud.announce('WASD 行街，行近招牌撳 E 入舖，Esc 離開', 'guard');
+}
+
+/** 由舖頭返出街 */
+async function backToStreet() {
+  screens.walking = false;
+  hud.hideScreen();
+  battle.running = true;
+  inBattle = true;
+  await lockMouse();
+}
+
+function leaveTown() {
+  const p = walking!;
+  walking = null;
+  screens.walking = false;
+  inBattle = false;
+  battle.running = false;
+  battle.active = false;
+  releaseMouse();
+  hud.hideHud();
+  showPlace(p);
+}
+
+battle.onVisit = (id) => {
+  if (id === 'gate') {
+    leaveTown();
+    return;
+  }
+  battle.running = false;
+  inBattle = false;
+  battle.input.clear();
+  releaseMouse();
+  hud.hideHud();
+  screens.visit(walking!, id);
+};
 
 function backToMap() {
   currentPlace = null;
@@ -192,6 +249,8 @@ async function startBattle(
   extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean } = {},
 ) {
   afterBattle = done;
+  walking = null;
+  screens.walking = false;
   view.stop();
   const h = roster.hero;
   const launch = async (formations: FormationCheck[]) => {
@@ -343,7 +402,25 @@ function fightBandit(b: BanditParty, auto: boolean) {
   });
 }
 
+function fightCalamity(n: Npc, kind: 'witch' | 'wyrm') {
+  const rule = CALAMITY[kind];
+  void startBattle(raiderArmy(n), rule.level, 'night', (win) => {
+    if (!win) return '';
+    world.npcs.remove(n);
+    world.politics.deed('beatRaider');
+    roster.gold += rule.gold;
+    world.politics.s.renown += 25;
+    const art = ARTIFACTS.find((a) => a.id === rule.artifact)!;
+    if (!roster.hero.artifacts.includes(art.id)) roster.hero.artifacts.push(art.id);
+    return `討伐${NPC[kind].name}！神器 ${art.name}、${rule.gold} 金`;
+  });
+}
+
 function fightRaider(n: Npc) {
+  if (n.kind === 'witch' || n.kind === 'wyrm') {
+    fightCalamity(n, n.kind);
+    return;
+  }
   void startBattle(raiderArmy(n), n.kind === 'dragon' ? 6 : NPC_RULES.raiderLevel, n.kind === 'dragon' ? 'night' : fieldTheme(), (win) => {
     if (!win) return '';
     world.npcs.remove(n);
@@ -372,6 +449,24 @@ function fightArena(town: PlaceDef, bet: boolean) {
     gainHeroXp(roster.hero, ARENA.renownXp);
     return `比武獎金 ${prize} 金`;
   }, []);
+}
+
+/** 十層大墳墓：打贏一層就記低 */
+function fightTomb(p: PlaceDef) {
+  const w = world.save;
+  const floor = w.tombFloor;
+  const f = TOMB.floors[floor];
+  void startBattle(f.enemy, f.level, f.theme, (win) => {
+    if (!win) return '';
+    w.tombFloor = floor + 1;
+    const gold = (floor + 1) * TOMB.goldPerFloor;
+    roster.gold += gold;
+    if (w.tombFloor < TOMB.floors.length) return `${f.name}已破，${gold} 金`;
+    roster.gold += TOMB.clearGold;
+    if (!roster.hero.artifacts.includes(TOMB.artifact)) roster.hero.artifacts.push(TOMB.artifact);
+    world.politics.s.renown += 40;
+    return `骸骨魔導王倒下！${p.name}攻破，${gold + TOMB.clearGold} 金、神器 魔導王冠`;
+  }, deployment(roster).slice(0, DUNGEON.partySize), { dismount: true, firstPerson: true });
 }
 
 /** 錦標賽：連戰四輪 */
@@ -410,6 +505,10 @@ function showPause(message = '') {
 
 function pause() {
   if (!inBattle || !battle.running) return;
+  if (walking) {
+    leaveTown();
+    return;
+  }
   battle.running = false;
   battle.input.clear();
   releaseMouse();
@@ -537,7 +636,7 @@ function showImport(target: number) {
 // 瀏覽器要用戶撳過先出得聲
 window.addEventListener('pointerdown', () => {
   battle.sfx.unlock();
-  battle.sfx.music(() => !inBattle && !document.hidden, () => currentScenario().cultures.includes('east'));
+  battle.sfx.music(() => (!inBattle || !!walking) && !document.hidden, () => currentScenario().cultures.includes('east'));
 }, { once: true });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !inBattle) battle.sfx.muted = !battle.sfx.muted;

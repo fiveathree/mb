@@ -52,6 +52,26 @@ export const EVENTS: StoryEvent[] = [
     choices: [{ label: '買', effect: 'ticket' }, { label: '唔信佢', effect: 'none' }],
   },
   {
+    id: 'wyrmshadow', title: '龍影掠空', text: '巨大黑影掠過頭頂，村民話預言中吞食龍魂嘅人就快出現，全部人望住你。',
+    choices: [{ label: '接受呢個身份', effect: 'prophecy' }, { label: '我只係過路', effect: 'none' }],
+  },
+  {
+    id: 'hollowdream', title: '被奪走嘅心', text: '你夢見一條赤龍將爪插入你胸口，醒來胸前真係有條舊疤，隨從話見過你夢入面嗰座山。',
+    choices: [{ label: '跟隨從搵線索', effect: 'prophecy' }, { label: '當係惡夢', effect: 'food' }],
+  },
+  {
+    id: 'cattrader', title: '貓人行商', text: '貓耳商隊喺火堆邊招手，話肯用南方香料換你一段路程。',
+    choices: [{ label: '護送佢哋', effect: 'gold' }, { label: '收佢哋過路費', effect: 'renown' }],
+  },
+  {
+    id: 'tombwhisper', title: '墳墓低語', text: '北方焦土傳嚟低語：第十層嘅王歡迎任何夠膽落去嘅人。一個蒼白信使留低一袋金幣。',
+    choices: [{ label: '收低', effect: 'gold' }, { label: '掟返畀佢', effect: 'renown' }],
+  },
+  {
+    id: 'slimeenvoy', title: '魔物使者', text: '一隻史萊姆頂住信件彈到你面前：萬魔城想同你做朋友。',
+    choices: [{ label: '回信示好', effect: 'monsterfriend' }, { label: '斬咗佢', effect: 'none' }],
+  },
+  {
     id: 'orphan', title: '流浪少年', text: '一個少年跪喺路邊，求你帶佢入伍。',
     choices: [{ label: '收留', effect: 'recruit' }, { label: '畀啲乾糧佢走', effect: 'renown' }],
   },

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
-import { BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, type ArmyEntry } from '../data/battlefield';
+import { BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, TOWN, type ArmyEntry } from '../data/battlefield';
 import { DUNGEON, SIEGE } from '../data/factions';
 import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
@@ -19,6 +19,7 @@ import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
 import { Sfx } from './audio';
 import { Fliers } from './fliers';
+import { buildTown, type TownSpot } from './town';
 import { Batches } from './batch';
 import {
   explode, startBlock, startCharge, updateAction, updateCouch, updateRam, type BattleStats, type CombatWorld,
@@ -73,6 +74,8 @@ export interface BattleSetup {
   defend?: boolean;
   /** 天上飛嘅生物 */
   sky?: string[];
+  /** 入城行街，唔係打仗 */
+  town?: boolean;
   /** 可用陣法，第一個係開局用嘅 */
   formations?: { def: FormationDef; efficiency: number }[];
   /** 敵軍用邊啲文化嘅陣法 */
@@ -120,6 +123,11 @@ export class Battle implements CombatWorld {
   private formationT = 0;
   private warcryT = 0;
   private forest = false;
+  private peaceful = false;
+  private townSpots: TownSpot[] = [];
+  /** HUD 用：行近舖頭嘅提示 */
+  townHint = '';
+  onVisit: ((id: string) => void) | null = null;
   private wallHalf = 0;
   private rockT = 0;
   private traps: { x: number; z: number; cd: number }[] = [];
@@ -263,6 +271,25 @@ export class Battle implements CombatWorld {
     mesh.castShadow = true;
     this.wall.add(mesh);
     this.obstacles = [...this.obstacles, ...solid.map((s) => ({ x: s.x, z: s.z, r: 1.3 }))];
+  }
+
+  /** 鎮民喺廣場揀個新位行過去 */
+  private wanderSlot(c: Combatant) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 6 + Math.random() * TOWN.plaza;
+    c.ai!.slotX = Math.cos(a) * r;
+    c.ai!.slotZ = Math.sin(a) * r;
+  }
+
+  /** 行街：鎮民走動，行近舖頭按 E 入去 */
+  private updateTown(dt: number) {
+    for (const c of this.units) {
+      if (c.ai && Math.random() < TOWN.wander * dt) this.wanderSlot(c);
+    }
+    const p = this.player;
+    const spot = this.townSpots.find((s) => Math.hypot(s.x - p.pos.x, s.z - p.pos.z) < TOWN.visitDist);
+    this.townHint = spot ? `撳 E 入${spot.label}` : '';
+    if (spot && this.input.pressed('KeyE')) this.onVisit?.(spot.id);
   }
 
   /** 森林戰場：樹擋路，騎兵慢 */
@@ -622,12 +649,20 @@ export class Battle implements CombatWorld {
       this.hemi.intensity *= 1.6;
     }
     this.fliers.set(setup.firstPerson ? [] : setup.sky ?? []);
-    this.sfx.drums(true, () => this.running);
+    this.sfx.drums(!setup.town, () => this.running);
 
     this.defending = !!setup.defend;
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
     if (this.forest) this.plantForest();
+    this.peaceful = !!setup.town;
+    this.townHint = '';
+    this.townSpots = [];
+    if (setup.town) {
+      const town = buildTown(this.wall);
+      this.townSpots = town.spots;
+      this.obstacles = [...this.obstacles, ...town.obstacles];
+    }
     this.firstPerson = !!setup.firstPerson;
     this.batches.reset();
     this.projectiles.reset();
@@ -646,7 +681,7 @@ export class Battle implements CombatWorld {
     this.camPitch = this.viewPitch = 0.16;
 
     const behindWall = SIEGE.wallZ + SIEGE.defenderOffset;
-    const pz = this.dungeon ? DUNGEON.startZ : setup.defend ? behindWall + 12 : -FORMATION.startZ + FORMATION.holdAhead * 2;
+    const pz = setup.town ? TOWN.startZ : this.dungeon ? DUNGEON.startZ : setup.defend ? behindWall + 12 : -FORMATION.startZ + FORMATION.holdAhead * 2;
     const player = this.createUnit(setup.playerDef, 0, loadout);
     player.pos.set(0, heightAt(0, pz), pz);
     player.yaw = player.aimYaw = this.camYaw;
@@ -671,6 +706,7 @@ export class Battle implements CombatWorld {
       group.members.push(c);
     };
     for (const s of soldiers) recruit(s.unit, 0, s.level, s);
+    if (setup.town) for (let i = 0; i < TOWN.folk; i++) recruit(`folk_${i % 4}`, 0, 1, null);
     for (const entry of enemy) {
       for (let i = 0; i < entry.count; i++) {
         recruit(entry.unit, 1, Math.max(1, enemyLevel - Math.floor(Math.random() * 2)), null);
@@ -680,7 +716,10 @@ export class Battle implements CombatWorld {
     [0, 1].forEach((team) => {
       for (const g of this.groups[team]) {
         deployGroup(g);
-        if (this.dungeon) this.deployDungeon(g, team);
+        if (setup.town) {
+          g.fixedSlots = true;
+          for (const c of g.members) this.wanderSlot(c);
+        } else if (this.dungeon) this.deployDungeon(g, team);
         else if (setup.defend) {
           const held = g.role === 'infantry' || g.role === 'cavalry' ? behindWall : SIEGE.wallZ + SIEGE.archerZ;
           g.setAnchor(g.anchorX, team === 0 ? held : -FORMATION.startZ, team === 0 ? Math.PI : 0);
@@ -867,6 +906,7 @@ export class Battle implements CombatWorld {
   private tickCommand(dt: number) {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
+    if (this.peaceful) this.updateTown(dt);
     if (this.dungeon) this.updateTraps(dt);
     if (this.siege && !this.dungeon) {
       this.updateSiege(dt);
@@ -971,7 +1011,7 @@ export class Battle implements CombatWorld {
 
     if (i.pressed('KeyF')) this.toggleMount();
     if (i.pressed('KeyV')) this.warcry();
-    if (i.pressed('KeyE')) this.toggleCouch();
+    if (i.pressed('KeyE') && !this.peaceful) this.toggleCouch();
 
     const throttle = (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
     const strafe = (i.down('KeyA') ? 1 : 0) - (i.down('KeyD') ? 1 : 0);
@@ -1226,6 +1266,7 @@ export class Battle implements CombatWorld {
   }
 
   private checkEnd(real: number) {
+    if (this.peaceful) return;
     if (this.endT < 0) {
       const alive = (team: number) => this.units.some((u) => u.team === team && !u.dead && !u.routing);
       if (!alive(0) || !alive(1)) {

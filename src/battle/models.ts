@@ -243,11 +243,11 @@ function buildDragon(hips: THREE.Group, skin: number): DragonRig {
 export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
   ctx = { batches, parts: [], gate: null };
   const style = TEAM_STYLES[team];
-  const bodyColor = style.body;
+  const bodyColor = def.civilian ? def.trimColor : style.body;
   const race = RACES[def.race ?? 'human'];
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
-  root.scale.setScalar(race.scale * (def.hero ? 1.14 : 1));
+  root.scale.setScalar(race.scale * (def.hero ? 1.14 : 1) * (def.scale ?? 1));
   const hips = new THREE.Group();
   hips.position.y = 0.95;
   root.add(hips);
@@ -263,14 +263,16 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   head.position.y = 0.82;
   torso.add(head);
   addRaceFeatures(torso, race.look, skin);
-  if (race.look !== 'bull') {
+  if (race.look !== 'bull' && !def.civilian) {
     const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
     helmet.position.y = 0.93;
     torso.add(helmet);
   }
 
   // 盔飾：我軍羽飾、敵軍牛角
-  if (style.crest === 'plume') {
+  if (def.civilian) {
+    // 平民唔戴盔飾
+  } else if (style.crest === 'plume') {
     const plume = box(0.05, 0.2, 0.3, def.plumeColor ?? style.crestColor, 0, 1.08, -0.04);
     plume.rotation.x = -0.25;
     torso.add(plume);
@@ -285,8 +287,10 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   }
 
   // 背旗：遠處都睇到邊邊
-  torso.add(box(0.03, 1.1, 0.03, COLORS.wood, 0.08, 0.95, -0.18));
-  torso.add(box(0.03, 0.34, 0.36, def.plumeColor ?? style.body, 0.08, 1.32, -0.38));
+  if (!def.civilian) {
+    torso.add(box(0.03, 1.1, 0.03, COLORS.wood, 0.08, 0.95, -0.18));
+    torso.add(box(0.03, 0.34, 0.36, def.plumeColor ?? style.body, 0.08, 1.32, -0.38));
+  }
 
   if (def.hero) {
     const cape = box(0.5, 0.95, 0.04, def.trimColor, 0, 0.12, -0.17);
@@ -577,8 +581,8 @@ export function syncHuman(c: Combatant, dt: number) {
   r.armL.rotation.y = shieldUp ? -0.75 : bowUp ? 0 : -0.35;
 
   r.shield.visible = c.hasActiveShield;
-  r.marker.visible = !c.dead;
-  for (const [id, m] of r.weaponMeshes) m.visible = id === w.id;
+  r.marker.visible = !c.dead && !c.def.civilian;
+  for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
   flushParts(r.root, r.parts);
 }
 

@@ -65,6 +65,10 @@ export interface UnitDef {
   mp?: number;
   /** 覆蓋種族膚色，五色龍用 */
   skin?: number;
+  /** 額外體型倍率 */
+  scale?: number;
+  /** 平民：冇盔甲、旗同武器 */
+  civilian?: boolean;
 }
 
 /** 兩軍外觀：顏色同盔型都要一眼分到 */
@@ -414,6 +418,15 @@ UNITS.boss_dragon_white = dragon('boss_dragon_white', '霜白巨龍', 'dragon_fr
 UNITS.boss_dragon_blue = dragon('boss_dragon_blue', '雷霆藍龍', 'dragon_bolt', 1400, 15, 4.4, 0x2f6fc8);
 UNITS.boss_dragon_green = dragon('boss_dragon_green', '毒霧綠龍', 'dragon_poison', 1600, 13, 3.8, 0x3f8f45);
 UNITS.boss_dragon_black = dragon('boss_dragon_black', '蝕骨黑龍', 'dragon_acid', 1700, 18, 3.6, 0x24222c);
+UNITS.boss_wyrm = { ...dragon('boss_wyrm', '滅世飛龍', 'wyrm_breath', 4000, 22, 5.5, 0x3a2a5a), scale: 1.5, radius: 3 };
+UNITS.boss_lich = {
+  ...boss('boss_lich', '骸骨魔導王', 'undead', 'lich_bolt', 2600, 18, 0.9, 4), role: 'mage', weapons: ['lich_bolt', 'lich_fire', 'boss_club'],
+  scale: 1.6, trimColor: 0x3a2a6a, plumeColor: 0xc0a0ff, skin: 0xe8e4d4,
+};
+UNITS.boss_witch = {
+  ...boss('boss_witch', '滅國魔女', 'human', 'witch_curse', 2000, 12, 0.7, 5), role: 'mage', weapons: ['witch_curse', 'lich_bolt', 'boss_fist'],
+  scale: 1.25, trimColor: 0x6a1a7a, plumeColor: 0xc040e0, skin: 0xf0d8e0,
+};
 /** 離巢巨龍輪流係五色之一 */
 export const DRAGON_BREEDS = ['boss_dragon', 'boss_dragon_white', 'boss_dragon_blue', 'boss_dragon_green', 'boss_dragon_black'];
 
@@ -444,6 +457,7 @@ for (const u of [
   troop('sharpshooter', '神射手', 'archer', 5, 95, 8, ['elite_bow', 'infantry_sword'], 0x4e8a3a, { plumeColor: 0x9ae86a, desc: '弓兵頂點，百發百中' }),
   troop('templar', '聖殿騎士', 'cavalry', 5, 150, 17, ['elite_lance', 'cavalry_sword'], 0xf0ece0, { horse: 'warhorse', plumeColor: 0xc0302a, desc: '騎兵頂點，人馬俱甲' }),
   // 異族
+  ...[0xa86a3a, 0x5a7a4a, 0x7a5a8a, 0xb0a070].map((color, i) => troop(`folk_${i}`, '鎮民', 'infantry', 1, 40, 0, ['short_sword'], color, { civilian: true, walkSpeed: 1.4, runSpeed: 1.8 })),
   troop('huscarl', '北地親衛', 'infantry', 3, 110, 9, ['infantry_axe'], 0x9ab8d0, { race: 'nord', desc: '雪原上嘅重斧戰士' }),
   troop('darkelf_blade', '影刃', 'infantry', 3, 85, 6, ['elite_sword'], 0x4a3a6a, { race: 'darkelf', pool: 'fair', runSpeed: 5.2, desc: '由樹影入面出手' }),
   troop('slime', '史萊姆', 'infantry', 1, 55, 1, ['short_sword'], 0x4fb8e8, { race: 'slime', pool: 'beast', desc: '軟綿綿，斬極都仲喺度' }),

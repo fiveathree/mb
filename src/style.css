@@ -303,3 +303,10 @@ kbd { flex: 0 0 74px; padding: 1px 6px; text-align: center; font: inherit; font-
 /* 大地圖揀目標 */
 .map-pick { position: fixed; z-index: 30; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
 .map-pick .mini { white-space: nowrap; text-align: left; }
+
+/* 大地圖任務欄 */
+#questbar { position: fixed; left: 10px; top: 96px; width: 190px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+#questbar[hidden] { display: none; }
+.quest { display: block; width: 100%; margin-top: 4px; padding: 4px 6px; text-align: left; font-size: 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); }
+.quest small { display: block; color: var(--dim); font-size: 11px; }
+.quest:hover, .quest.on { border-color: var(--gold); }

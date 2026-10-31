@@ -35,6 +35,25 @@ export const MUSIC = {
   decay: 1.6,
 };
 
+/** 入城行街：舖頭圍住廣場 */
+export const TOWN = {
+  shops: [
+    ['market', '市集'], ['supply', '補給'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'], ['quest', '任務'],
+  ] as [string, string][],
+  shopRadius: 34,
+  doorRadius: 26,
+  houses: 18,
+  houseRadius: 56,
+  gateZ: 44,
+  startZ: -36,
+  visitDist: 5,
+  folk: 16,
+  plaza: 22,
+  /** 每秒有幾多比例嘅鎮民換位 */
+  wander: 0.25,
+  roof: 0x8a4a34,
+};
+
 /** 森林戰場：多樹，騎兵衝唔起 */
 export const FOREST = { trees: 90, spreadX: 100, spreadZ: 95, cavalryMult: 0.7, treeRadius: 0.9 };
 

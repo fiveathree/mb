@@ -303,7 +303,7 @@ export const ARENA = {
 };
 
 // ── 大地圖 NPC ──
-export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon';
+export type NpcKind = 'caravan' | 'farmer' | 'hunter' | 'messenger' | 'patrol' | 'raider' | 'dragon' | 'witch' | 'wyrm';
 
 export const NPC: Record<NpcKind, { name: string; max: number; size: [number, number]; speed: number; color: string }> = {
   caravan: { name: '商隊', max: 4, size: [5, 9], speed: 3, color: '#e8b84a' },
@@ -312,7 +312,9 @@ export const NPC: Record<NpcKind, { name: string; max: number; size: [number, nu
   messenger: { name: '信使', max: 2, size: [1, 1], speed: 6.5, color: '#f4f0e4' },
   patrol: { name: '巡邏隊', max: 3, size: [10, 16], speed: 4.2, color: '#5aa0ee' },
   raider: { name: '獸人掠奪隊', max: 1, size: [9, 13], speed: 3.8, color: '#e0603a' },
-  dragon: { name: '赤焰巨龍', max: 1, size: [1, 1], speed: 7, color: '#ff4020' },
+  dragon: { name: '巨龍', max: 1, size: [1, 1], speed: 7, color: '#ff4020' },
+  witch: { name: '滅國魔女', max: 1, size: [1, 1], speed: 5, color: '#c040e0' },
+  wyrm: { name: '滅世飛龍', max: 1, size: [1, 1], speed: 8, color: '#7a4ae0' },
 };
 
 export const NPC_RULES = {

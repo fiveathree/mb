@@ -207,6 +207,9 @@ export const ARTIFACTS: ArtifactDef[] = [
   { id: 'dragon_scale', name: '龍鱗甲', desc: '護甲 +8、生命 +40', armor: 8, hp: 40 },
   { id: 'dragon_bone', name: '龍骨刃', desc: '傷害 +25%', damage: 0.25 },
   { id: 'demon_heart', name: '魔王之心', desc: '生命 +80、法力 +60', hp: 80, mp: 60 },
+  { id: 'lich_crown', name: '魔導王冠', desc: '法力 +120、生命 +60', mp: 120, hp: 60 },
+  { id: 'witch_ring', name: '魔女之戒', desc: '傷害 +15%、法力 +50', damage: 0.15, mp: 50 },
+  { id: 'wyrm_heart', name: '滅世龍心', desc: '傷害 +30%、生命 +150', damage: 0.3, hp: 150 },
 ];
 
 /** 主角開局 */

@@ -279,6 +279,11 @@ PLACES.push(
     id: 'monsterhold', name: '萬魔城', kind: 'town', x: 134, y: 122, monster: true,
     desc: '史萊姆、哥布林同食人魔一齊起嘅魔物城市，意外地有秩序。', mercs: ['slime', 'goblin_spear', 'ogre_brute', 'kobold_miner', 'harpy'],
   },
+  { id: 'tomb', name: '十層地下大墳墓', kind: 'dungeon', x: 196, y: 30, theme: 'crypt', desc: '焦土之下一層又一層，最深處嘅王座等緊挑戰者。' },
+  {
+    id: 'witch_tower', name: '滅國魔女之塔', kind: 'dungeon', x: 66, y: 148, theme: 'night', gold: 3000, garrisonLevel: 7, respawnDays: 45,
+    desc: '佢一個人滅過三個國家。', artifact: 'witch_ring', garrison: [{ unit: 'darkelf_witch', count: 3 }, { unit: 'boss_witch', count: 1 }],
+  },
   { id: 'goblinfen', name: '沼鬼村', kind: 'village', x: 96, y: 142, monster: true, mercs: ['slime', 'goblin_spear'] },
 );
 

@@ -99,6 +99,7 @@ export class Input {
   }
 
   clear() {
+    this.pressedKeys.clear();
     this.keys.clear();
     this.lmb = false;
     this.rmb = false;

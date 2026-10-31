@@ -1,6 +1,7 @@
 import { EVENTS, EVENT_RULES, type StoryEvent } from '../data/quests';
 import { currentScenario } from '../data/scenarios';
 import { addSoldier, spend } from '../core/roster';
+import { gainHeroXp } from '../core/hero';
 import type { World } from '../worldmap/world';
 
 /** 每日抽一次突發事件 */
@@ -60,6 +61,16 @@ export function applyChoice(world: World, effect: string): string {
         return '得到一張通用招募令。';
       }
       return '金幣唔夠，行商一笑離開。';
+    case 'prophecy':
+      gainHeroXp(r.hero, 300);
+      w.pol.renown += 5;
+      return '命運嘅重量落喺你肩上，主角經驗 +300、聲望 +5。';
+    case 'gold':
+      r.gold += 400;
+      return '得到 400 金。';
+    case 'monsterfriend':
+      world.politics.addRelation('monsters', 20);
+      return '魔物聯邦好感 +20。';
     case 'recruit':
       addSoldier(r, currentScenario().levy);
       world.politics.deed('charity');

@@ -300,7 +300,7 @@ export class Hud {
     const w = p.weapon;
     this.q('#weapon').textContent = w.spell ? `${w.name}　法力 ${w.spell.mp}` : w.ranged ? `${w.name}　箭 ${p.ammo[w.id]}` : w.name;
     const canCouch = w.couchable && p.horse && p.horse.speed >= COMBAT.couch.minSpeed;
-    this.q('#hint').textContent = p.dead ? '你已倒下' : p.couched ? '騎槍已放平！瞄準馬頭前方'
+    this.q('#hint').textContent = b.townHint ? b.townHint : p.dead ? '你已倒下' : p.couched ? '騎槍已放平！瞄準馬頭前方'
       : canCouch ? '撳 E 放平騎槍' : p.horse || b.lastHorse.dead ? '' : '撳 F 上馬';
 
     const inc = p.dead ? null : this.incoming(b, p);

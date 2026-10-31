@@ -101,6 +101,15 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['awakened', 5], ['footman', 12], ['archer', 6]), army(['orc_warrior', 10], ['goblin_spear', 10], ['skeleton', 6])],
   },
   {
+    id: 'northland', sky: ['bird', 'dragon', 'wyvern'], name: '北境龍吼', desc: '諸侯內戰之際巨龍歸來，傳說有人可以吞食龍魂', cultures: ['west', 'magic'], levy: 'huscarl',
+    mercs: ['huscarl', 'archer', 'axeman', 'darkelf_blade', 'elf_mage'],
+    realms: [
+      ['銀鬃領', '銀鬃堡'], ['風暴兄弟會', '白風城'], ['河谷諸侯', '河谷鎮'], ['裂谷領', '裂谷城'], ['灰石氏族', '灰石寨'], ['沼澤盟', '黑水港'],
+      ['遠征軍團', '帝國前哨'], ['高崖修士', '七千階'], ['林地守衛', '翠谷'], ['石匠行會', '深岩堡'], ['獸牙氏族', '獠牙寨'], ['古墓教派', '永夜墓'],
+    ],
+    camps: [army(['huscarl', 14], ['archer', 8], ['axeman', 5]), army(['skeleton', 12], ['grave_knight', 4], ['necromancer', 3])],
+  },
+  {
     id: 'sorcery', sky: ['griffin', 'phoenix', 'pegasus', 'dragon'], name: '魔法世界', desc: '法師學院統治大陸，魔法決定一切', cultures: ['magic'], levy: 'elf_mage', mercs: ['elf_mage', 'necromancer', 'footman', 'griffin_guard'],
     realms: [
       ['星辰學院', '星辰塔'], ['烈焰學院', '熔爐城'], ['寒霜學院', '冰晶宮'], ['雷霆學院', '雷鳴峰'], ['大地學院', '石心城'], ['幻影學院', '鏡之都'],

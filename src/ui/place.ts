@@ -4,6 +4,7 @@ import {
 } from '../data/economy';
 import { ARTIFACTS, POLITICS, SIEGE } from '../data/factions';
 import { HONOR, type StoryHero } from '../data/honor';
+import { TOMB } from '../data/tomb';
 import { currentScenario } from '../data/scenarios';
 import { GACHA, POOLS, POOL_ORDER } from '../data/gacha';
 import { PLAYER } from '../politics/politics';
@@ -37,6 +38,8 @@ export interface PlaceActions {
   onEscaped: () => void;
   onArena: (town: PlaceDef, bet: boolean) => void;
   onTournament: (town: PlaceDef) => void;
+  onTomb: (p: PlaceDef) => void;
+  onWalk: (p: PlaceDef) => void;
   onRaider: (n: Npc) => void;
   onSiege: (p: PlaceDef, breaches: number) => void;
   onDefend: (p: PlaceDef, by: string) => void;
@@ -56,6 +59,8 @@ function strengthText(mine: number, theirs: number): string {
 export class PlaceScreens {
   private notice = '';
   private townTab: TownTab = 'market';
+  /** 由街上行入舖頭 */
+  walking = false;
   private villageTab: VillageTab = 'affairs';
 
   constructor(private hud: Hud, private world: World, private roster: Roster, private act: PlaceActions) {}
@@ -132,7 +137,7 @@ export class PlaceScreens {
       return;
     }
     const refresh = () => this.town(p);
-    const handlers: Record<string, () => void> = { party: this.act.onParty, leave: this.act.onLeave };
+    const handlers: Record<string, () => void> = { party: this.act.onParty, leave: this.act.onLeave, walk: () => this.act.onWalk(p) };
     for (const [k] of TOWN_TABS) {
       handlers[`t_${k}`] = () => {
         this.townTab = k;
@@ -152,7 +157,14 @@ export class PlaceScreens {
     this.show(p.name, p.desc ?? '', `
       <div class="tabs center">${TOWN_TABS.map(([k, v]) => `<button class="tab ${k === this.townTab ? 'on' : ''}" id="t_${k}">${v}</button>`).join('')}</div>
       ${fief}${body}
-      <div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
+      <div class="row"><button class="alt" id="walk">${this.walking ? '返出街' : '入城行街'}</button><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, handlers);
+  }
+
+  /** 行街時行入某間舖 */
+  visit(p: PlaceDef, tab: string) {
+    this.townTab = tab as TownTab;
+    this.walking = true;
+    this.town(p);
   }
 
   private questTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
@@ -581,7 +593,32 @@ export class PlaceScreens {
     });
   }
 
+  /** 十層大墳墓：一層一層落，進度保留 */
+  private tomb(p: PlaceDef) {
+    const floor = this.world.save.tombFloor;
+    const f = TOMB.floors[floor];
+    const leave = { leave: this.act.onLeave, party: this.act.onParty };
+    if (!f) {
+      this.show(p.name, '永眠王座已經空咗，十層墳墓一片死寂。', '<div class="row"><button class="go" id="leave">離開</button></div>', leave);
+      return;
+    }
+    const level = f.level;
+    this.show(p.name, p.desc ?? '', `
+      <div class="pick-title">進度：${floor} ／ ${TOMB.floors.length} 層。打贏先落得下一層，輸咗要重打呢層。</div>
+      <div class="pick-title">${f.name}：${f.desc}</div>
+      <div class="pick-title">守軍約 ${level} 級：${f.enemy.map((g) => `${UNITS[g.unit].name} ${g.count}`).join('、')}</div>
+      <div class="pick-title">形勢：${strengthText(rosterPower(this.roster), armyPower(f.enemy, level))}</div>
+      <div class="row"><button class="go" id="down">落去</button><button class="alt" id="party">部隊／抽卡</button><button class="alt" id="leave">撤離</button></div>`, {
+      ...leave,
+      down: () => this.act.onTomb(p),
+    });
+  }
+
   site(p: PlaceDef) {
+    if (p.id === TOMB.id) {
+      this.tomb(p);
+      return;
+    }
     const w = this.world.save;
     if (this.world.politics.ownerOf(p.id)) {
       const h: Record<string, () => void> = { party: this.act.onParty, leave: this.act.onLeave };
@@ -731,6 +768,8 @@ export class PlaceScreens {
         body = `<button class="alt" id="rumor">問隊長消息（${NPC_RULES.rumorCost} 金）</button>`;
         break;
       case 'dragon':
+      case 'witch':
+      case 'wyrm':
         h.fight = () => this.act.onRaider(n);
         body = `<p class="sub">討伐巨龍可以得到龍骨刃同大量金幣。</p><button class="go" id="fight">討伐</button>`;
         break;
