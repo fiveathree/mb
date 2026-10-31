@@ -1,15 +1,18 @@
 import './style.css';
 import { Battle } from './battle/battle';
-import { HORSES, type HorseDef } from './data/horses';
+import { applyBattle, deployment, enemyLevel, loadRoster } from './core/roster';
+import { CAMPAIGN } from './data/gacha';
+import { HORSES } from './data/horses';
 import { DEFAULT_LOADOUT } from './data/weapons';
+import { Camp, type CampChoice } from './ui/camp';
 import { Hud } from './ui/hud';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
 
-let horse: HorseDef = HORSES[0];
-let loadout = DEFAULT_LOADOUT;
+let roster = loadRoster();
+const choice: CampChoice = { horse: HORSES[0], loadout: DEFAULT_LOADOUT };
 let inBattle = false;
 let ignoreUnlock = false;
 
@@ -30,18 +33,16 @@ function releaseMouse() {
   }
 }
 
-async function begin(h: HorseDef, picks: string[]) {
-  horse = h;
-  loadout = picks;
+async function begin() {
   battle.sfx.unlock();
   hud.hideScreen();
-  battle.start(horse, loadout);
+  battle.start(choice.horse, choice.loadout, deployment(roster), enemyLevel(roster));
   inBattle = true;
   await lockMouse();
 }
 
 function showPause(message = '') {
-  hud.showPause(() => void resume(), () => void begin(horse, loadout), () => battle.retreat(), message);
+  hud.showPause(() => void resume(), () => void begin(), () => battle.retreat(), message);
 }
 
 function pause() {
@@ -70,18 +71,18 @@ document.addEventListener('pointerlockchange', () => {
   pause();
 });
 
+const camp = new Camp(hud, roster, choice, () => void begin(), (r) => { roster = r; });
+
 battle.onPauseKey = () => pause();
 battle.onEnd = (result) => {
   inBattle = false;
   releaseMouse();
-  hud.showResult(result, () => void begin(horse, loadout), () => showTitle());
+  const gold = Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
+  const progress = applyBattle(roster, result.outcomes, gold, result.win);
+  hud.showResult(result, progress, () => void begin(), () => camp.show());
 };
 
-function showTitle() {
-  hud.showTitle(horse, loadout, (h, picks) => void begin(h, picks));
-}
-
-showTitle();
+camp.show();
 
 if (import.meta.env.DEV) {
   (window as unknown as { __mb: Battle }).__mb = battle;

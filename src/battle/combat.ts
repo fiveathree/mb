@@ -147,7 +147,7 @@ export function strike(
   const coef = couched ? COMBAT.couchSpeedDamageCoef : COMBAT.speedDamageCoef;
   const dirMult = w.thrustOnly ? 1 : COMBAT.dirDamageMult[dir];
   const cavMult = t.horse ? w.antiCavalry : 1;
-  const raw = w.baseDamage * (1 + relSpeed * coef) * chargeMult * dirMult * cavMult * heightMult(att, t);
+  const raw = w.baseDamage * (att.def.damageMult ?? 1) * (1 + relSpeed * coef) * chargeMult * dirMult * cavMult * heightMult(att, t);
   const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
 
   const isPlayerAtt = att === world.player;
@@ -204,7 +204,7 @@ export function shotHit(
   const nx = vx / speed;
   const nz = vz / speed;
   const head = !hitHorse && hitRatio >= R.headHeight;
-  const raw = w.baseDamage * mult * (head ? R.headMult : 1) * heightMult(att, t);
+  const raw = w.baseDamage * (att.def.damageMult ?? 1) * mult * (head ? R.headMult : 1) * heightMult(att, t);
   const armorCut = (armor: number) => Math.max(raw - armor * COMBAT.armorEffect[w.damageType], raw * COMBAT.minDamageRatio);
   const isPlayerAtt = att === world.player;
   const hitPos = tmp.set(t.pos.x, t.pos.y + 1.2, t.pos.z);

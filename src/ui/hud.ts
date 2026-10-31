@@ -1,7 +1,7 @@
-import { HORSES, type HorseDef } from '../data/horses';
+import { Vector3 } from 'three';
 import { COMBAT, type AttackDir } from '../data/combat';
-import { LOADOUT_SIZE, PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
 import { BATTLEFIELD } from '../data/battlefield';
+import type { BattleProgress } from '../core/roster';
 import { ROLE_LABEL, TEAM_NAMES } from '../data/units';
 import { mirrorDir } from '../battle/combat';
 import { flatDist, rad, type Combatant } from '../battle/entities';
@@ -10,6 +10,7 @@ import { Projectiles } from '../battle/projectiles';
 import type { Battle, BattleResult, ReportRow } from '../battle/battle';
 
 const DIRS: AttackDir[] = ['up', 'down', 'left', 'right'];
+const TAG_POS = new Vector3();
 const INCOMING_WARN_DIST = 5.5;
 const TOAST_LIFE = 1200;
 const MINIMAP_SIZE = 150;
@@ -53,6 +54,7 @@ export class Hud {
       <div id="hud" hidden>
         <div class="top"><span id="foes"></span><span id="timer"></span></div>
         <div class="fps" id="fps"></div>
+        <div id="nametags"></div>
         <canvas id="minimap" width="${MINIMAP_SIZE}" height="${MINIMAP_SIZE}"></canvas>
         <div class="panel orders" id="orders"></div>
         <div id="toasts"></div>
@@ -81,9 +83,13 @@ export class Hud {
     for (const d of DIRS) this.dirEls[d] = this.q(`.dir.${d}`);
   }
 
-  private showScreen(html: string) {
+  showScreen(html: string) {
     this.screen.innerHTML = html;
     this.screen.classList.add('open');
+  }
+
+  hideHud() {
+    this.hudEl.hidden = true;
   }
 
   hideScreen() {
@@ -92,42 +98,8 @@ export class Hud {
     this.hudEl.hidden = false;
   }
 
-  private controlsHtml(): string {
+  controlsHtml(): string {
     return `<div class="controls">${CONTROLS.map(([k, v]) => `<div><kbd>${k}</kbd><span>${v}</span></div>`).join('')}</div>`;
-  }
-
-  showTitle(horse: HorseDef, loadout: string[], onStart: (h: HorseDef, loadout: string[]) => void) {
-    this.hudEl.hidden = true;
-    const render = (cur: HorseDef, picks: string[]) => {
-      const n = picks.length;
-      this.showScreen(`
-        <div class="card">
-          <h1>鐵騎風雲</h1>
-          <p class="sub">部隊對戰：敵我各 40 人。指揮步、弓、騎，親自衝陣。</p>
-          <div class="pick-title">坐騎</div>
-          <div class="horses">
-            ${HORSES.map((h) => `<button class="horse ${h.id === cur.id ? 'on' : ''}" data-id="${h.id}"><b>${h.name}</b><small>${h.desc}</small></button>`).join('')}
-          </div>
-          <div class="pick-title">武器（揀 ${LOADOUT_SIZE} 件，已揀 ${n}）</div>
-          <div class="weapons">
-            ${PLAYER_ARSENAL.map((id) => `<button class="wp ${picks.includes(id) ? 'on' : ''}" data-id="${id}">${WEAPONS[id].name}</button>`).join('')}
-          </div>
-          ${this.controlsHtml()}
-          <button class="go" id="go" ${n ? '' : 'disabled'}>開始戰鬥</button>
-        </div>`);
-      this.screen.querySelectorAll<HTMLElement>('.horse').forEach((el) => {
-        el.onclick = () => render(HORSES.find((h) => h.id === el.dataset.id)!, picks);
-      });
-      this.screen.querySelectorAll<HTMLElement>('.wp').forEach((el) => {
-        el.onclick = () => {
-          const id = el.dataset.id!;
-          const next = picks.includes(id) ? picks.filter((p) => p !== id) : [...picks, id].slice(-LOADOUT_SIZE);
-          render(cur, next);
-        };
-      });
-      this.q('#go').onclick = () => onStart(cur, picks);
-    };
-    render(horse, loadout);
   }
 
   showPause(onResume: () => void, onRestart: () => void, onRetreat: () => void, message = '') {
@@ -160,7 +132,17 @@ export class Hud {
       </table>`;
   }
 
-  showResult(r: BattleResult, onRestart: () => void, onTitle: () => void) {
+  private progressHtml(p: BattleProgress): string {
+    const ups = p.levelUps.slice(0, 8).map((l) => `${l.name} Lv${l.level}`).join('、');
+    const more = p.levelUps.length > 8 ? ` 等 ${p.levelUps.length} 項` : '';
+    return `<div class="progress">
+      ${ups ? `<div><b>升級</b>${ups}${more}</div>` : ''}
+      ${p.lost.length ? `<div><b>永久陣亡</b>${p.lost.length} 人</div>` : ''}
+      ${p.refilled ? `<div><b>補充新兵</b>${p.refilled} 人</div>` : ''}
+    </div>`;
+  }
+
+  showResult(r: BattleResult, p: BattleProgress, onRestart: () => void, onTitle: () => void) {
     const s = r.stats;
     this.hudEl.hidden = true;
     const title = r.win ? '大獲全勝' : r.retreated ? '撤退' : '戰敗';
@@ -170,7 +152,7 @@ export class Hud {
         ${r.playerDown ? '<p class="sub">你喺戰鬥中倒下，由部下打完呢場。</p>' : ''}
         <div class="reports">${this.reportColumn(0, r.rows[0])}${this.reportColumn(1, r.rows[1])}</div>
         <div class="stats">
-          <div><small>戰利品</small><b>${r.gold} 金</b></div>
+          <div><small>戰利品</small><b>${p.gold} 金</b></div>
           <div><small>經驗</small><b>${r.exp}</b></div>
           <div><small>聲望</small><b>+${r.renown}</b></div>
           <div><small>俘虜</small><b>${r.captives}</b></div>
@@ -179,7 +161,8 @@ export class Hud {
           <div><small>最高時速</small><b>${Math.round(s.topSpeed * 3.6)} km/h</b></div>
           <div><small>用時</small><b>${Math.round(s.time)} 秒</b></div>
         </div>
-        <div class="row"><button class="go" id="again">再打一場</button><button class="alt" id="title">換裝備</button></div>
+        ${this.progressHtml(p)}
+        <div class="row"><button class="go" id="title">返回軍營</button><button class="alt" id="again">再打一場</button></div>
       </div>`);
     this.q('#again').onclick = onRestart;
     this.q('#title').onclick = onTitle;
@@ -247,8 +230,29 @@ export class Hud {
     return `${rows}<div class="mor">士氣 ${Math.round(b.moraleOf(0) * 100)}%　敵 ${Math.round(b.moraleOf(1) * 100)}%</div>`;
   }
 
+  /** 英雄名牌跟住頭頂 */
+  private drawNametags(b: Battle) {
+    const box = this.q('#nametags');
+    const heroes = b.units.filter((u) => u.def.hero && !u.dead);
+    while (box.children.length < heroes.length) box.appendChild(document.createElement('span'));
+    [...box.children].forEach((node, i) => {
+      const el = node as HTMLElement;
+      const u = heroes[i];
+      if (!u) {
+        el.hidden = true;
+        return;
+      }
+      TAG_POS.set(u.pos.x, u.pos.y + (u.horse ? 4.1 : 2.9), u.pos.z).project(b.camera);
+      el.hidden = TAG_POS.z > 1;
+      el.textContent = u.def.name;
+      el.className = u.team === 0 ? 'ally' : 'foe';
+      el.style.transform = `translate(calc(${(TAG_POS.x * 0.5 + 0.5) * window.innerWidth}px - 50%), ${(0.5 - TAG_POS.y * 0.5) * window.innerHeight}px)`;
+    });
+  }
+
   update(b: Battle) {
     this.frame++;
+    this.drawNametags(b);
     const p = b.player;
     const h = p.horse ?? b.lastHorse;
     this.setBar('hp', p.hp, p.def.hp);

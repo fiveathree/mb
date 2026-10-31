@@ -5,7 +5,7 @@ import {
 } from '../data/animation';
 import { COLORS } from '../data/battlefield';
 import { SADDLE_HEIGHT, type HorseDef } from '../data/horses';
-import type { UnitDef } from '../data/units';
+import { TEAM_STYLES, type UnitDef } from '../data/units';
 import type { WeaponDef } from '../data/weapons';
 import { flushParts, type Batches, type Part } from './batch';
 import { clamp, angleDiff, type Combatant, type Horse } from './entities';
@@ -55,6 +55,7 @@ export interface HumanRig {
   kneeR: THREE.Group;
   weaponMeshes: Map<string, THREE.Group>;
   shield: THREE.Group;
+  marker: THREE.Group;
   pose: ArmPose;
   parts: Part[];
 }
@@ -115,10 +116,13 @@ function buildWeapon(w: WeaponDef): THREE.Group {
   return g;
 }
 
-export function buildHuman(def: UnitDef, bodyColor: number, weapons: WeaponDef[], batches: Batches): HumanRig {
+export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
   ctx = { batches, parts: [], gate: null };
+  const style = TEAM_STYLES[team];
+  const bodyColor = style.body;
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
+  if (def.hero) root.scale.setScalar(1.14);
   const hips = new THREE.Group();
   hips.position.y = 0.95;
   root.add(hips);
@@ -131,9 +135,34 @@ export function buildHuman(def: UnitDef, bodyColor: number, weapons: WeaponDef[]
 
   const head = ico(0.135, COLORS.skin);
   head.position.y = 0.82;
-  const helmet = cyl(0.05, 0.16, 0.17, 6, COLORS.steel);
+  const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
   helmet.position.y = 0.93;
   torso.add(head, helmet);
+
+  // 盔飾：我軍羽飾、敵軍牛角
+  if (style.crest === 'plume') {
+    const plume = box(0.05, 0.2, 0.3, def.plumeColor ?? style.crestColor, 0, 1.08, -0.04);
+    plume.rotation.x = -0.25;
+    torso.add(plume);
+  } else {
+    const horn = (side: number) => {
+      const h = cone(0.045, 0.3, 4, def.plumeColor ?? style.crestColor);
+      h.position.set(side * 0.2, 1.03, 0);
+      h.rotation.z = -side * 0.6;
+      return h;
+    };
+    torso.add(horn(1), horn(-1));
+  }
+
+  // 背旗：遠處都睇到邊邊
+  torso.add(box(0.03, 1.1, 0.03, COLORS.wood, 0.08, 0.95, -0.18));
+  torso.add(box(0.03, 0.34, 0.36, def.plumeColor ?? style.body, 0.08, 1.32, -0.38));
+
+  if (def.hero) {
+    const cape = box(0.5, 0.95, 0.04, def.trimColor, 0, 0.12, -0.17);
+    cape.rotation.x = 0.14;
+    torso.add(cape);
+  }
 
   const armR = new THREE.Group();
   armR.rotation.order = 'YXZ';
@@ -155,7 +184,7 @@ export function buildHuman(def: UnitDef, bodyColor: number, weapons: WeaponDef[]
 
   const shield = new THREE.Group();
   ctx.gate = shield;
-  const face = cyl(0.42, 0.42, 0.05, 6, def.trimColor);
+  const face = cyl(0.42, 0.42, 0.05, 6, style.shield);
   face.rotation.z = Math.PI / 2;
   const boss = cyl(0.13, 0.13, 0.07, 6, COLORS.steel);
   boss.rotation.z = Math.PI / 2;
@@ -176,10 +205,10 @@ export function buildHuman(def: UnitDef, bodyColor: number, weapons: WeaponDef[]
   const leg = (x: number) => {
     const upper = new THREE.Group();
     upper.position.set(x, 0, 0);
-    upper.add(box(0.17, 0.46, 0.17, def.trimColor, 0, -0.22, 0));
+    upper.add(box(0.17, 0.46, 0.17, style.legs, 0, -0.22, 0));
     const knee = new THREE.Group();
     knee.position.y = -0.44;
-    knee.add(box(0.15, 0.46, 0.15, 0x3a3a40, 0, -0.22, 0), box(0.16, 0.08, 0.28, 0x2c2622, 0, -0.46, 0.05));
+    knee.add(box(0.15, 0.46, 0.15, style.legs, 0, -0.22, 0), box(0.16, 0.08, 0.28, 0x2c2622, 0, -0.46, 0.05));
     upper.add(knee);
     hips.add(upper);
     return [upper, knee] as const;
@@ -187,8 +216,18 @@ export function buildHuman(def: UnitDef, bodyColor: number, weapons: WeaponDef[]
   const [legL, kneeL] = leg(0.13);
   const [legR, kneeR] = leg(-0.13);
 
+  // 頭頂標記：英雄用金色
+  const marker = new THREE.Group();
+  ctx.gate = marker;
+  const tip = cone(0.15, 0.3, 4, def.hero ? 0xffd34d : style.marker);
+  tip.rotation.x = Math.PI;
+  tip.position.y = 2.5;
+  marker.add(tip);
+  ctx.gate = null;
+  root.add(marker);
+
   return {
-    root, hips, torso, armR, wrist, armL, gripL, legL, legR, kneeL, kneeR, weaponMeshes, shield,
+    root, hips, torso, armR, wrist, armL, gripL, legL, legR, kneeL, kneeR, weaponMeshes, shield, marker,
     pose: { ...IDLE_POSE }, parts: ctx.parts,
   };
 }
@@ -202,8 +241,9 @@ export interface HorseRig {
   parts: Part[];
 }
 
-export function buildHorse(def: HorseDef, batches: Batches): HorseRig {
+export function buildHorse(def: HorseDef, team: number, batches: Batches): HorseRig {
   ctx = { batches, parts: [], gate: null };
+  const cloth = TEAM_STYLES[team].cloth;
   const c = def.color;
   const dark = 0x2a2220;
   const root = new THREE.Group();
@@ -216,9 +256,9 @@ export function buildHorse(def: HorseDef, batches: Batches): HorseRig {
   body.add(box(0.56, 0.6, 0.5, c, 0, 0.03, 0.85));
   body.add(box(0.58, 0.62, 0.55, c, 0, 0.04, -0.8));
   // 鞍具
-  body.add(box(0.66, 0.1, 0.72, 0x5b2b22, 0, 0.36, -0.04), box(0.68, 0.34, 0.5, 0xb5362c, 0, 0.2, -0.05));
+  body.add(box(0.66, 0.1, 0.72, 0x5b2b22, 0, 0.36, -0.04), box(0.7, 0.62, 1.1, cloth, 0, 0.06, -0.05));
   if (def.barded) {
-    body.add(box(0.72, 0.68, 1.3, 0x7d858c, 0, -0.14, 0.42), box(0.72, 0.68, 0.9, 0x7d858c, 0, -0.14, -0.72));
+    body.add(box(0.72, 0.68, 1.3, cloth, 0, -0.14, 0.42), box(0.72, 0.68, 0.9, cloth, 0, -0.14, -0.72));
   }
 
   const neck = new THREE.Group();
@@ -347,6 +387,7 @@ export function syncHuman(c: Combatant, dt: number) {
   r.armL.rotation.y = shieldUp ? -0.75 : bowUp ? 0 : -0.35;
 
   r.shield.visible = c.hasActiveShield;
+  r.marker.visible = !c.dead;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id;
   flushParts(r.root, r.parts);
 }

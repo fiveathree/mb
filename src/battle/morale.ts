@@ -32,6 +32,14 @@ export function tickMorale(units: Combatant[]) {
     totals[u.team]++;
     if (!u.dead && !u.routing) counts[u.team]++;
   }
+  for (const h of units) {
+    if (h.dead || h.routing || !h.def.aura) continue;
+    for (const u of units) {
+      if (u.team === h.team && !u.dead && flatDist(u.pos, h.pos) < MORALE.auraRadius) {
+        u.morale = Math.min(u.def.morale, u.morale + h.def.aura);
+      }
+    }
+  }
   for (const u of units) {
     if (u.dead || u.routing || u.def.id === 'player') continue;
     let allies = 0;

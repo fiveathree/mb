@@ -4,9 +4,11 @@ import { ARMIES, BATTLEFIELD as F, COLORS, FORMATION, REWARDS } from '../data/ba
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
 import {
-  ENEMY_COMMAND, PLAYER_UNIT, ROLE_KEYS, ROLE_LABEL, TEAM_COLORS, UNITS, type Role, type UnitDef,
+  ENEMY_COMMAND, PLAYER_UNIT, ROLE_KEYS, ROLE_LABEL, UNITS, type Role, type UnitDef,
 } from '../data/units';
+import { LEVEL } from '../data/gacha';
 import { WEAPONS } from '../data/weapons';
+import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
 import { Sfx } from './audio';
 import { Batches } from './batch';
@@ -49,6 +51,7 @@ export interface BattleResult {
   exp: number;
   renown: number;
   captives: number;
+  outcomes: BattleOutcome[];
 }
 
 export class Battle implements CombatWorld {
@@ -132,13 +135,13 @@ export class Battle implements CombatWorld {
 
   private createUnit(def: UnitDef, team: number, weaponIds: string[]): Combatant {
     const weapons = weaponIds.map((id) => WEAPONS[id]);
-    const c = new Combatant(def, team, buildHuman(def, TEAM_COLORS[team], weapons, this.batches), weaponIds);
+    const c = new Combatant(def, team, buildHuman(def, team, weapons, this.batches), weaponIds);
     this.units.push(c);
     return c;
   }
 
   private createHorse(def: HorseDef, rider: Combatant): Horse {
-    const h = new Horse(def, buildHorse(def, this.batches));
+    const h = new Horse(def, buildHorse(def, rider.team, this.batches));
     h.pos.copy(rider.pos);
     h.heading = rider.yaw;
     h.rider = rider;
@@ -148,7 +151,7 @@ export class Battle implements CombatWorld {
   }
 
   /** 開一場新戰鬥 */
-  start(horseDef: HorseDef, loadout: string[]) {
+  start(horseDef: HorseDef, loadout: string[], soldiers: Soldier[], enemyLevel: number) {
     this.batches.reset();
     this.projectiles.reset();
     this.units = [];
@@ -169,16 +172,22 @@ export class Battle implements CombatWorld {
     this.player = player;
     this.lastHorse = this.createHorse(horseDef, player);
 
-    ARMIES.forEach((army, team) => {
-      for (const entry of army) {
-        const def = UNITS[entry.unit];
-        const group = this.groups[team].find((g) => g.role === def.role)!;
-        for (let i = 0; i < entry.count; i++) {
-          const c = this.createUnit(def, team, def.weapons);
-          c.ai = makeAi(group);
-          group.members.push(c);
-        }
+    const recruit = (unit: string, team: number, level: number, soldier: Soldier | null) => {
+      const def = levelDef(UNITS[unit], level);
+      const group = this.groups[team].find((g) => g.role === def.role)!;
+      const c = this.createUnit(def, team, def.weapons);
+      c.ai = makeAi(group);
+      c.soldier = soldier;
+      group.members.push(c);
+    };
+    for (const s of soldiers) recruit(s.unit, 0, s.level, s);
+    for (const entry of ARMIES[1]) {
+      for (let i = 0; i < entry.count; i++) {
+        recruit(entry.unit, 1, Math.max(1, enemyLevel - Math.floor(Math.random() * 2)), null);
       }
+    }
+
+    [0, 1].forEach((team) => {
       for (const g of this.groups[team]) {
         deployGroup(g);
         for (const c of g.members) {
@@ -210,6 +219,10 @@ export class Battle implements CombatWorld {
   onUnitDown(t: Combatant, by: Combatant) {
     t.wounded = t !== this.player && Math.random() < REWARDS.woundedChance;
     onDeath(t, by, this.units);
+    if (by !== t) {
+      by.killCount++;
+      by.xpEarned += LEVEL.xpPerKillTier * t.def.tier;
+    }
     if (t === this.player) this.hud.announce('你倒下咗，部隊繼續作戰', 'hurt');
   }
   playerAim(muzzle: THREE.Vector3, out: THREE.Vector3) {
@@ -672,13 +685,13 @@ export class Battle implements CombatWorld {
       const map = new Map<string, ReportRow>();
       for (const u of this.units) {
         if (u.team !== team || u.def.id === 'player') continue;
-        const r = map.get(u.def.id) ?? { name: u.def.name, total: 0, alive: 0, dead: 0, wounded: 0, fled: 0 };
+        const r = map.get(u.def.role) ?? { name: ROLE_LABEL[u.def.role], total: 0, alive: 0, dead: 0, wounded: 0, fled: 0 };
         r.total++;
         if (u.fled || u.routing) r.fled++;
         else if (!u.dead) r.alive++;
         else if (u.wounded) r.wounded++;
         else r.dead++;
-        map.set(u.def.id, r);
+        map.set(u.def.role, r);
       }
       return [...map.values()];
     });
@@ -698,9 +711,22 @@ export class Battle implements CombatWorld {
         if (u.wounded && Math.random() < REWARDS.captureChance) captives++;
       }
     }
+    // 撤退同戰敗都有部分戰利品
+    if (!this.win) {
+      for (const u of this.units) {
+        if (u.team === 1 && u.dead && !u.fled) gold += REWARDS.goldPerTier * u.def.tier;
+      }
+    }
+    const outcomes: BattleOutcome[] = [];
+    for (const u of this.units) {
+      if (!u.soldier) continue;
+      outcomes.push({
+        soldier: u.soldier, xp: u.xpEarned, kills: u.killCount, dead: u.dead && !u.fled && !u.wounded,
+      });
+    }
     return {
       win: this.win, retreated: this.retreated, playerDown: this.player.dead, stats: this.stats, rows,
-      gold, exp, renown: Math.round(renown), captives,
+      gold, exp, renown: Math.round(renown), captives, outcomes,
     };
   }
 

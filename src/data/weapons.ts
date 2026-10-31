@@ -160,6 +160,61 @@ const WEAPON_LIST: WeaponDef[] = [
     baseDamage: 20, reach: 2.2, windupMin: 0.25, chargeFull: 0.4,
     swingTime: 0.28, recoverTime: 0.5, arcDeg: 120, length: 0.95,
   },
+
+  // ── 特殊兵種同英雄 ──
+  {
+    ...melee, id: 'elite_sword', name: '近衛劍', model: 'sword', damageType: 'cut',
+    baseDamage: 24, reach: 2.2, windupMin: 0.35, chargeFull: 0.4,
+    swingTime: 0.28, recoverTime: 0.4, arcDeg: 115, hasShield: true, length: 1,
+  },
+  {
+    ...melee, id: 'elite_spear', name: '破騎矛', model: 'spear', damageType: 'pierce',
+    baseDamage: 27, reach: 3.2, windupMin: 0.32, chargeFull: 0.35,
+    swingTime: 0.28, recoverTime: 0.42, arcDeg: 30, thrustOnly: true, antiCavalry: 2.2, length: 2.8,
+  },
+  {
+    ...melee, id: 'elite_axe', name: '破陣斧', model: 'axe', damageType: 'cut',
+    baseDamage: 34, reach: 2.4, windupMin: 0.45, chargeFull: 0.45,
+    swingTime: 0.34, recoverTime: 0.5, arcDeg: 125, cleave: 2, shieldBreak: 2.6, length: 1.2,
+  },
+  {
+    ...melee, id: 'elite_lance', name: '鐵騎槍', model: 'lance', damageType: 'pierce',
+    baseDamage: 15, reach: 3.5, windupMin: 0.28, chargeFull: 0.45,
+    swingTime: 0.3, recoverTime: 0.45, arcDeg: 30, thrustOnly: true, couchable: true, length: 3.3,
+  },
+  {
+    ...melee, id: 'elite_bow', name: '精靈長弓', model: 'bow', damageType: 'pierce',
+    baseDamage: 28, reach: 0, windupMin: 0.3, chargeFull: 1,
+    swingTime: 0, recoverTime: 0.7, arcDeg: 0, length: 1.45,
+    ranged: { speed: 62, spreadDeg: 1.1, undrawnSpreadDeg: 3, mountedSpreadDeg: 3, ammo: 28, minDamageMult: 0.5 },
+  },
+  {
+    ...melee, id: 'elite_crossbow', name: '連環弩', model: 'crossbow', damageType: 'pierce',
+    baseDamage: 32, reach: 0, windupMin: 0.35, chargeFull: 0.4,
+    swingTime: 0, recoverTime: 1.7, arcDeg: 0, shieldBreak: 1.5, length: 0.85,
+    ranged: { speed: 70, spreadDeg: 1.2, undrawnSpreadDeg: 0, mountedSpreadDeg: 4, ammo: 18, minDamageMult: 1 },
+  },
+  {
+    ...melee, id: 'hero_blade', name: '名刃', model: 'sword', damageType: 'cut',
+    baseDamage: 40, reach: 2.5, windupMin: 0.2, chargeFull: 0.3,
+    swingTime: 0.26, recoverTime: 0.3, arcDeg: 130, cleave: 2, hasShield: true, length: 1.15,
+  },
+  {
+    ...melee, id: 'hero_axe', name: '開山巨斧', model: 'axe', damageType: 'cut',
+    baseDamage: 54, reach: 2.7, windupMin: 0.32, chargeFull: 0.35,
+    swingTime: 0.34, recoverTime: 0.42, arcDeg: 140, cleave: 3, shieldBreak: 3, length: 1.4,
+  },
+  {
+    ...melee, id: 'hero_lance', name: '獅紋騎槍', model: 'lance', damageType: 'pierce',
+    baseDamage: 24, reach: 3.7, windupMin: 0.22, chargeFull: 0.35,
+    swingTime: 0.28, recoverTime: 0.36, arcDeg: 30, thrustOnly: true, couchable: true, length: 3.5,
+  },
+  {
+    ...melee, id: 'hero_bow', name: '神射弓', model: 'bow', damageType: 'pierce',
+    baseDamage: 42, reach: 0, windupMin: 0.25, chargeFull: 0.75,
+    swingTime: 0, recoverTime: 0.45, arcDeg: 0, length: 1.4,
+    ranged: { speed: 70, spreadDeg: 0.5, undrawnSpreadDeg: 2, mountedSpreadDeg: 2, ammo: 40, minDamageMult: 0.6 },
+  },
 ];
 
 export const WEAPONS: Record<string, WeaponDef> = Object.fromEntries(WEAPON_LIST.map((w) => [w.id, w]));

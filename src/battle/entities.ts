@@ -5,6 +5,7 @@ import type { UnitDef } from '../data/units';
 import { SHIELD, WEAPONS, type WeaponDef } from '../data/weapons';
 import type { HorseRig, HumanRig } from './models';
 import type { Group } from './orders';
+import type { Soldier } from '../core/roster';
 
 export type Phase = 'idle' | 'charge' | 'swing' | 'recover' | 'block' | 'stagger';
 
@@ -104,6 +105,11 @@ export class Combatant {
 
   walkPhase = 0;
   ai: AiState | null = null;
+  /** 兵冊入面嘅士兵，敵軍冇 */
+  soldier: Soldier | null = null;
+  /** 今場累積 */
+  xpEarned = 0;
+  killCount = 0;
 
   constructor(public def: UnitDef, public team: number, public rig: HumanRig, weaponIds: string[]) {
     this.hp = def.hp;
