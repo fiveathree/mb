@@ -25,7 +25,7 @@ import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worl
 import type { Hud } from './hud';
 
 /** 撳實買賣掣：停一停之後連續買 */
-const HOLD_BUTTONS = /^(buy_|sell_|foodd|ticketd)/;
+const HOLD_BUTTONS = /^(buy_|sell_|food[0-9]|ticket[0-9])/;
 const HOLD_DELAY = 350;
 const HOLD_EVERY = 90;
 let holdTimer = 0;
