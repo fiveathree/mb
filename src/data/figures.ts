@@ -217,7 +217,12 @@ export const MILESTONES: Record<string, Record<number, { text: string; seize?: b
 
 /** 冠位角色冇扮嗰陣就係大地圖人物 */
 for (const c of CROWNS) {
-  if (FIGURES.some((f) => f.id === c.id)) continue;
+  // 本身已經係人物：只係補返專屬兵器
+  const own = FIGURES.find((f) => f.id === c.id);
+  if (own) {
+    own.weapons = [sigId(c), ...own.weapons];
+    continue;
+  }
   const base = c.sig[1];
   const [str, agi, , cha] = c.attrs;
   FIGURES.push({

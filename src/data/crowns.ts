@@ -292,13 +292,12 @@ export const MUSOU: Record<string, MusouDef> = {
   fig_pethunter: { name: '靈犬突襲', style: 'shadow', color: 0xe0b06a },
 };
 export const musouOf = (id: string) => MUSOU[id];
-export const sigIdOf = (id: string) => `sig_${id}`;
 
 export const crownOf = (id?: string) => CROWNS.find((c) => c.id === id);
 export const GRAND_CROWNS = CROWNS.filter((c) => c.grand);
 /** 大混戰揀到領軍嗰十五位，其他劇本揀自己嗰幾位 */
 export const crownsIn = (scenario: string) => (scenario === 'chaos' ? GRAND_CROWNS : CROWNS.filter((c) => c.scenario === scenario));
 /** 專屬兵器 id */
-export const sigId = (c: CrownDef) => `sig_${c.id}`;
+export const sigId = (c: { id: string }) => `sig_${c.id}`;
 /** 去咗名銜嘅短名，大混戰軍號用 */
 export const shortName = (c: CrownDef) => c.name.split(' ').pop()!;

@@ -74,6 +74,8 @@ export interface WorldSave {
   crown?: string;
   /** 主線去到第幾章 */
   storyChapter?: number;
+  /** 未睇嘅主線故事 */
+  storyQueue?: StoryEvent[];
   difficulty?: Difficulty;
   /** 大墳墓打到第幾層 */
   tombFloor: number;
@@ -337,7 +339,7 @@ export class World {
 
   /** 彈一段故事，下次行軍時顯示 */
   tellStory(title: string, text: string) {
-    this.pendingStory = { id: `story_${title}`, title, text, choices: [{ label: '繼續', effect: 'none' }] };
+    (this.save.storyQueue ??= []).push({ id: `story_${title}`, title, text, choices: [{ label: '繼續', effect: 'none' }] });
     this.note(title);
   }
 
@@ -368,9 +370,9 @@ export class World {
     if (this.paused) return null;
     this.advanceTime(dt);
     this.npcs.update(dt, this.save.bandits);
-    if (this.pendingStory) {
-      const event = this.pendingStory;
-      this.pendingStory = null;
+    const event = this.save.storyQueue?.shift() ?? this.pendingStory;
+    if (event) {
+      if (event === this.pendingStory) this.pendingStory = null;
       return { type: 'story', event };
     }
     const hunter = this.checkHunters(dt);

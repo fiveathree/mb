@@ -6,6 +6,7 @@ import { dayOf } from '../worldmap/world';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
+import { figureOf } from '../data/figures';
 import { ROLE_LABEL, UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
 import { cleanName, armorValue, heroXpNeed, partyLimit, playerDef, skillOf } from '../core/hero';
@@ -418,7 +419,7 @@ export class Camp {
     const state: AchieveState = {
       wins: this.roster.wins, gold: this.roster.gold, fiefs: pol.fiefsOf(PLAYER).length, king: pol.s.rank === 'king', won: pol.s.won, tomb: w.tombFloor,
       quests: w.questsDone, careers: hero.careers.length, artifacts: hero.artifacts.length, level: hero.level, lords: pol.s.lords.length,
-      figures: w.pol.storyMet.filter((x) => x.startsWith('fig_')).length,
+      figures: w.pol.storyMet.filter((x) => x !== w.crown && figureOf(x)).length,
     };
     const feats = ACHIEVEMENTS.map((a) => `<span class="feat ${a.done(state) ? 'own' : ''}" title="${a.desc}">${a.name}</span>`).join('');
     return `<div class="codex">

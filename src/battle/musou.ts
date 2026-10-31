@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { MUSOU_RULES, MUSOU_STYLES, musouOf, sigIdOf, type MusouDef } from '../data/crowns';
+import { MUSOU_RULES, MUSOU_STYLES, musouOf, sigId, type MusouDef } from '../data/crowns';
 import { WEAPONS } from '../data/weapons';
 import { musouHit, type CombatWorld } from './combat';
 import { flatDist, type Combatant } from './entities';
@@ -16,6 +16,8 @@ export interface MusouWorld extends CombatWorld {
   casts: MusouCast[];
   /** 玩家出招時嘅大字 */
   musouCut(name: string, color: number): void;
+  /** 呢點係咪仲喺戰場入面 */
+  inBounds(x: number, z: number): boolean;
 }
 
 const tmp = new Vector3();
@@ -32,14 +34,14 @@ function forward(w: MusouWorld, c: Combatant): [number, number] {
 
 function hit(w: MusouWorld, cast: MusouCast, t: Combatant, x: number, z: number, scale = 1) {
   const { c, def } = cast;
-  const weapon = WEAPONS[sigIdOf(c.def.crown!)];
+  const weapon = WEAPONS[sigId({ id: c.def.crown! })];
   const power = weapon.spell ? c.def.spellMult ?? 1 : c.def.damageMult ?? 1;
   const d = Math.max(Math.hypot(t.pos.x - x, t.pos.z - z), 0.01);
   musouHit(w, c, t, weapon.baseDamage * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d, def.name);
 }
 
 function moveTo(w: MusouWorld, c: Combatant, x: number, z: number) {
-  if (w.wallBlocks(c.pos.x, c.pos.z, x, z, c.pos.y + 1)) return false;
+  if (!w.inBounds(x, z) || w.wallBlocks(c.pos.x, c.pos.z, x, z, c.pos.y + 1)) return false;
   const body = c.horse ?? c;
   body.pos.x = x;
   body.pos.z = z;
@@ -70,6 +72,8 @@ function run(w: MusouWorld, cast: MusouCast) {
       const r = Math.sqrt(Math.random()) * s.spread;
       const x = c.pos.x + fx * s.reach + Math.cos(a) * r;
       const z = c.pos.z + fz * s.reach + Math.sin(a) * r;
+      // 隔牆嗰邊落唔到
+      if (w.wallBlocks(c.pos.x, c.pos.z, x, z, c.pos.y + 1)) break;
       w.fx.pillar(at(x, z), def.color, 4);
       for (const t of foes(w, c, x, z, s.radius)) hit(w, cast, t, x, z);
       w.shake(0.1);

@@ -41,6 +41,8 @@ import { buildTerrain, heightAt, inRiver, placeTrees, setRiver, type Obstacle } 
 import type { Hud } from '../ui/hud';
 
 const JUMP_SPEED = 5.5;
+/** 絕招位移離地下城側牆最少幾遠 */
+const MUSOU_WALL_GAP = 2;
 const MOUNT_RANGE = 3.2;
 const MAX_DISMOUNT_SPEED = 6;
 const RESULT_DELAY = 2;
@@ -1158,6 +1160,10 @@ export class Battle implements CombatWorld {
     if (!p.def.crown || this.peaceful || p.musouT > 0) return;
     if (p.musou >= MUSOU_RULES.max) startMusou(this, p);
     else this.hud.announce(`氣未夠 ${Math.floor(p.musou)}／${MUSOU_RULES.max}`, 'guard');
+  }
+
+  inBounds(x: number, z: number) {
+    return this.dungeon ? Math.abs(x) < DUNGEON.halfWidth - MUSOU_WALL_GAP : Math.hypot(x, z) < F.arenaRadius;
   }
 
   musouCut(name: string, color: number) {

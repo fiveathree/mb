@@ -5,7 +5,7 @@ import { SCENARIOS, type Scenario } from '../data/scenarios';
 import { BACKGROUND_JOB, JOBS, jobOf } from '../data/jobs';
 import { ATTR_NAME, DIFFICULTY, SKILLS, type Difficulty } from '../data/economy';
 import { UNITS } from '../data/units';
-import { MUSOU_STYLES, crownsIn, musouOf, type CrownDef } from '../data/crowns';
+import { MUSOU_STYLES, crownsIn, musouOf, shortName, sigId, type CrownDef } from '../data/crowns';
 import { HORSES } from '../data/horses';
 import { WEAPONS } from '../data/weapons';
 import { armorValue, createCrownHero, partyLimit, playerDef } from '../core/hero';
@@ -51,7 +51,7 @@ function crownPanel(k: CrownDef): string {
       <div>${bars}</div>
       <div class="crown-info">
         <div>生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, [])}</div>
-        <div>專屬：${k.sig[0]}（${WEAPONS[`sig_${k.id}`].baseDamage} 傷害）</div>
+        <div>專屬：${k.sig[0]}（${WEAPONS[sigId(k)].baseDamage} 傷害）</div>
         <div>戰技：${musou.name}（${MUSOU_STYLES[musou.style].label}：${MUSOU_STYLES[musou.style].desc}）</div>
         <div>技能：${skills}</div>
         <div>坐騎：${HORSES.find((x) => x.id === k.horse)?.name}・${k.gold} 金・${k.food} 糧</div>
@@ -74,7 +74,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
     const diff = `難度 <select id="ngDiff">${(Object.keys(DIFFICULTY) as Difficulty[]).map((k) => `<option value="${k}" ${k === c.difficulty ? 'selected' : ''}>${DIFFICULTY[k].name}</option>`).join('')}</select>`;
     const body = c.crown ? `
         <div class="pick-title ng-picks">冠位角色　${diff}</div>
-        <div class="weapons">${crowns.map((k) => chip('crown', k.id, k.name.split(' ').pop()!, k === c.crown)).join('')}</div>
+        <div class="weapons">${crowns.map((k) => chip('crown', k.id, shortName(k), k === c.crown)).join('')}</div>
         ${crownPanel(c.crown)}` : `
         <div class="pick-title">種族</div>
         <div class="weapons">${racesOf().map((k) => chip('race', k, PLAYABLE[k].name, k === c.race)).join('')}</div>

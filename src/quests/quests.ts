@@ -92,7 +92,7 @@ function finish(world: World, q: Quest) {
 function storyText(world: World, text: string): string {
   const name = (id: string) => PLACES.find((p) => p.id === id)?.name ?? '';
   return text.replace('{hook}', currentScenario().desc).replace(/\{a\}/g, name('griffon')).replace(/\{b\}/g, name('linjiang'))
-    .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair')).replace(/\{name\}/g, world.roster.hero.name);
+    .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair')).replace(/\{name\}/g, () => world.roster.hero.name);
 }
 
 /** 開新一章：主線唔過期，亦唔佔任務名額 */

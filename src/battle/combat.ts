@@ -386,7 +386,8 @@ function kill(world: CombatWorld, t: Combatant, att: Combatant) {
 }
 
 export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Combatant) {
-  if (h.dead) return;
+  // 出絕招時連馬都無敵，唔會跌落馬
+  if (h.dead || (h.rider && h.rider.musouT > 0)) return;
   h.hp -= dmg;
   const rider = h.rider;
   if (rider === world.player) world.announce(`戰馬受傷 −${dmg}`, 'hurt');
