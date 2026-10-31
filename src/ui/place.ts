@@ -76,7 +76,7 @@ export class PlaceScreens {
         <h2>${title}</h2>
         <p class="sub">${desc}</p>
         <div class="gold">${this.goldText()} 金・糧 ${Math.floor(this.world.save.food)}・兵 ${this.roster.soldiers.length}</div>
-        ${this.notice ? `<p class="notice">${this.notice}</p>` : ''}
+        <p class="notice">${this.notice}</p>
         ${body}
       </div>`);
     this.notice = '';

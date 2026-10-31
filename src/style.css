@@ -90,6 +90,21 @@ html, body {
 #mapbar { max-width: calc(100% - 16px); }
 .stats-line { flex-wrap: wrap; justify-content: center; row-gap: 0; }
 
+.report.trade td, .report.trade th { padding: 0 6px; }
+.report.trade .mini { padding: 1px 7px; margin: 0 1px; }
+.card.place .row.wrap { margin-bottom: 6px; gap: 6px; }
+.card.place .alt { padding: 6px 12px; font-size: 13px; }
+#mapbar { padding: 5px 12px; font-size: 13px; }
+.stats-line { gap: 0 10px; }
+
+/* 有分頁嘅彈窗固定高度，切換分頁時分頁掣唔會郁 */
+.card.place, .card.camp { height: min(590px, calc(100vh - 16px)); padding-top: 12px; padding-bottom: 12px; overflow: hidden; }
+#screen { padding: 8px; }
+.card.place h2 { margin-bottom: 2px; font-size: 22px; }
+.card.place .sub { margin: 0 0 2px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.place .gold { margin-bottom: 0; }
+.notice { min-height: 20px; margin: 0 0 2px; font-size: 13px; }
+
 /* 大地圖 */
 #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #16202f; }
 #map[hidden] { display: none !important; }
