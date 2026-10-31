@@ -34,9 +34,24 @@ function box(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0
 const steel = (key: string) => `m|${key}`;
 
 function ell(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, metal = false): THREE.Object3D {
-  const node = part(metal ? steel('ell') : 'ell', () => new THREE.SphereGeometry(0.5, 9, 7), color, w, h, d);
+  const node = part(metal ? steel('ell') : 'ell', () => new THREE.SphereGeometry(0.5, 7, 5), color, w, h, d);
   node.position.set(x, y, z);
   return node;
+}
+
+/** 細粒嘢：眼、鼻、扣，面數最少 */
+function dot(w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, metal = false): THREE.Object3D {
+  const node = part(metal ? steel('dot') : 'dot', () => new THREE.IcosahedronGeometry(0.5, 0), color, w, h, d);
+  node.position.set(x, y, z);
+  return node;
+}
+
+/** 部件喺 rig 入面位置固定：計一次，之後唔使每幀重算 */
+function settle() {
+  for (const p of ctx.parts) {
+    p.node.updateMatrix();
+    p.node.matrixAutoUpdate = false;
+  }
 }
 
 /** 手腳：頂底粗幼唔同嘅圓柱 */
@@ -342,8 +357,8 @@ function buildHead(torso: THREE.Group, def: UnitDef, skin: number, look: RaceLoo
   torso.add(ell(0.235, 0.285, 0.26, skin, 0, 0.82, 0));
   if (look === 'skull' || look === 'bull') return;
   const eye = 0x16130f;
-  for (const s of [1, -1]) torso.add(ell(0.032, 0.026, 0.02, eye, s * 0.05, 0.84, 0.118));
-  torso.add(ell(0.035, 0.05, 0.05, skin, 0, 0.8, 0.13));
+  for (const s of [1, -1]) torso.add(dot(0.032, 0.026, 0.02, eye, s * 0.05, 0.84, 0.118));
+  torso.add(dot(0.035, 0.05, 0.05, skin, 0, 0.8, 0.13));
   const hair = HAIR[h % HAIR.length];
   torso.add(dome(0.26, 0.2, 0.28, hair, 0, 0.87, -0.012));
   if (h % 3 === 0) torso.add(ell(0.17, 0.14, 0.12, hair, 0, 0.74, 0.07));
@@ -408,7 +423,7 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   const belt = cyl(0.2, 0.2, 0.07, 10, LEATHER);
   belt.position.y = 0.04;
   belt.scale.z *= 0.72;
-  torso.add(belt, ell(0.08, 0.07, 0.04, GOLD_TRIM, 0, 0.04, 0.14, true));
+  torso.add(belt, dot(0.08, 0.07, 0.04, GOLD_TRIM, 0, 0.04, 0.14, true));
   const skirt = cyl(0.2, robed ? 0.34 : 0.28, robed ? 0.86 : 0.36, 10, robed ? bodyColor : def.trimColor);
   skirt.position.y = robed ? -0.42 : -0.16;
   skirt.scale.z *= 0.74;
@@ -526,7 +541,7 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
 
   return {
     root, hips, torso, armR, wrist, armL, gripL, legL, legR, kneeL, kneeR, weaponMeshes, shield, marker,
-    pose: { ...IDLE_POSE }, parts: ctx.parts, dragon,
+    pose: { ...IDLE_POSE }, parts: (settle(), ctx.parts), dragon,
   };
 }
 
@@ -657,6 +672,7 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
     body.add(box(0.26, 0.26, 0.2, 0x8fe0ff, 0.2, 0, -1.18), box(0.26, 0.26, 0.2, 0x8fe0ff, -0.2, 0, -1.18));
   }
 
+  settle();
   return { root, body, neck, legs, tail, parts: ctx.parts };
 }
 

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 
 const BOX_CAPACITY = 3000;
 const OTHER_CAPACITY = 8000;
+/** 橢球同四肢每個人用得最多 */
+const HUMAN_CAPACITY = 20000;
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 interface Batch {
@@ -27,7 +29,7 @@ export class Batches {
   private batch(key: string, make: () => THREE.BufferGeometry): Batch {
     let b = this.batches.get(key);
     if (!b) {
-      const capacity = key === 'box' ? BOX_CAPACITY : OTHER_CAPACITY;
+      const capacity = key === 'box' ? BOX_CAPACITY : key.includes('ell') || key.includes('limb') ? HUMAN_CAPACITY : OTHER_CAPACITY;
       // 鍵頭 m| 係金屬件，用高光材質；其餘圓滑光影
       const material = key.startsWith('m|')
         ? new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x8a8a8a })

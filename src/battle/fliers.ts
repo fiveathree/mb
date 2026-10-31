@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SKY_FAUNA } from '../data/world';
+import { loftGeo, wingGeo } from './shapes';
 
 const COUNT = 6;
 const WING_SCALE = 0.09;
@@ -42,11 +43,15 @@ export class Fliers {
     for (let i = 0; i < COUNT; i++) {
       const def = SKY_FAUNA[kinds[i % kinds.length]];
       const size = def.wing * WING_SCALE;
-      const mat = new THREE.MeshLambertMaterial({ color: def.color, flatShading: true });
+      const mat = new THREE.MeshLambertMaterial({ color: def.color, side: THREE.DoubleSide });
       const root = new THREE.Group();
-      root.add(new THREE.Mesh(new THREE.BoxGeometry(size * 0.24, size * 0.2, size * 0.9), mat));
+      const r = size * 0.13;
+      root.add(new THREE.Mesh(loftGeo([
+        { z: -size * 0.5, y: 0, rx: r * 0.15, ry: r * 0.15 }, { z: -size * 0.1, y: 0, rx: r, ry: r },
+        { z: size * 0.25, y: 0.02 * size, rx: r * 0.8, ry: r * 0.8 }, { z: size * 0.46, y: 0.04 * size, rx: r * 0.1, ry: r * 0.1 },
+      ]), mat));
       const wings = [1, -1].map((s) => {
-        const wing = new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.03, size * 0.45).translate(s * size * 0.5, 0, 0), mat);
+        const wing = new THREE.Mesh(wingGeo().scale(s * size, size * 0.03, size * 0.8), mat);
         root.add(wing);
         return wing;
       });

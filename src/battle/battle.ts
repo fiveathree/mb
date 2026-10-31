@@ -38,7 +38,7 @@ import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
 import { SkyDome, buildTerrain, heightAt, inRiver, paintScenery, placeTrees, setRiver, type Obstacle } from './terrain';
-import { stoneTexture } from './textures';
+import { stoneTexture, woodTexture } from './textures';
 import type { Hud } from '../ui/hud';
 
 const JUMP_SPEED = 5.5;
@@ -277,7 +277,7 @@ export class Battle implements CombatWorld {
       // 地下城有天花板
       const ceiling = new THREE.Mesh(
         new THREE.BoxGeometry(halfWidth * 2 + 6, 0.6, zMax - zMin + 6),
-        new THREE.MeshLambertMaterial({ color: 0x3a3640, flatShading: true }),
+        new THREE.MeshLambertMaterial({ color: 0x5a5660, map: stoneTexture(120) }),
       );
       ceiling.position.set(0, heightAt(0, 0) + DUNGEON.ceiling, (zMin + zMax) / 2);
       this.wall.add(ceiling);
@@ -407,7 +407,7 @@ export class Battle implements CombatWorld {
   /** 攻城器械：缺口兩旁攻城塔，城牆搭雲梯 */
   private buildSiegeGear() {
     const { wallZ: Z, wallHalfWidth: W, ladderEvery } = SIEGE;
-    const wood = new THREE.MeshLambertMaterial({ color: 0x6a4a2c, flatShading: true });
+    const wood = new THREE.MeshLambertMaterial({ color: 0xa87c50, map: woodTexture() });
     const place = (geo: THREE.BufferGeometry, x: number, z: number, y = 0, tilt = 0) => {
       const mesh = new THREE.Mesh(geo, wood);
       mesh.position.set(x, heightAt(x, z) + y, z);
@@ -442,7 +442,7 @@ export class Battle implements CombatWorld {
     const { wallZ: Z, wallHalfWidth: W, wallTop, walkway, rampEnd } = SIEGE;
     const xs: number[] = [];
     for (let x = -W; x < W; x += 2) if (!gaps.some((g) => Math.abs(g - x) < width / 2 + 1)) xs.push(x);
-    const stone = new THREE.MeshLambertMaterial({ color: 0x77736a, flatShading: true });
+    const stone = new THREE.MeshLambertMaterial({ color: 0xb8b0a0, map: stoneTexture() });
     const run = rampEnd - walkway;
     const tilt = Math.atan2(wallTop, run);
     const deck = new THREE.InstancedMesh(new THREE.BoxGeometry(2.05, wallTop + 1, walkway), stone, xs.length);

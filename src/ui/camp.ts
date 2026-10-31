@@ -29,6 +29,8 @@ const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero',
 
 /** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
+  /** 圖鑑第幾頁 */
+  private codexPage = 0;
   private tab: Tab = 'party';
   private page = 0;
   private pool: TicketPool = 'human';
@@ -113,6 +115,12 @@ export class Camp {
         const picks = hero.loadout;
         const next = picks.includes(id) ? picks.filter((p) => p !== id) : [...picks, id].slice(-LOADOUT_SIZE);
         if (next.length) hero.loadout = next;
+        this.render();
+      };
+    });
+    this.$$('.codex-tab', (el) => {
+      el.onclick = () => {
+        this.codexPage = Number(el.dataset.p);
         this.render();
       };
     });
@@ -422,10 +430,15 @@ export class Camp {
       figures: w.pol.storyMet.filter((x) => x !== w.crown && figureOf(x)).length,
     };
     const feats = ACHIEVEMENTS.map((a) => `<span class="feat ${a.done(state) ? 'own' : ''}" title="${a.desc}">${a.name}</span>`).join('');
-    return `<div class="codex">
+    const tabs = `<div class="row codex-tabs">
+      <button class="mini codex-tab ${this.codexPage === 0 ? 'on' : ''}" data-p="0">坐騎同成就</button>
+      <button class="mini codex-tab ${this.codexPage === 1 ? 'on' : ''}" data-p="1">人物（要行近先見到）</button>
+    </div>`;
+    // 人物多嘅劇本一頁放唔晒，分開兩頁
+    if (this.codexPage === 1) return `${tabs}<div class="codex wide-list">${figures}</div>`;
+    return `${tabs}<div class="codex">
       <div><div class="pick-title">坐騎</div>${mounts}</div>
-      <div><div class="pick-title">人物（要行近先見到）</div>${figures}
-        <div class="pick-title">成就（${ACHIEVEMENTS.filter((a) => a.done(state)).length}／${ACHIEVEMENTS.length}）</div><div class="feats">${feats}</div></div>
+      <div><div class="pick-title">成就（${ACHIEVEMENTS.filter((a) => a.done(state)).length}／${ACHIEVEMENTS.length}）</div><div class="feats">${feats}</div></div>
     </div>`;
   }
 

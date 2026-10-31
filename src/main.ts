@@ -22,6 +22,7 @@ import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/batt
 import { ARENA, ARMORS, CAPTIVE, DIFFICULTY, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { settings } from './core/settings';
 import { GUIDE } from './data/story';
+import { paintBackdrop } from './ui/backdrop';
 import { CALAMITY, TOMB } from './data/tomb';
 import { HORSES, HORSE_RANK, MOUNT_REWARD } from './data/horses';
 import { CAMPAIGN, POOLS, RARITY } from './data/gacha';
@@ -866,6 +867,7 @@ async function showMenu() {
   });
 }
 
+paintBackdrop();
 void showMenu();
 
 if (import.meta.env.DEV) {

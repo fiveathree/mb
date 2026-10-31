@@ -6,7 +6,7 @@ import * as THREE from 'three';
 export function limbGeo(ratio: number): THREE.BufferGeometry {
   const pts: THREE.Vector2[] = [];
   const cap = 0.14;
-  const steps = 3;
+  const steps = 2;
   for (let i = 0; i <= steps; i++) {
     const a = (i / steps) * (Math.PI / 2);
     pts.push(new THREE.Vector2(Math.sin(a) * ratio + 1e-3, -0.5 - cap + (1 - Math.cos(a)) * cap));
@@ -15,7 +15,7 @@ export function limbGeo(ratio: number): THREE.BufferGeometry {
     const a = (i / steps) * (Math.PI / 2);
     pts.push(new THREE.Vector2(Math.cos(a) + 1e-3, 0.5 + Math.sin(a) * cap));
   }
-  const geo = new THREE.LatheGeometry(pts, 7);
+  const geo = new THREE.LatheGeometry(pts, 6);
   geo.scale(1, 0.78, 1);
   return geo;
 }
@@ -23,7 +23,7 @@ export function limbGeo(ratio: number): THREE.BufferGeometry {
 /** 由腰到膊頭嘅身軀：腰細胸闊，闊同深都係 1 */
 export function torsoGeo(): THREE.BufferGeometry {
   const profile: [number, number][] = [[0.001, -0.52], [0.36, -0.5], [0.41, -0.32], [0.37, -0.12], [0.43, 0.14], [0.5, 0.32], [0.47, 0.44], [0.24, 0.52], [0.001, 0.54]];
-  return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 9);
+  return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 8);
 }
 
 export interface Ring {
