@@ -404,6 +404,18 @@ export const SCENARIOS: Scenario[] = [
     boss: { unit: 'boss_mutant', lair: '地下研究所', desc: '實驗失控，培養槽入面嘅嘢爬咗出嚟。' },
   },
   {
+    id: 'jianghu', ownFigures: true, sky: ['crane', 'bird'], name: '武俠江湖', desc: '武林大會將至，名門正派同魔教爭盟主，快意恩仇全憑手中劍', cultures: ['east'], levy: 'biao_shi',
+    mercs: ['biao_shi', 'wu_seng', 'jian_ke', 'yin_wei'],
+    realms: [
+      ['少林寺', '少室山'], ['武當派', '紫霄宮'], ['峨眉派', '金頂'], ['華山派', '玉女峰'], ['青城派', '青城山'], ['崑崙派', '崑崙山'],
+      ['梁山泊', '水泊'], ['丐幫', '洛陽分舵'], ['開封府', '開封'], ['鏢局聯盟', '長風鏢局'], ['唐門', '蜀中唐堡'], ['魔教', '萬魔崖'],
+      ['塞外馬幫', '雁門關'], ['東海劍島', '東海島'], ['苗疆五毒', '五毒寨'],
+    ],
+    camps: [army(['wu_seng', 12], ['jian_ke', 4], ['biao_shi', 8]), army(['mo_zhong', 12], ['yin_wei', 6], ['jian_ke', 3])],
+    boss: { unit: 'boss_mojiao', lair: '魔教總壇', desc: '武林公敵閉關三十年，出關就要一統江湖。' },
+    races: ['human'], pools: ['human'],
+  },
+  {
     id: 'doomlord', ownFigures: true, sky: ['demonbat', 'wyvern'], name: '魔王降世', desc: '今次你做魔王：率不死大軍毀滅諸國，勇者同諸神都要來討伐你', cultures: ['west', 'magic'], levy: 'skeleton',
     mercs: ['skeleton', 'skeleton_archer', 'grave_knight', 'necromancer', 'demon_grunt'],
     realms: [

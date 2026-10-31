@@ -544,6 +544,7 @@ UNITS.boss_demongod = { ...boss('boss_demongod', '滅世魔神', 'demon', 'boss_
 UNITS.boss_voidgod = { ...boss('boss_voidgod', '虛空主宰', 'demon', 'boss_fist', 2100, 22, 1.2, 4.8) };
 UNITS.boss_jiangwang = { ...boss('boss_jiangwang', '千年殭屍王', 'undead', 'boss_fist', 1500, 20, 1, 4.4) };
 UNITS.boss_lightgod = { ...boss('boss_lightgod', '光明神', 'human', 'boss_club', 2100, 24, 1.3, 4.6) };
+UNITS.boss_mojiao = { ...boss('boss_mojiao', '魔教教主', 'human', 'boss_fist', 1300, 16, 0.6, 6) };
 UNITS.boss_mutant = { ...boss('boss_mutant', '終極突變體', 'giant', 'boss_fist', 1400, 18, 1.2, 5) };
 
 // 神話劇本兵種
@@ -564,6 +565,11 @@ for (const u of [
   troop('wang_hun', '亡魂', 'mage', 3, 60, 2, ['troop_bolt', 'short_sword'], 0x8aa8c8, { race: 'undead' }),
   troop('styx_guard', '冥河衛', 'infantry', 3, 110, 12, ['elite_spear'], 0x2a3a5a, { race: 'undead' }),
   troop('jackal_guard', '胡狼衛', 'infantry', 4, 135, 10, ['elite_sword'], 0xc8a040, { race: 'beastkin' }),
+  troop('wu_seng', '武僧', 'infantry', 3, 100, 5, ['spear'], 0xc88a3a),
+  troop('jian_ke', '劍客', 'infantry', 4, 110, 7, ['elite_sword'], 0xd8e0e8, { dodgeChance: 0.4, blockSkill: 0.8 }),
+  troop('biao_shi', '鏢師', 'infantry', 2, 85, 7, ['infantry_axe'], 0x8a5a3a),
+  troop('yin_wei', '暗器手', 'archer', 3, 65, 3, ['troop_crossbow', 'short_sword'], 0x3a3a4a),
+  troop('mo_zhong', '魔教教眾', 'infantry', 3, 95, 6, ['elite_sword'], 0x6a1a2a),
   troop('dao_tong', '道童', 'infantry', 2, 70, 4, ['infantry_sword'], 0xe8d8a0),
   troop('dao_zhang', '道長', 'mage', 4, 100, 5, ['troop_bolt', 'infantry_sword'], 0xd8c048),
   troop('jiangshi', '殭屍', 'infantry', 2, 90, 6, ['infantry_axe'], 0x2a3a5a, { race: 'undead', runSpeed: 3.2, morale: 200 }),

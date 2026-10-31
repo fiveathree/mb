@@ -586,6 +586,61 @@ export const CROWNS: CrownDef[] = [
     attrs: [9, 19, 11, 9], skills: { archery: 8 }, sig: ['無音長弓', 'hero_bow', 13], extra: ['sword', 'lightning'], horse: 'dire_wolf', armor: LIGHT,
     army: [['darkelf_blade', 8], ['skeleton_archer', 8]], gold: 2500, food: 90, home: 'wuyi', color: 0x3a2a5a,
   },
+  {
+    id: 'crown_wusong', cls: '武力', name: '武松', scenario: 'jianghu', desc: '水泊梁山第一步戰，景陽岡赤手打虎', race: 'human',
+    attrs: [16, 14, 8, 11], skills: { ironskin: 6 }, sig: ['雪花鑌鐵戒刀', 'hero_blade', 15], extra: ['axe'], horse: 'hunter', armor: MEDIUM,
+    army: [['biao_shi', 10], ['wu_seng', 4]], gold: 1800, food: 110, home: 'bashu_pass', color: 0x4a3a3a,
+  },
+  {
+    id: 'crown_luzhishen', cls: '武力', name: '魯智深', scenario: 'jianghu', desc: '倒拔垂楊柳嘅花和尚', race: 'human',
+    attrs: [19, 9, 7, 13], skills: { ironskin: 7 }, sig: ['水磨禪杖', 'hero_axe', 12], extra: ['sword'], horse: 'hunter', armor: MEDIUM,
+    army: [['wu_seng', 12]], gold: 1500, food: 120, home: 'griffon', color: 0xc88a3a,
+  },
+  {
+    id: 'crown_linchong', cls: '騎術', name: '林沖', scenario: 'jianghu', desc: '八十萬禁軍教頭，風雪山神廟', race: 'human',
+    attrs: [15, 15, 10, 12], skills: { riding: 7, tactics: 3 }, sig: ['丈八蛇矛', 'hero_lance', 14], extra: ['sword'], horse: 'warhorse', armor: MEDIUM,
+    army: [['horseman', 8], ['biao_shi', 8]], gold: 2200, food: 110, home: 'chishui_fort', color: 0x5a7a9a,
+  },
+  {
+    id: 'crown_jingke', cls: '暗影', name: '荊軻', scenario: 'jianghu', desc: '風蕭蕭兮易水寒', race: 'human',
+    attrs: [12, 17, 11, 13], skills: { tactics: 2 }, sig: ['徐夫人匕首', 'hero_blade', 17], extra: ['sword'], horse: 'hunter', armor: LIGHT,
+    army: [['yin_wei', 8], ['biao_shi', 6]], gold: 1600, food: 90, home: 'wuyi', color: 0x2a2a34,
+  },
+  {
+    id: 'crown_nieyinniang', cls: '暗影', name: '聶隱娘', scenario: 'jianghu', desc: '唐代傳奇女刺客，來去無蹤', race: 'human',
+    attrs: [9, 19, 14, 10], skills: { archery: 2 }, sig: ['空空匕首', 'hero_blade', 14], extra: ['heal'], horse: 'hunter', armor: LIGHT,
+    army: [['yin_wei', 10]], gold: 1800, food: 90, home: 'qingcheng_pass', color: 0x5a3a5a,
+  },
+  {
+    id: 'crown_qiuran', cls: '統率', name: '虯髯客', scenario: 'jianghu', desc: '風塵三俠之首，讓天下而去海外', race: 'human',
+    attrs: [14, 12, 13, 16], skills: { leadership: 7, riding: 3 }, sig: ['虯龍長刀', 'hero_axe', 8], extra: ['horsebow'], horse: 'warhorse', armor: MEDIUM,
+    army: [['horseman', 6], ['jian_ke', 6], ['biao_shi', 6]], gold: 4000, food: 130, home: 'frostfang', color: 0x8a3a2a,
+  },
+  {
+    id: 'crown_hongxian', cls: '智略', name: '紅線', scenario: 'jianghu', desc: '夜入敵帳盜金盒，一人止兩鎮兵戈', race: 'human',
+    attrs: [7, 17, 16, 14], skills: { tactics: 6 }, sig: ['朱砂飛刃', 'flying_sword', 8], extra: ['heal','sword'], horse: 'hunter', armor: LIGHT,
+    army: [['jian_ke', 5], ['yin_wei', 6]], gold: 3000, food: 100, home: 'linjiang', color: 0xd8342c,
+  },
+  {
+    id: 'crown_zhanzhao', cls: '武力', name: '御貓 展昭', scenario: 'jianghu', desc: '開封府四品帶刀護衛', race: 'human',
+    attrs: [14, 17, 12, 12], skills: { ironskin: 3, tactics: 3 }, sig: ['巨闕劍', 'hero_blade', 14], extra: ['horsebow'], horse: 'steppe', armor: MEDIUM,
+    army: [['jian_ke', 6], ['biao_shi', 8]], gold: 2500, food: 110, home: 'songglade', color: 0xc8342c,
+  },
+  {
+    id: 'crown_baiyutang', cls: '暗影', name: '錦毛鼠 白玉堂', scenario: 'jianghu', desc: '少年華美，五鼠之中最烈', race: 'human',
+    attrs: [11, 18, 13, 11], skills: { tactics: 2 }, sig: ['畫影寶劍', 'hero_blade', 13], extra: ['sword'], horse: 'hunter', armor: LIGHT,
+    army: [['yin_wei', 6], ['jian_ke', 4]], gold: 2800, food: 100, home: 'songglade', color: 0xf0f0f8,
+  },
+  {
+    id: 'crown_yanguichen', cls: '武力', name: '劍聖 燕歸塵', scenario: 'jianghu', desc: '江湖傳聞佢出過一劍，冇人見過第二劍', race: 'human',
+    attrs: [15, 18, 15, 10], skills: { ironskin: 3 }, sig: ['歸塵古劍', 'hero_blade', 18], extra: ['ward'], horse: 'hunter', armor: LIGHT,
+    army: [['jian_ke', 8]], gold: 2000, food: 90, home: 'ironhelm_keep', color: 0xd8e8f0,
+  },
+  {
+    id: 'crown_liuxiang', cls: '智略', name: '神偷 柳無痕', scenario: 'jianghu', desc: '偷富濟貧，從未傷人', race: 'human',
+    attrs: [9, 18, 17, 15], skills: { trade: 5, tactics: 4 }, sig: ['無痕飛劍', 'flying_sword', 10], extra: ['sword','heal'], horse: 'hunter', armor: LIGHT,
+    army: [['jian_ke', 5], ['biao_shi', 6]], gold: 4000, food: 100, home: 'xuan_city', color: 0xe8d8a8,
+  },
 ];
 
 /** 專屬法術耗法力：範圍術貴啲，點殺平啲 */
@@ -750,6 +805,17 @@ export const MUSOU: Record<string, MusouDef> = {
   crown_heiyao: { name: '黑潮衝鋒', style: 'charge', color: 0x7a6aa8 },
   crown_sheji: { name: '萬蛇石化', style: 'shadow', color: 0x7ae0a0 },
   crown_wuyin: { name: '無聲箭雨', style: 'rain', color: 0xb0a0e0 },
+  crown_wusong: { name: '打虎連環', style: 'whirl', color: 0xffb84a },
+  crown_luzhishen: { name: '倒拔垂楊', style: 'nova', color: 0xe8c04a },
+  crown_linchong: { name: '風雪山神廟', style: 'charge', color: 0xc8e0f0 },
+  crown_jingke: { name: '圖窮匕見', style: 'shadow', color: 0xe0e0ff },
+  crown_nieyinniang: { name: '隱身一擊', style: 'shadow', color: 0xc8a8e8 },
+  crown_qiuran: { name: '風塵三俠', style: 'rally', color: 0xffb06a },
+  crown_hongxian: { name: '金盒止戈', style: 'rain', color: 0xff6a5a },
+  crown_zhanzhao: { name: '南俠一劍', style: 'charge', color: 0xffd8a0 },
+  crown_baiyutang: { name: '錦毛夜行', style: 'shadow', color: 0xf0f0ff },
+  crown_yanguichen: { name: '一劍歸塵', style: 'whirl', color: 0xe0f0ff },
+  crown_liuxiang: { name: '踏雪無痕', style: 'rain', color: 0xf0e8c0 },
 };
 export const musouOf = (id: string) => MUSOU[id];
 
