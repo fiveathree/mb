@@ -14,12 +14,13 @@ import { spend } from '../core/roster';
 import { JUSTICE_TIERS, LOYALTY_TIERS } from '../data/honor';
 import { PLAYER, RANK_NAME } from '../politics/politics';
 import type { World } from '../worldmap/world';
+import { GearPanel } from './gear';
 import type { Hud } from './hud';
 
-type Tab = 'party' | 'hero' | 'roster' | 'gacha' | 'realm';
+type Tab = 'party' | 'gear' | 'hero' | 'roster' | 'gacha' | 'realm';
 
 const PAGE_SIZE = 12;
-const TABS: [Tab, string][] = [['party', '部隊'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力']];
+const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力']];
 
 /** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
@@ -30,11 +31,16 @@ export class Camp {
   private notice = '';
   private onBack: () => void = () => {};
 
-  constructor(private hud: Hud, private roster: Roster, private world: World) {}
+  private gear: GearPanel;
+
+  constructor(private hud: Hud, private roster: Roster, private world: World) {
+    this.gear = new GearPanel(roster, () => this.render());
+  }
 
   setRoster(r: Roster, world: World) {
     this.roster = r;
     this.world = world;
+    this.gear.setRoster(r);
     this.lastDraw = [];
   }
 
@@ -47,7 +53,7 @@ export class Camp {
   private render() {
     const r = this.roster;
     const body = {
-      party: () => this.partyHtml(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(),
+      party: () => this.partyHtml(), gear: () => this.gear.html(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(),
     }[this.tab]();
     this.hud.showScreen(`
       <div class="card camp">
@@ -67,6 +73,7 @@ export class Camp {
 
   private bind() {
     const hero = this.roster.hero;
+    if (this.tab === 'gear') this.gear.bind();
     this.$$('#back', (el) => { el.onclick = this.onBack; });
     this.$$('.tab', (el) => {
       el.onclick = () => {
@@ -80,7 +87,7 @@ export class Camp {
         this.render();
       };
     });
-    this.$$('.wp', (el) => {
+    this.$$('.wp[data-id]', (el) => {
       el.onclick = () => {
         const id = el.dataset.id!;
         const picks = hero.loadout;

@@ -82,7 +82,34 @@ export function newHero(): Hero {
   return h;
 }
 
-export const heroXpNeed = (level: number) => Math.round(HERO.xpBase * HERO.xpGrowth ** (level - 1));
+/** 英雄裝備：護甲格、主武器、坐騎 */
+export interface Gear {
+  armor: Partial<Record<ArmorSlot, string>>;
+  weapon?: string;
+  horse?: string;
+}
+
+/** 呢件護甲仲有幾多件冇人著（可以買多件） */
+export function freeArmor(h: Hero, soldiers: Soldier[], id: string): number {
+  const own = h.armors.filter((x) => x === id).length;
+  const onHero = Object.values(h.equip).filter((x) => x === id).length;
+  const onOthers = soldiers.reduce((n, s) => n + Object.values(s.gear?.armor ?? {}).filter((x) => x === id).length, 0);
+  return own - onHero - onOthers;
+}
+
+/** 將英雄裝備加落士兵屬性 */
+export function applyGear(def: UnitDef, gear?: Gear): UnitDef {
+  if (!gear) return def;
+  const armor = Object.values(gear.armor).reduce((n, id) => n + (ARMORS.find((a) => a.id === id)?.armor ?? 0), 0);
+  return {
+    ...def,
+    armor: def.armor + armor,
+    weapons: gear.weapon ? [gear.weapon, ...def.weapons.filter((w) => w !== gear.weapon)] : def.weapons,
+    horse: gear.horse ?? def.horse,
+  };
+}
+
+export const heroXpNeed =(level: number) => Math.round(HERO.xpBase * HERO.xpGrowth ** (level - 1));
 
 /** 加經驗，回傳升咗幾多級 */
 export function gainHeroXp(h: Hero, xp: number): number {

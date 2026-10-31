@@ -13,6 +13,7 @@ import {
 } from '../data/units';
 import { LEVEL } from '../data/gacha';
 import { WEAPONS } from '../data/weapons';
+import { applyGear } from '../core/hero';
 import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
 import { Sfx } from './audio';
@@ -36,7 +37,9 @@ const MOUNT_RANGE = 3.2;
 const MAX_DISMOUNT_SPEED = 6;
 const RESULT_DELAY = 2;
 /** 自動畫質：連續幾次（每半秒）低過 lowFps 就降一級 */
-const QUALITY = { lowFps: 40, patience: 8 };
+const QUALITY = { lowFps: 40, patience: 8, maxPixelRatio: 1.5 };
+/** 鏡頭跟滑鼠嘅順滑度，愈大愈貼手 */
+const CAMERA_SMOOTH = 45;
 const SLOT_REFRESH = 2;
 
 export interface ReportRow {
@@ -82,6 +85,8 @@ export interface BattleResult {
   captives: number;
   outcomes: BattleOutcome[];
   playerKills: number;
+  /** 俘虜兵種 */
+  captiveUnits: string[];
 }
 
 export class Battle implements CombatWorld {
@@ -110,6 +115,10 @@ export class Battle implements CombatWorld {
   onTick: ((b: Battle) => void) | null = null;
   private slowFrames = 0;
   private quality = 2;
+  private shadowTick = false;
+  /** 顯示用鏡頭角度，追住 camYaw／camPitch，令滑鼠數據唔均都順 */
+  private viewYaw = 0;
+  private viewPitch = 0.16;
   fx: Fx;
   projectiles: Projectiles;
 
@@ -148,8 +157,10 @@ export class Battle implements CombatWorld {
 
   constructor(canvas: HTMLCanvasElement, private hud: Hud) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio));
     this.renderer.shadowMap.enabled = true;
+    // 影子隔幀先更新，轉鏡頭時留多啲時間畫畫面
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.input = new Input(canvas);
 
@@ -314,8 +325,8 @@ export class Battle implements CombatWorld {
     this.retreated = false;
     this.freezeT = this.slowT = this.shakeAmt = 0;
     this.moraleT = this.thinkT = this.slotT = this.followT = 0;
-    this.camYaw = 0;
-    this.camPitch = 0.16;
+    this.camYaw = this.viewYaw = 0;
+    this.camPitch = this.viewPitch = 0.16;
 
     const pz = -FORMATION.startZ + FORMATION.holdAhead * 2;
     const player = this.createUnit(setup.playerDef, 0, loadout);
@@ -332,7 +343,7 @@ export class Battle implements CombatWorld {
     }
 
     const recruit = (unit: string, team: number, level: number, soldier: Soldier | null) => {
-      const def = levelDef(UNITS[unit], level);
+      const def = applyGear(levelDef(UNITS[unit], level), soldier?.gear);
       const group = this.groups[team].find((g) => g.role === def.role)!;
       const c = this.createUnit(def, team, def.weapons);
       c.ai = makeAi(group);
@@ -463,6 +474,8 @@ export class Battle implements CombatWorld {
       this.hud.update(this);
     }
     this.input.endFrame(real);
+    this.shadowTick = !this.shadowTick;
+    this.renderer.shadowMap.needsUpdate = this.shadowTick;
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -897,6 +910,7 @@ export class Battle implements CombatWorld {
     let exp = 0;
     let renown = 0;
     let captives = 0;
+    const captiveUnits: string[] = [];
     if (this.win) {
       gold = REWARDS.winGold;
       renown = REWARDS.winRenown;
@@ -905,7 +919,10 @@ export class Battle implements CombatWorld {
         gold += REWARDS.goldPerTier * u.def.tier;
         exp += REWARDS.expPerTier * u.def.tier;
         renown += REWARDS.renownPerTier * u.def.tier;
-        if (u.wounded && Math.random() < REWARDS.captureChance) captives++;
+        if (u.wounded && !u.def.boss && Math.random() < REWARDS.captureChance) {
+          captives++;
+          captiveUnits.push(u.def.id);
+        }
       }
     }
     // 撤退同戰敗都有部分戰利品
@@ -924,7 +941,7 @@ export class Battle implements CombatWorld {
     }
     return {
       win: this.win, retreated: this.retreated, playerDown: this.player.dead, stats: this.stats, rows,
-      gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills,
+      gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills, captiveUnits,
     };
   }
 
@@ -937,12 +954,15 @@ export class Battle implements CombatWorld {
     const h = p.horse;
     const pos = h ? h.pos : p.pos;
     const aiming = p.phase === 'charge' && !!p.weapon.ranged;
+    const k = 1 - Math.exp(-CAMERA_SMOOTH * dt);
+    this.viewYaw += (this.camYaw - this.viewYaw) * k;
+    this.viewPitch += (this.camPitch - this.viewPitch) * k;
     if (this.firstPerson && !p.dead) {
       const eye = p.pos.y + 1.62;
-      const cp = Math.cos(this.camPitch);
+      const cp = Math.cos(this.viewPitch);
       this.camera.position.set(p.pos.x, eye, p.pos.z);
       this.camera.lookAt(
-        p.pos.x + Math.sin(this.camYaw) * cp * 10, eye - Math.sin(this.camPitch) * 10, p.pos.z + Math.cos(this.camYaw) * cp * 10,
+        p.pos.x + Math.sin(this.viewYaw) * cp * 10, eye - Math.sin(this.viewPitch) * 10, p.pos.z + Math.cos(this.viewYaw) * cp * 10,
       );
       this.sun.target.position.set(p.pos.x, p.pos.y, p.pos.z);
       this.sun.position.set(p.pos.x + 50, p.pos.y + 90, p.pos.z + 30);
@@ -950,9 +970,9 @@ export class Battle implements CombatWorld {
     }
     const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1);
     const height = h ? CAMERA.heightMounted : CAMERA.heightOnFoot;
-    const yaw = this.camYaw;
-    const cp = Math.cos(this.camPitch);
-    const sp = Math.sin(this.camPitch);
+    const yaw = this.viewYaw;
+    const cp = Math.cos(this.viewPitch);
+    const sp = Math.sin(this.viewPitch);
     const fx = Math.sin(yaw) * cp;
     const fz = Math.cos(yaw) * cp;
     const rx = -Math.cos(yaw);

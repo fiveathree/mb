@@ -3,7 +3,7 @@ import { CAMPAIGN, GACHA, LEVEL, POOL_ORDER, RARITY, RARITY_ORDER, type PoolId, 
 import { RACES, UPKEEP, type Race } from '../data/races';
 import { PROMOTION, UPGRADES } from '../data/economy';
 import { UNITS, type Role, type UnitDef } from '../data/units';
-import { migrateHero, newHero, partyLimit, skillOf, type Hero } from './hero';
+import { migrateHero, newHero, partyLimit, skillOf, type Gear, type Hero } from './hero';
 
 const AUTO_PLAYER_POWER = 8;
 
@@ -18,6 +18,8 @@ export interface Soldier {
   benched: boolean;
   /** 仲要休養幾多日 */
   hurtDays: number;
+  /** 英雄自己嘅裝備 */
+  gear?: Gear;
 }
 
 export interface Roster {

@@ -1,22 +1,62 @@
 import type { ArmyEntry } from './battlefield';
 
 // ── 貨物 ──
-export type GoodId = 'salt' | 'iron' | 'cloth' | 'wine' | 'crystal';
+export type GoodId = 'salt' | 'iron' | 'cloth' | 'wine' | 'crystal' | 'fur' | 'spice';
 
-export const GOODS: Record<GoodId, { name: string; base: number }> = {
-  salt: { name: '鹽', base: 18 },
-  iron: { name: '鐵', base: 34 },
-  cloth: { name: '布', base: 26 },
-  wine: { name: '酒', base: 22 },
-  crystal: { name: '魔晶', base: 70 },
+/** weight 係每件重量 */
+export const GOODS: Record<GoodId, { name: string; base: number; weight: number }> = {
+  salt: { name: '鹽', base: 18, weight: 2 },
+  iron: { name: '鐵', base: 34, weight: 5 },
+  cloth: { name: '布', base: 26, weight: 2 },
+  wine: { name: '酒', base: 22, weight: 3 },
+  crystal: { name: '魔晶', base: 70, weight: 1 },
+  fur: { name: '皮毛', base: 30, weight: 2 },
+  spice: { name: '香料', base: 55, weight: 1 },
 };
-export const GOOD_ORDER: GoodId[] = ['salt', 'iron', 'cloth', 'wine', 'crystal'];
+export const GOOD_ORDER: GoodId[] = ['salt', 'iron', 'cloth', 'wine', 'crystal', 'fur', 'spice'];
 
-/** 各城鎮特產（目標存貨高）同短缺（目標存貨低） */
+/** 各地特產（目標存貨高）同短缺（目標存貨低） */
 export const TOWN_TRADE: Record<string, { makes: GoodId[]; needs: GoodId[] }> = {
-  griffon: { makes: ['iron', 'wine'], needs: ['salt', 'crystal'] },
-  linjiang: { makes: ['salt', 'cloth'], needs: ['iron'] },
-  wuyi: { makes: ['crystal'], needs: ['cloth', 'wine'] },
+  griffon: { makes: ['iron', 'wine'], needs: ['salt', 'crystal', 'spice'] },
+  linjiang: { makes: ['salt', 'cloth'], needs: ['iron', 'fur'] },
+  wuyi: { makes: ['crystal', 'spice'], needs: ['cloth', 'wine'] },
+  wheat: { makes: ['wine'], needs: ['salt', 'iron'] },
+  stonebridge: { makes: ['iron', 'fur'], needs: ['cloth'] },
+  bamboo: { makes: ['cloth'], needs: ['wine', 'crystal'] },
+  southpond: { makes: ['salt', 'spice'], needs: ['iron', 'fur'] },
+};
+
+/** 各地金庫同糧市 */
+export const LOCAL = {
+  /** 金庫基準 */
+  townGold: 3000,
+  villageGold: 700,
+  /** 每日回復到基準嘅比例 */
+  goldDrift: 0.06,
+  /** 村莊存貨比例 */
+  villageStock: 0.5,
+  /** 村莊糧價倍率 */
+  villageFood: 0.7,
+  /** 糧市：存糧每差 1 單位價格變幾多 */
+  foodSwing: 0.012,
+  foodPriceMin: 0.5,
+  foodPriceMax: 2.5,
+  /** 糧每單位重量 */
+  foodWeight: 0.2,
+};
+
+/** 俘虜 */
+export const CAPTIVE = {
+  /** 賣價 = 兵階 × 呢個數 */
+  pricePerTier: 45,
+  /** 每個俘虜每日逃走機率 */
+  escapeChance: 0.08,
+  /** 招降費 = 兵階 × 呢個數 */
+  recruitPerTier: 25,
+  /** 招降後士氣 */
+  recruitMorale: -2,
+  /** 自動結算打贏捉到幾多 */
+  autoResolveMax: 2,
 };
 
 export const MARKET = {
@@ -34,9 +74,9 @@ export const MARKET = {
   dailyDrift: 0.08,
   /** 每次買賣數量 */
   lot: 5,
-  /** 貨倉：基本容量同每人額外 */
-  cargoBase: 30,
-  cargoPerSoldier: 1,
+  /** 貨倉載重：基本同每人額外 */
+  cargoBase: 120,
+  cargoPerSoldier: 4,
   /** 商隊到達時帶嚟嘅貨量 */
   caravanLoad: 5,
 };

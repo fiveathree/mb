@@ -1,6 +1,6 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { BANDIT, MAP, MORALE_PARTY, PARTY, PLACES, SHOP, TIME, type PlaceDef } from '../data/world';
-import { GOODS, GOOD_ORDER, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
+import { CAPTIVE, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC_RULES, TOWN_TRADE, WORKSHOPS, type GoodId } from '../data/economy';
 import { POLITICS } from '../data/factions';
 import type { StoryEvent } from '../data/quests';
 import { rollEvent } from '../quests/events';
@@ -47,8 +47,12 @@ export interface WorldSave {
   npcs: Npc[];
   /** 城鎮 → 貨物存量 */
   stock: Record<string, Record<GoodId, number>>;
-  /** 農民運到嘅糧，令糧價跌 */
+  /** 各地存糧增減：農民運到就加，買走就減 */
   townFood: Record<string, number>;
+  /** 各地金庫 */
+  treasury: Record<string, number>;
+  /** 俘虜（兵種 id） */
+  captives: string[];
   cargo: Record<GoodId, number>;
   /** 村莊 → 第幾日先修復 */
   burnedUntil: Record<string, number>;
@@ -66,21 +70,30 @@ export interface WorldSave {
   endingSeen?: boolean;
 }
 
-function townStock(id: string): Record<GoodId, number> {
+const isVillage = (id: string) => PLACES.find((p) => p.id === id)?.kind === 'village';
+
+function stockTarget(id: string, g: GoodId): number {
   const t = TOWN_TRADE[id];
-  return Object.fromEntries(GOOD_ORDER.map((g) => [g, stockTarget(t, g)])) as Record<GoodId, number>;
+  const base = t.makes.includes(g) ? MARKET.stockMakes : t.needs.includes(g) ? MARKET.stockNeeds : MARKET.stockNormal;
+  return isVillage(id) ? base * LOCAL.villageStock : base;
 }
 
-function stockTarget(t: { makes: GoodId[]; needs: GoodId[] }, g: GoodId): number {
-  return t.makes.includes(g) ? MARKET.stockMakes : t.needs.includes(g) ? MARKET.stockNeeds : MARKET.stockNormal;
-}
+const baseGold = (id: string) => (isVillage(id) ? LOCAL.villageGold : LOCAL.townGold);
 
 /** 舊存檔補上新欄位 */
 export function migrateWorld(w: WorldSave): WorldSave {
   w.npcs ??= [];
-  w.stock ??= Object.fromEntries(Object.keys(TOWN_TRADE).map((id) => [id, townStock(id)]));
+  w.stock ??= {};
+  w.treasury ??= {};
   w.townFood ??= {};
-  w.cargo ??= Object.fromEntries(GOOD_ORDER.map((g) => [g, 0])) as Record<GoodId, number>;
+  w.captives ??= [];
+  w.cargo ??= {} as Record<GoodId, number>;
+  for (const g of GOOD_ORDER) w.cargo[g] ??= 0;
+  for (const id of Object.keys(TOWN_TRADE)) {
+    w.stock[id] ??= {} as Record<GoodId, number>;
+    for (const g of GOOD_ORDER) w.stock[id][g] ??= stockTarget(id, g);
+    w.treasury[id] ??= baseGold(id);
+  }
   w.burnedUntil ??= {};
   w.nextRaid ??= 4;
   w.workshops ??= {};
@@ -315,9 +328,20 @@ export class World {
   private driftMarkets() {
     const w = this.save;
     for (const [id, stock] of Object.entries(w.stock)) {
-      for (const g of GOOD_ORDER) stock[g] += (stockTarget(TOWN_TRADE[id], g) - stock[g]) * MARKET.dailyDrift;
+      for (const g of GOOD_ORDER) stock[g] += (stockTarget(id, g) - stock[g]) * MARKET.dailyDrift;
       w.townFood[id] = (w.townFood[id] ?? 0) * 0.8;
+      w.treasury[id] += (baseGold(id) - w.treasury[id]) * LOCAL.goldDrift;
     }
+    this.captivesEscape();
+  }
+
+  /** 俘虜夜晚走佬 */
+  private captivesEscape() {
+    const w = this.save;
+    const stay = w.captives.filter(() => Math.random() > CAPTIVE.escapeChance);
+    const gone = w.captives.length - stay.length;
+    if (gone) this.note(`${gone} 個俘虜走甩咗`);
+    w.captives = stay;
   }
 
   /** 每週作坊收入：當地貨物愈貴賺愈多 */
@@ -338,13 +362,17 @@ export class World {
     return Math.round(GOODS[g].base * Math.min(MARKET.priceMax, Math.max(MARKET.priceMin, ratio)));
   }
 
-  /** 糧價：農民運到嘅糧愈多愈平 */
-  foodPrice(town: string): number {
-    return Math.max(1, SHOP.foodPrice - Math.min(1, (this.save.townFood[town] ?? 0) / 40));
+  /** 糧價：當地糧多就平，買走咗就貴 */
+  foodPrice(place: string): number {
+    const base = SHOP.foodPrice * (isVillage(place) ? LOCAL.villageFood : 1);
+    const ratio = 1 - (this.save.townFood[place] ?? 0) * LOCAL.foodSwing;
+    return base * Math.min(LOCAL.foodPriceMax, Math.max(LOCAL.foodPriceMin, ratio));
   }
 
+  /** 總載重：貨物加糧 */
   cargoCount(): number {
-    return GOOD_ORDER.reduce((s, g) => s + this.save.cargo[g], 0);
+    const goods = GOOD_ORDER.reduce((s, g) => s + this.save.cargo[g] * GOODS[g].weight, 0);
+    return Math.round(goods + this.save.food * LOCAL.foodWeight);
   }
 
   cargoCap(): number {

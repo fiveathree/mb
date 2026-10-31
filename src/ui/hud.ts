@@ -47,6 +47,7 @@ export class Hud {
   private table: HTMLElement;
   private mapCtx: CanvasRenderingContext2D;
   private frame = 0;
+  private lastOrders = '';
   private q = <T extends HTMLElement>(sel: string) => this.root.querySelector(sel) as T;
 
   constructor(root: HTMLElement) {
@@ -185,8 +186,18 @@ export class Hud {
     const el = this.q(`#${id}`);
     el.hidden = !show;
     if (!show) return;
+    // 數字冇變就唔寫 DOM，慳排版時間
+    const text = String(Math.max(0, Math.ceil(value)));
+    const label = el.querySelector('b') as HTMLElement;
+    if (label.textContent === text) return;
+    label.textContent = text;
     (el.querySelector('i') as HTMLElement).style.transform = `scaleX(${Math.max(0, value / max)})`;
-    (el.querySelector('b') as HTMLElement).textContent = String(Math.max(0, Math.ceil(value)));
+  }
+
+  /** 文字冇變就唔寫 DOM */
+  private setText(sel: string, text: string) {
+    const el = this.q(sel);
+    if (el.textContent !== text) el.textContent = text;
   }
 
   private incoming(b: Battle, p: Combatant): AttackDir | null {
@@ -269,14 +280,17 @@ export class Hud {
     this.setBar('shield', p.shieldHp, p.shieldMax, p.weapon.hasShield);
     this.q('#stam').classList.toggle('low', h.exhausted);
 
-    const count = (team: number) => b.units.filter((u) => u.team === team && !u.dead && !u.routing).length;
-    this.q('#foes').textContent = `我軍 ${count(0)} ／ 敵軍 ${count(1)}　擊殺 ${b.stats.kills}`;
-    this.q('#timer').textContent = `${Math.floor(b.stats.time)} 秒`;
-    this.q('#fps').textContent = `${b.fps} FPS`;
-
     if (this.frame % MINIMAP_EVERY === 0) {
+      const count = (team: number) => b.units.filter((u) => u.team === team && !u.dead && !u.routing).length;
+      this.setText('#foes', `我軍 ${count(0)} ／ 敵軍 ${count(1)}　擊殺 ${b.stats.kills}`);
+      this.setText('#timer', `${Math.floor(b.stats.time)} 秒`);
+      this.setText('#fps', `${b.fps} FPS`);
       this.drawMinimap(b);
-      this.q('#orders').innerHTML = this.ordersHtml(b);
+      const orders = this.ordersHtml(b);
+      if (orders !== this.lastOrders) {
+        this.lastOrders = orders;
+        this.q('#orders').innerHTML = orders;
+      }
     }
 
     const kmh = p.horse ? Math.round(Math.abs(p.horse.speed) * 3.6) : 0;

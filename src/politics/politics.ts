@@ -124,7 +124,7 @@ export class Politics {
         s.liege = null;
       }
     }
-    if (s.outlaw && s.justice > HONOR.redeemAt) {
+    if (s.outlaw && s.justice >= HONOR.redeemAt) {
       s.outlaw = false;
       this.note('你洗底做返好人');
     }
@@ -141,7 +141,7 @@ export class Politics {
   /** 捐款贖罪 */
   atone() {
     this.s.justice = Math.min(HONOR.max, this.s.justice + HONOR.donate.justice);
-    if (this.s.outlaw && this.s.justice > HONOR.redeemAt) {
+    if (this.s.outlaw && this.s.justice >= HONOR.redeemAt) {
       this.s.outlaw = false;
       this.note('你洗底做返好人');
     }

@@ -16,7 +16,7 @@ import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import type { ArmyEntry } from './data/battlefield';
-import { ARENA, HERO, NPC_RULES } from './data/economy';
+import { ARENA, CAPTIVE, HERO, NPC_RULES } from './data/economy';
 import { CAMPAIGN, POOLS } from './data/gacha';
 import { MORALE_PARTY, PLACES, type BattleTheme, type PlaceDef } from './data/world';
 import { Camp } from './ui/camp';
@@ -156,11 +156,19 @@ function moraleMult(): number {
 
 /** Esc 之後瀏覽器要隔約一秒先再鎖得滑鼠，失敗就留喺暫停畫面 */
 async function lockMouse(): Promise<boolean> {
+  type Lock = (o?: { unadjustedMovement: boolean }) => Promise<void>;
+  const lock = canvas.requestPointerLock.bind(canvas) as unknown as Lock;
   try {
-    await canvas.requestPointerLock();
+    // 原始滑鼠數據，轉鏡頭更順；唔支援就用返普通模式
+    await lock({ unadjustedMovement: true });
     return true;
   } catch {
-    return false;
+    try {
+      await lock();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -270,6 +278,8 @@ function fightBandit(b: BanditParty, auto: boolean) {
     if (res.win) {
       world.removeBandit(b);
       onBanditBeaten(world);
+      const n = Math.floor(Math.random() * (CAPTIVE.autoResolveMax + 1));
+      for (let i = 0; i < n; i++) world.save.captives.push(army[0].unit);
     } else world.escape(b);
     showAutoResult(res.win, progress);
     return;
@@ -364,6 +374,7 @@ battle.onEnd = (result: BattleResult) => {
   if (!arenaFight) {
     world.winMorale(result.win);
     world.politics.s.renown += result.renown;
+    world.save.captives.push(...result.captiveUnits);
     if (result.retreated) world.politics.deed('retreat');
     else if (result.win && world.politics.s.liege) world.politics.deed('serve');
   }

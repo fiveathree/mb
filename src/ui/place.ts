@@ -1,5 +1,5 @@
 import {
-  ARENA, ARMORS, COMPANIONS, GOODS, GOOD_ORDER, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
+  ARENA, ARMORS, CAPTIVE, COMPANIONS, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
   type GoodId,
 } from '../data/economy';
 import { ARTIFACTS, SIEGE } from '../data/factions';
@@ -22,10 +22,12 @@ import { raiderArmy, type Npc } from '../worldmap/npcs';
 import { banditArmy, dayOf, isOpen, type BanditParty, type World } from '../worldmap/world';
 import type { Hud } from './hud';
 
-type TownTab = 'market' | 'smith' | 'tavern' | 'workshop' | 'arena' | 'quest';
+type TownTab = 'market' | 'supply' | 'smith' | 'tavern' | 'workshop' | 'arena' | 'quest';
 const TOWN_TABS: [TownTab, string][] = [
-  ['market', '市集'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'], ['quest', '任務'],
+  ['market', '市集'], ['supply', '補給'], ['smith', '鐵匠'], ['tavern', '酒館'], ['workshop', '作坊'], ['arena', '競技場'], ['quest', '任務'],
 ];
+type VillageTab = 'affairs' | 'market';
+const VILLAGE_TABS: [VillageTab, string][] = [['affairs', '村務'], ['market', '市集']];
 
 export interface PlaceActions {
   onLeave: () => void;
@@ -53,6 +55,7 @@ function strengthText(mine: number, theirs: number): string {
 export class PlaceScreens {
   private notice = '';
   private townTab: TownTab = 'market';
+  private villageTab: VillageTab = 'affairs';
 
   constructor(private hud: Hud, private world: World, private roster: Roster, private act: PlaceActions) {}
 
@@ -87,12 +90,16 @@ export class PlaceScreens {
   }
 
   /** 買糧掣：1 個同 10 個 */
-  private foodButtons(price: number, h: Record<string, () => void>, refresh: () => void): string {
+  private foodButtons(place: string, h: Record<string, () => void>, refresh: () => void): string {
+    const w = this.world;
     return SHOP.buyLots.map((n) => {
-      const cost = Math.max(1, Math.round(n * price));
+      const cost = Math.max(1, Math.round(n * w.foodPrice(place)));
       h[`food${n}`] = () => {
-        if (spend(this.roster, cost)) {
-          this.world.save.food += n;
+        if (w.cargoCount() + n * LOCAL.foodWeight > w.cargoCap()) this.notice = '貨倉滿咗';
+        else if (spend(this.roster, cost)) {
+          w.save.food += n;
+          // 買走咗當地存糧，糧價跟住升
+          w.save.townFood[place] = (w.save.townFood[place] ?? 0) - n;
           this.notice = `買咗 ${n} 糧`;
         } else this.notice = '金幣不足';
         refresh();
@@ -134,6 +141,7 @@ export class PlaceScreens {
     const fief = this.fiefActions(p, handlers);
     const body = {
       market: () => this.marketTab(p, handlers, refresh),
+      supply: () => this.supplyTab(p, handlers, refresh),
       smith: () => this.smithTab(handlers, refresh),
       tavern: () => this.tavernTab(p, handlers, refresh),
       workshop: () => this.workshopTab(p, handlers, refresh),
@@ -230,46 +238,91 @@ export class PlaceScreens {
     const w = this.world;
     const r = this.roster;
     const trade = this.tradeRatio();
-    const food = w.foodPrice(p.id);
+    const purse = w.save.treasury;
     const rows = GOOD_ORDER.map((g: GoodId) => {
       const price = w.goodPrice(p.id, g);
       const buy = Math.round(price * (1 - trade));
       const sell = Math.round(price * (MARKET.sellRatio + trade));
       const lot = MARKET.lot;
       h[`buy_${g}`] = () => {
-        if (w.cargoCount() + lot > w.cargoCap()) this.notice = '貨倉滿咗';
+        if (w.cargoCount() + lot * GOODS[g].weight > w.cargoCap()) this.notice = '貨倉載唔落';
         else if (w.save.stock[p.id][g] < lot) this.notice = '存貨唔夠';
         else if (spend(r, buy * lot)) {
           w.save.cargo[g] += lot;
           w.save.stock[p.id][g] -= lot;
+          purse[p.id] += buy * lot;
         } else this.notice = '金幣不足';
         refresh();
       };
       h[`sell_${g}`] = () => {
-        if (w.save.cargo[g] >= lot) {
+        if (purse[p.id] < sell * lot) this.notice = '呢度冇咁多錢買';
+        else if (w.save.cargo[g] >= lot) {
           w.save.cargo[g] -= lot;
           w.save.stock[p.id][g] += lot;
           r.gold += sell * lot;
+          purse[p.id] -= sell * lot;
         }
         refresh();
       };
-      return `<tr><td>${GOODS[g].name}</td><td>${Math.round(w.save.stock[p.id][g])}</td><td>${buy}</td><td>${sell}</td><td>${w.save.cargo[g]}</td>
+      return `<tr><td>${GOODS[g].name}</td><td>${GOODS[g].weight}</td><td>${Math.round(w.save.stock[p.id][g])}</td><td>${buy}</td><td>${sell}</td><td>${w.save.cargo[g]}</td>
         <td><button class="mini" id="buy_${g}">買 ${lot}</button><button class="mini" id="sell_${g}">賣 ${lot}</button></td></tr>`;
     }).join('');
-    const foodBtns = this.foodButtons(food, h, refresh);
-    const ticketBtns = this.ticketButtons(h, refresh);
-    const owned = POOL_ORDER.map((k) => `${POOLS[k].ticket} ${r.tickets[k]}`).join('・');
+    const t = TOWN_TRADE[p.id];
+    return `
+      <div class="pick-title">特產：${t.makes.map((g) => GOODS[g].name).join('、')}　短缺：${t.needs.map((g) => GOODS[g].name).join('、')}</div>
+      <div class="pick-title">當地金庫 ${Math.round(purse[p.id])} 金　你嘅載重 ${w.cargoCount()}／${w.cargoCap()}</div>
+      <table class="report trade"><tr><th>貨物</th><th>重</th><th>存貨</th><th>買</th><th>賣</th><th>你有</th><th></th></tr>${rows}</table>
+      ${p.kind === 'town' ? this.captiveRow(p, h, refresh) : ''}`;
+  }
+
+  /** 俘虜：賣畀城鎮或者招降 */
+  private captiveRow(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
+    const w = this.world.save;
+    const r = this.roster;
+    const list = w.captives;
+    if (!list.length) return '<div class="pick-title">俘虜：冇</div>';
+    const unit = UNITS[list[0]];
+    const price = unit.tier * CAPTIVE.pricePerTier;
+    const hire = unit.tier * CAPTIVE.recruitPerTier;
+    h.sellCap = () => {
+      if (w.treasury[p.id] < price) this.notice = '呢度冇咁多錢買';
+      else {
+        list.shift();
+        r.gold += price;
+        w.treasury[p.id] -= price;
+        this.notice = `賣咗一個${unit.name}，${price} 金`;
+      }
+      refresh();
+    };
+    h.hireCap = () => {
+      if (spend(r, hire)) {
+        list.shift();
+        addSoldier(r, unit.id);
+        w.morale = Math.max(0, w.morale + CAPTIVE.recruitMorale);
+        this.notice = `${unit.name}歸順咗`;
+      } else this.notice = '金幣不足';
+      refresh();
+    };
+    return `<div class="pick-title">俘虜 ${list.length} 人（每日有機會走甩）：
+      <button class="mini" id="sellCap">賣 ${unit.name} ${price} 金</button>
+      <button class="mini" id="hireCap">招降 ${hire} 金</button></div>`;
+  }
+
+  private supplyTab(p: PlaceDef, h: Record<string, () => void>, refresh: () => void): string {
+    const w = this.world;
+    const r = this.roster;
     h.rest = () => {
       w.rest();
       this.notice = '休息咗一日';
       refresh();
     };
-    const t = TOWN_TRADE[p.id];
+    const owned = POOL_ORDER.map((k) => `${POOLS[k].ticket} ${r.tickets[k]}`).join('・');
     return `
-      <div class="pick-title">特產：${t.makes.map((g) => GOODS[g].name).join('、')}　短缺：${t.needs.map((g) => GOODS[g].name).join('、')}　貨倉 ${w.cargoCount()}／${w.cargoCap()}</div>
-      <table class="report trade"><tr><th>貨物</th><th>存貨</th><th>買</th><th>賣</th><th>你有</th><th></th></tr>${rows}</table>
+      <div class="pick-title">糧食（當地糧價 ${w.foodPrice(p.id).toFixed(1)} 金，買得多會升）　載重 ${w.cargoCount()}／${w.cargoCap()}</div>
+      <div class="row wrap">${this.foodButtons(p.id, h, refresh)}</div>
       <div class="pick-title">現有招募令：${owned}</div>
-      <div class="row wrap">${foodBtns}${ticketBtns}<button class="alt" id="rest">休息一日</button></div>`;
+      <div class="row wrap">${this.ticketButtons(h, refresh)}</div>
+      <div class="row wrap"><button class="alt" id="rest">休息一日</button></div>`;
   }
 
   private smithTab(h: Record<string, () => void>, refresh: () => void): string {
@@ -288,22 +341,10 @@ export class PlaceScreens {
       return `<button class="mini" id="w_${id}" ${owned ? 'disabled' : ''}>${WEAPONS[id].name} ${owned ? '已有' : weaponPrice(id)}</button>`;
     }).join('');
     const armors = ARMORS.map((a) => {
-      const owned = hero.armors.includes(a.id);
-      const worn = hero.equip[a.slot] === a.id;
-      h[`a_${a.id}`] = () => {
-        if (owned) {
-          hero.equip[a.slot] = worn ? undefined : a.id;
-          refresh();
-        } else if (spend(r, a.price)) {
-          hero.armors.push(a.id);
-          hero.equip[a.slot] = a.id;
-          refresh();
-        } else {
-          this.notice = '金幣不足';
-          refresh();
-        }
-      };
-      return `<button class="mini ${worn ? 'on' : ''}" id="a_${a.id}">${SLOT_NAME[a.slot]}・${a.name} +${a.armor} ${owned ? (worn ? '著緊' : '已有') : a.price}</button>`;
+      const count = hero.armors.filter((x) => x === a.id).length;
+      // 可以買多件畀英雄著
+      buy(`a_${a.id}`, a.price, () => hero.armors.push(a.id));
+      return `<button class="mini" id="a_${a.id}">${SLOT_NAME[a.slot]}・${a.name} +${a.armor} ${a.price}${count ? `（有 ${count}）` : ''}</button>`;
     }).join('');
     const horses = HORSES.filter((d) => !d.troopOnly).map((d) => {
       const owned = hero.horses.includes(d.id);
@@ -312,7 +353,7 @@ export class PlaceScreens {
     }).join('');
     return `
       <div class="pick-title">武器</div><div class="shop">${weapons}</div>
-      <div class="pick-title">護甲（撳已有嘅可以著／除）</div><div class="shop">${armors}</div>
+      <div class="pick-title">護甲（買完喺 Tab「裝備」頁著）</div><div class="shop">${armors}</div>
       <div class="pick-title">馬匹</div><div class="shop">${horses}</div>`;
   }
 
@@ -396,15 +437,23 @@ export class PlaceScreens {
     const label = burned ? `村莊被燒，第 ${w.burnedUntil[p.id]} 日先恢復` : feared ? '村民怕你，唔肯入伍' : ready ? '' : `第 ${w.recruitedUntil[p.id]} 日再嚟`;
     const pol = this.world.politics;
     const handlers: Record<string, () => void> = {};
-    const foodBtns = this.foodButtons(SHOP.foodPrice, handlers, refresh);
-    this.show(p.name, burned ? '頹垣敗瓦，村民驚魂未定。' : '村民望住你嘅隊伍。', `
+    for (const [k] of VILLAGE_TABS) {
+      handlers[`v_${k}`] = () => {
+        this.villageTab = k;
+        refresh();
+      };
+    }
+    const tabs = `<div class="tabs center">${VILLAGE_TABS.map(([k, v]) => `<button class="tab ${k === this.villageTab ? 'on' : ''}" id="v_${k}">${v}</button>`).join('')}</div>`;
+    const footer = '<div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>';
+    const foodBtns = this.foodButtons(p.id, handlers, refresh);
+    const body = this.villageTab === 'market' ? this.marketTab(p, handlers, refresh) : `
       <div class="row wrap">
         ${foodBtns}
         <button class="alt" id="recruit" ${ready && canAfford(r, cost) ? '' : 'disabled'}>招新兵 ${count} 人（${cost} 金）　${label}</button>
         <button class="alt" id="donate" ${burned || !canAfford(r, HONOR.donate.gold) ? 'disabled' : ''}>救濟村民（${HONOR.donate.gold} 金，正義 +${HONOR.donate.justice}）</button>
         <button class="alt danger" id="rob" ${burned ? 'disabled' : ''}>洗劫村莊</button>
-      </div>
-      <div class="row"><button class="alt" id="party">部隊／抽卡</button><button class="go" id="leave">離開</button></div>`, {
+      </div>`;
+    this.show(p.name, burned ? '頹垣敗瓦，村民驚魂未定。' : '村民望住你嘅隊伍。', `${tabs}${body}${footer}`, {
       ...handlers,
       donate: () => {
         if (spend(r, HONOR.donate.gold)) pol.atone();

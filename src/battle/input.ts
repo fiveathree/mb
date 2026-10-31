@@ -2,6 +2,7 @@ import type { AttackDir } from '../data/combat';
 
 const RECENT_DECAY = 7; // 滑鼠方向記憶每秒衰減率
 const DIR_DEADZONE = 2;
+const MAX_MOUSE_STEP = 400;
 const ATTACK_BUFFER = 0.2;
 const WHEEL_BUFFER = 0.25; // 出招中轉武器，等收招後先生效
 const WHEEL_COOLDOWN = 0.12; // 避免觸控板一下滑動轉過晒所有武器
@@ -56,6 +57,8 @@ export class Input {
   }
 
   addMouse(dx: number, dy: number) {
+    // 部分瀏覽器鎖滑鼠時偶然有爆數，會令鏡頭跳
+    if (Math.abs(dx) > MAX_MOUSE_STEP || Math.abs(dy) > MAX_MOUSE_STEP) return;
     this.mouseDx += dx;
     this.mouseDy += dy;
     this.rx += dx;

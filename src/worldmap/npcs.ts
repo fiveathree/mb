@@ -268,12 +268,16 @@ export class NpcSystem {
     const w = this.save;
     const dx = w.x - n.x;
     const dy = w.y - n.y;
-    const d = Math.hypot(dx, dy) || 1;
-    const nx = n.x + (dx / d) * NPC.patrol.speed * dt;
-    const ny = n.y + (dy / d) * NPC.patrol.speed * dt;
-    if (this.terrain.passable(Math.round(nx), Math.round(ny))) {
-      n.x = nx;
-      n.y = ny;
+    const base = Math.atan2(dy, dx);
+    // 撞到地形就斜行，唔會卡死喺山邊
+    for (const turn of [0, 0.7, -0.7, 1.4, -1.4]) {
+      const nx = n.x + Math.cos(base + turn) * NPC.patrol.speed * dt;
+      const ny = n.y + Math.sin(base + turn) * NPC.patrol.speed * dt;
+      if (this.terrain.passable(Math.round(nx), Math.round(ny))) {
+        n.x = nx;
+        n.y = ny;
+        break;
+      }
     }
     return true;
   }
