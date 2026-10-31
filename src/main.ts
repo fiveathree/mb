@@ -727,6 +727,8 @@ async function showMenu() {
         return;
       }
       showNewGame(hud, (c) => {
+        // 起點座標要跟劇本鏡像，所以要先套用
+        applyScenario(c.scenario.id);
         const r = newRoster();
         const bg = c.background;
         r.hero = createHero({ race: c.race, background: bg });

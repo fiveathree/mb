@@ -1,5 +1,7 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
-import { HORSES } from '../data/horses';
+import { HORSES, HORSE_RANK, MOUNT_REWARD, STABLES } from '../data/horses';
+import { FIGURES } from '../data/figures';
+import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
 import { RACES } from '../data/races';
 import { ROLE_LABEL, UNITS } from '../data/units';
@@ -17,10 +19,10 @@ import type { World } from '../worldmap/world';
 import { GearPanel } from './gear';
 import type { Hud } from './hud';
 
-type Tab = 'party' | 'gear' | 'hero' | 'roster' | 'gacha' | 'realm';
+type Tab = 'party' | 'gear' | 'hero' | 'roster' | 'gacha' | 'realm' | 'codex';
 
 const PAGE_SIZE = 12;
-const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力']];
+const TABS: [Tab, string][] = [['party', '部隊'], ['gear', '裝備'], ['hero', '角色'], ['roster', '軍營'], ['gacha', '抽卡'], ['realm', '勢力'], ['codex', '圖鑑']];
 
 /** 部隊畫面：裝備、角色、士兵、抽卡，全部一屏 */
 export class Camp {
@@ -53,7 +55,7 @@ export class Camp {
   private render() {
     const r = this.roster;
     const body = {
-      party: () => this.partyHtml(), gear: () => this.gear.html(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(),
+      party: () => this.partyHtml(), gear: () => this.gear.html(), hero: () => this.heroHtml(), roster: () => this.rosterHtml(), gacha: () => this.gachaHtml(), realm: () => this.realmHtml(), codex: () => this.codexHtml(),
     }[this.tab]();
     this.hud.showScreen(`
       <div class="card camp">
@@ -276,6 +278,33 @@ export class Camp {
         <span>${this.page + 1}／${pages}</span>
         <button class="alt pager" data-step="1" ${this.page < pages - 1 ? '' : 'disabled'}>下一頁</button>
       </div>`;
+  }
+
+  /** 圖鑑：坐騎點攞、人物而家喺邊 */
+  private codexHtml(): string {
+    const w = this.world.save;
+    const hero = this.roster.hero;
+    const tag = (k: keyof typeof RARITY) => `<b style="color:${RARITY[k].color}">${RARITY[k].name}</b>`;
+    const placeName = (id: string) => PLACES.find((p) => p.id === id)?.name;
+    const source = (id: string) => {
+      const reward = Object.entries(MOUNT_REWARD).find(([, h]) => h === id)?.[0];
+      if (reward) return reward === 'witch' ? '討伐魔女' : reward === 'wyrm' ? '討伐飛龍' : `攻破${placeName(reward)}`;
+      const shops = Object.entries(STABLES).filter(([, l]) => l.includes(id)).map(([p]) => placeName(p));
+      return shops.length ? `${shops.join('、')}馬房` : '各地鐵匠';
+    };
+    const mounts = HORSES.filter((h) => !h.troopOnly).sort((a, b) => RARITY_ORDER.indexOf(HORSE_RANK[a.id]) - RARITY_ORDER.indexOf(HORSE_RANK[b.id])).map((h) => (
+      `<div class="codex-row ${hero.horses.includes(h.id) ? 'own' : ''}">${tag(HORSE_RANK[h.id])} ${h.name}<small>${source(h.id)}</small></div>`
+    )).join('');
+    const figures = FIGURES.map((f) => {
+      const n = w.npcs.find((x) => x.figure === f.id);
+      const near = n && PLACES.reduce((b, p) => (Math.hypot(p.x - n.x, p.y - n.y) < Math.hypot(b.x - n.x, b.y - n.y) ? p : b));
+      const where = n && near ? `${near.name}一帶：${n.job}` : '已入隊';
+      return `<div class="codex-row ${n ? '' : 'own'}">${tag(f.rarity)} ${f.name}<small>${where}</small></div>`;
+    }).join('');
+    return `<div class="codex">
+      <div><div class="pick-title">坐騎</div>${mounts}</div>
+      <div><div class="pick-title">人物（要行近先見到）</div>${figures}</div>
+    </div>`;
   }
 
   private realmHtml(): string {
