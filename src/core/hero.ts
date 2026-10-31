@@ -3,6 +3,7 @@ import {
 } from '../data/economy';
 import { ARTIFACTS, PLAYABLE, type ArtifactDef, type PlayableRace, type StartOption } from '../data/factions';
 import { HORSES, type HorseDef } from '../data/horses';
+import { RACES } from '../data/races';
 import { LOADOUT_SIZE } from '../data/weapons';
 import { PLAYER_UNIT, type UnitDef } from '../data/units';
 import type { Soldier } from './roster';
@@ -105,7 +106,7 @@ export function applyGear(def: UnitDef, gear?: Gear): UnitDef {
     ...def,
     armor: def.armor + armor,
     weapons: gear.weapon ? [gear.weapon, ...def.weapons.filter((w) => w !== gear.weapon)] : def.weapons,
-    horse: gear.horse ?? def.horse,
+    horse: RACES[def.race ?? 'human'].noRide ? def.horse : gear.horse ?? def.horse,
   };
 }
 

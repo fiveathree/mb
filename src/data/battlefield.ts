@@ -23,6 +23,9 @@ export interface ArmyEntry {
 }
 
 /** 陣形 */
+/** 戰鼓節奏：每格力度 */
+export const DRUMS = { pattern: [1, 0, 0.5, 0, 0.8, 0.4, 0.5, 0], stepMs: 210, freq: 72, gain: 0.16, decay: 0.2 };
+
 export const FORMATION = {
   /** 我軍步兵中心，敵軍鏡像 */
   startZ: 72,

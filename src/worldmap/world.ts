@@ -62,6 +62,8 @@ export interface WorldSave {
   /** 城鎮 → 第幾日可以再比武 */
   arenaUntil: Record<string, number>;
   arenaWins: number;
+  /** 第幾日先有下一屆錦標賽 */
+  tournamentUntil?: number;
   pol: PoliticsSave;
   nextDragon: number;
   scenario: string;

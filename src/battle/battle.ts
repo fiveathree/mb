@@ -6,6 +6,7 @@ import {
   FORMATIONS, FORMATION_RULES, type Culture, type FormationBonus, type FormationDef,
 } from '../data/formations';
 import { THEMES, type BattleTheme } from '../data/world';
+import { RACES } from '../data/races';
 import { CAMERA, COMBAT, FEEL } from '../data/combat';
 import { HORSES, HORSE_RADIUS, type HorseDef } from '../data/horses';
 import {
@@ -17,6 +18,7 @@ import { applyGear } from '../core/hero';
 import { levelDef, type BattleOutcome, type Soldier } from '../core/roster';
 import { makeAi, updateAi } from './ai';
 import { Sfx } from './audio';
+import { Fliers } from './fliers';
 import { Batches } from './batch';
 import {
   startBlock, startCharge, updateAction, updateCouch, updateRam, type BattleStats, type CombatWorld,
@@ -67,6 +69,10 @@ export interface BattleSetup {
   dismount?: boolean;
   /** 第一身鏡頭 */
   firstPerson?: boolean;
+  /** 守城：我方喺牆後，敵軍攻入嚟 */
+  defend?: boolean;
+  /** 天上飛嘅生物 */
+  sky?: string[];
   /** 可用陣法，第一個係開局用嘅 */
   formations?: { def: FormationDef; efficiency: number }[];
   /** 敵軍用邊啲文化嘅陣法 */
@@ -112,6 +118,8 @@ export class Battle implements CombatWorld {
   /** 兩軍隊形凝聚度 */
   cohesion = [1, 1];
   private formationT = 0;
+  private warcryT = 0;
+  private fliers!: Fliers;
   /** 教學用：每幀回呼 */
   onTick: ((b: Battle) => void) | null = null;
   private slowFrames = 0;
@@ -180,6 +188,7 @@ export class Battle implements CombatWorld {
     this.baseObstacles = buildTerrain(this.scene);
     this.obstacles = this.baseObstacles;
     this.scene.add(this.wall);
+    this.fliers = new Fliers(this.scene);
     this.batches = new Batches(this.scene);
     this.fx = new Fx(this.scene);
     this.projectiles = new Projectiles(this.scene);
@@ -351,6 +360,14 @@ export class Battle implements CombatWorld {
     (ground.material as THREE.MeshLambertMaterial).color.set(theme.ground);
     this.hemi.intensity = 1.5 * theme.light;
     this.sun.intensity = 2.3 * theme.light;
+    const race = RACES[setup.playerDef.race ?? 'human'];
+    if (setup.theme === 'night' && race.nightVision) {
+      fog.near *= 1.7;
+      fog.far *= 1.7;
+      this.hemi.intensity *= 1.6;
+    }
+    this.fliers.set(setup.firstPerson ? [] : setup.sky ?? []);
+    this.sfx.drums(true, () => this.running);
 
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.firstPerson = !!setup.firstPerson;
@@ -365,12 +382,15 @@ export class Battle implements CombatWorld {
     this.retreated = false;
     this.freezeT = this.slowT = this.shakeAmt = 0;
     this.moraleT = this.thinkT = this.slotT = this.followT = 0;
-    this.camYaw = this.viewYaw = 0;
+    this.warcryT = 0;
+    this.camYaw = this.viewYaw = setup.defend ? Math.PI : 0;
     this.camPitch = this.viewPitch = 0.16;
 
-    const pz = this.dungeon ? DUNGEON.startZ : -FORMATION.startZ + FORMATION.holdAhead * 2;
+    const behindWall = SIEGE.wallZ + SIEGE.defenderOffset;
+    const pz = this.dungeon ? DUNGEON.startZ : setup.defend ? behindWall + 12 : -FORMATION.startZ + FORMATION.holdAhead * 2;
     const player = this.createUnit(setup.playerDef, 0, loadout);
     player.pos.set(0, heightAt(0, pz), pz);
+    player.yaw = player.aimYaw = this.camYaw;
     this.player = player;
     player.hiddenBody = this.firstPerson;
     this.lastHorse = this.createHorse(horseDef, player);
@@ -402,7 +422,11 @@ export class Battle implements CombatWorld {
       for (const g of this.groups[team]) {
         deployGroup(g);
         if (this.dungeon) this.deployDungeon(g, team);
-        else if (this.siege && team === 1) {
+        else if (setup.defend) {
+          const back = g.role === 'infantry' ? 0 : 6;
+          g.setAnchor(g.anchorX, team === 0 ? behindWall + back : -FORMATION.startZ, team === 0 ? Math.PI : 0);
+          if (team === 1) g.order = 'charge';
+        } else if (this.siege && team === 1) {
           // 守軍喺牆後面
           g.setAnchor(g.anchorX, SIEGE.wallZ + SIEGE.defenderOffset + (g.role === 'infantry' ? 0 : 6), Math.PI);
         }
@@ -521,6 +545,7 @@ export class Battle implements CombatWorld {
   }
 
   private simulate(dt: number, real: number) {
+    this.fliers.update(real);
     const p = this.player;
     this.handlePlayerInput(dt);
     if (this.endT < 0) this.stats.time += dt;
@@ -579,6 +604,7 @@ export class Battle implements CombatWorld {
 
   private tickCommand(dt: number) {
     this.formationT = Math.max(0, this.formationT - dt);
+    this.warcryT = Math.max(0, this.warcryT - dt);
     this.moraleT -= dt;
     if (this.moraleT <= 0) {
       this.moraleT = 1;
@@ -673,6 +699,7 @@ export class Battle implements CombatWorld {
     }
 
     if (i.pressed('KeyF')) this.toggleMount();
+    if (i.pressed('KeyV')) this.warcry();
     if (i.pressed('KeyE')) this.toggleCouch();
 
     const throttle = (i.down('KeyW') ? 1 : 0) - (i.down('KeyS') ? 1 : 0);
@@ -696,12 +723,31 @@ export class Battle implements CombatWorld {
       p.vel.z = moveToward(p.vel.z, (mz / len) * speed, step);
       p.yaw += angleDiff(this.camYaw, p.yaw) * (1 - Math.exp(-14 * dt));
       if (jump) {
-        p.vy = JUMP_SPEED;
+        p.vy = JUMP_SPEED * (RACES[p.def.race ?? 'human'].jump ?? 1);
         p.grounded = false;
       }
     }
 
     if (!p.couched) this.handleAttack();
+  }
+
+  /** 種族戰吼 */
+  private warcry() {
+    const p = this.player;
+    const cry = RACES[p.def.race ?? 'human'].warcry;
+    if (!cry) return;
+    if (this.warcryT > 0) {
+      this.hud.announce(`戰吼要等 ${Math.ceil(this.warcryT)} 秒`, 'guard');
+      return;
+    }
+    this.warcryT = cry.cooldown;
+    for (const u of this.units) {
+      if (u.dead || flatDist(u.pos, p.pos) > cry.radius) continue;
+      if (u.team === p.team) u.morale = Math.min(u.def.morale, u.morale + cry.allyGain);
+      else u.morale -= cry.enemyLoss;
+    }
+    this.sfx.boom();
+    this.hud.announce('戰吼！', 'guard');
   }
 
   private handleAttack() {
@@ -928,6 +974,7 @@ export class Battle implements CombatWorld {
 
   private finish() {
     this.running = false;
+    this.sfx.drums(false);
     this.onEnd?.(this.report());
   }
 

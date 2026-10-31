@@ -1,5 +1,6 @@
 import { MARKET, NPC, NPC_RULES, TOWN_TRADE, type NpcKind } from '../data/economy';
 import { HONOR } from '../data/honor';
+import { DRAGON_BREEDS } from '../data/units';
 import { PLACES, type PlaceDef } from '../data/world';
 import type { ArmyEntry } from '../data/battlefield';
 import type { BanditParty, WorldSave } from './world';
@@ -34,7 +35,7 @@ function nearestTown(p: PlaceDef): PlaceDef {
 }
 
 export function raiderArmy(n: Npc): ArmyEntry[] {
-  if (n.kind === 'dragon') return [{ unit: 'boss_dragon', count: 1 }];
+  if (n.kind === 'dragon') return [{ unit: DRAGON_BREEDS[n.id % DRAGON_BREEDS.length], count: 1 }];
   if (n.kind === 'patrol') {
     return [
       { unit: 'footman', count: Math.ceil(n.size * 0.6) }, { unit: 'archer', count: Math.ceil(n.size * 0.25) },
@@ -82,7 +83,7 @@ export class NpcSystem {
     if (this.day() >= this.save.nextDragon && count('dragon') < NPC.dragon.max) {
       this.spawn('dragon', placeOf('dragonlair'));
       this.save.nextDragon = this.day() + NPC_RULES.dragonEveryDays;
-      this.note('赤焰巨龍離巢！全大陸震動');
+      this.note('巨龍離巢！全大陸震動');
     }
   }
 

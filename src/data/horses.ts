@@ -35,7 +35,21 @@ export interface HorseDef {
   barded: boolean;
   /** 只畀部隊用，玩家開局揀唔到 */
   troopOnly?: boolean;
+  /** 只喺有魔法嘅劇本先有得賣 */
+  fantasy?: boolean;
+  /** 額外外形 */
+  look?: 'wings' | 'horn' | 'antlers' | 'tusk' | 'hump';
 }
+
+/** 新坐騎：速度、耐打、跳躍、撞擊係主要分別 */
+const mount = (
+  id: string, name: string, desc: string, trot: number, gallop: number, turn: number, hp: number, armor: number, jump: number, ram: number, color: number,
+  extra: Partial<HorseDef> = {},
+): HorseDef => ({
+  id, name, desc, accel: gallop * 0.28, brake: 9, coast: 2.2, trotSpeed: trot, gallopSpeed: gallop, reverseSpeed: 2.2,
+  turnRadius: turn, maxTurnRate: 9 / turn, stamina: 110, staminaDrain: 10, staminaRegen: 7, staminaResume: 24,
+  hp, armor, jumpSpeed: jump, ramMult: ram, color, barded: false, ...extra,
+});
 
 export const HORSES: HorseDef[] = [
   {
@@ -68,6 +82,16 @@ export const HORSES: HorseDef[] = [
     turnRadius: 4.5, maxTurnRate: 2.2, stamina: 85, staminaDrain: 11, staminaRegen: 8, staminaResume: 22,
     hp: 95, armor: 2, jumpSpeed: 6, ramMult: 0.6, color: 0x5a5650, barded: false,
   },
+  mount('camel', '駱駝', '耐力好，嚇馬', 7, 12, 8, 170, 3, 4.4, 0.9, 0xc8a56a, { look: 'hump', stamina: 170, staminaDrain: 7 }),
+  mount('elk', '巨角鹿', '跳得高，角有得撞', 8.5, 15, 6, 135, 3, 7.5, 1.1, 0x8a6240, { look: 'antlers' }),
+  mount('dire_wolf', '巨狼', '急轉最靈活', 8.5, 15, 3.8, 120, 3, 6.5, 0.7, 0x6a665e, { fantasy: true, accel: 6 }),
+  mount('tiger', '白虎', '爆發快，咬人痛', 9, 16, 4.5, 150, 4, 7, 1, 0xe8e4d8, { fantasy: true, accel: 6 }),
+  mount('rhino', '戰犀', '最硬最痛，轉彎好慢', 6.5, 12.5, 13, 340, 20, 3.8, 2.2, 0x7c7f88, { fantasy: true, look: 'tusk' }),
+  mount('drake', '蜥蜴龍', '厚鱗，鞍下噴火氣勢', 8, 14, 7, 220, 12, 5.4, 1.4, 0x3f8f70, { fantasy: true, look: 'tusk' }),
+  mount('unicorn', '獨角獸', '快而聖潔，一角穿甲', 9.5, 18, 5.5, 140, 5, 7, 1.3, 0xf2f0f4, { fantasy: true, look: 'horn' }),
+  mount('nightmare', '夢魘', '黑焰之馬，全速最快', 9.5, 19, 7, 150, 6, 6.2, 1.2, 0x18161e, { fantasy: true, look: 'horn' }),
+  mount('pegasus', '天馬', '翼拍一下跳到半空', 9, 17, 5.5, 125, 3, 12, 0.8, 0xe8ecf4, { fantasy: true, look: 'wings' }),
+  mount('griffin_mount', '獅鷲', '飛撲最高，撞擊最狠嘅翼獸', 9, 16.5, 6, 210, 9, 13, 1.5, 0xb08a4a, { fantasy: true, look: 'wings' }),
 ];
 
 /** 受傷馬匹最低速度比例 */

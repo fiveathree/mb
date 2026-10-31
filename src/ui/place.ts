@@ -1,5 +1,5 @@
 import {
-  ARENA, ARMORS, CAPTIVE, COMPANIONS, GOODS, GOOD_ORDER, LOCAL, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
+  ARENA, ARMORS, CAPTIVE, COMPANIONS, GOODS, GOOD_ORDER, LOCAL, LOOT, MARKET, NPC, NPC_RULES, SLOT_NAME, TOWN_TRADE, WORKSHOPS,
   type GoodId,
 } from '../data/economy';
 import { ARTIFACTS, SIEGE } from '../data/factions';
@@ -14,7 +14,7 @@ import { HORSES } from '../data/horses';
 import { UNITS, type UnitDef } from '../data/units';
 import { PLAYER_ARSENAL, WEAPONS } from '../data/weapons';
 import { PLACES, SHOP, BANDIT, type PlaceDef } from '../data/world';
-import { horsePrice, skillOf, weaponPrice } from '../core/hero';
+import { freeArmor, horsePrice, skillOf, weaponPrice } from '../core/hero';
 import {
   addSoldier, armyPower, armySize, canAfford, rosterPower, spend, wageOf, type Roster,
 } from '../core/roster';
@@ -36,6 +36,7 @@ export interface PlaceActions {
   onBandit: (b: BanditParty, auto: boolean) => void;
   onEscaped: () => void;
   onArena: (town: PlaceDef, bet: boolean) => void;
+  onTournament: (town: PlaceDef) => void;
   onRaider: (n: Npc) => void;
   onSiege: (p: PlaceDef, breaches: number) => void;
   onDefend: (p: PlaceDef, by: string) => void;
@@ -340,21 +341,31 @@ export class PlaceScreens {
       if (!owned) buy(`w_${id}`, weaponPrice(id), () => hero.weapons.push(id));
       return `<button class="mini" id="w_${id}" ${owned ? 'disabled' : ''}>${WEAPONS[id].name} ${owned ? '已有' : weaponPrice(id)}</button>`;
     }).join('');
-    const armors = ARMORS.map((a) => {
+    const armors = ARMORS.filter((a) => !a.quality).map((a) => {
       const count = hero.armors.filter((x) => x === a.id).length;
       // 可以買多件畀英雄著
       buy(`a_${a.id}`, a.price, () => hero.armors.push(a.id));
       return `<button class="mini" id="a_${a.id}">${SLOT_NAME[a.slot]}・${a.name} +${a.armor} ${a.price}${count ? `（有 ${count}）` : ''}</button>`;
     }).join('');
-    const horses = HORSES.filter((d) => !d.troopOnly).map((d) => {
+    const spare = ARMORS.filter((a) => a.quality && freeArmor(hero, r.soldiers, a.id) > 0).map((a) => {
+      const price = LOOT.sell[a.quality!];
+      h[`s_${a.id}`] = () => {
+        hero.armors.splice(hero.armors.indexOf(a.id), 1);
+        r.gold += price;
+        refresh();
+      };
+      return `<button class="mini" id="s_${a.id}">賣 ${a.name} ${price}</button>`;
+    }).join('');
+    const magic = currentScenario().cultures.includes('magic');
+    const horses = HORSES.filter((d) => !d.troopOnly && (!d.fantasy || magic)).map((d) => {
       const owned = hero.horses.includes(d.id);
       if (!owned) buy(`h_${d.id}`, horsePrice(d.id), () => hero.horses.push(d.id));
       return `<button class="mini" id="h_${d.id}" ${owned ? 'disabled' : ''}>${d.name} ${owned ? '已有' : horsePrice(d.id)}</button>`;
     }).join('');
     return `
       <div class="pick-title">武器</div><div class="shop">${weapons}</div>
-      <div class="pick-title">護甲（買完喺 Tab「裝備」頁著）</div><div class="shop">${armors}</div>
-      <div class="pick-title">馬匹</div><div class="shop">${horses}</div>`;
+      <div class="pick-title">護甲（買完喺 Tab「裝備」頁著）</div><div class="shop">${armors}${spare}</div>
+      <div class="pick-title">坐騎</div><div class="shop">${horses}</div>`;
   }
 
   private mercOffers(p: PlaceDef): UnitDef[] {
@@ -417,13 +428,18 @@ export class PlaceScreens {
     const ready = (w.arenaUntil[p.id] ?? 0) <= dayOf(w);
     h.arena = () => this.act.onArena(p, false);
     h.arenaBet = () => this.act.onArena(p, true);
+    const { everyDays, prize } = ARENA.tournament;
+    const cup = (w.tournamentUntil ?? 0) <= dayOf(w);
+    h.cup = () => this.act.onTournament(p);
     return `
       <div class="pick-title">單人比武，部隊唔參加。對手：${round.enemy.map((e) => `${UNITS[e.unit].name} ${e.count}`).join('、')}，約 ${round.level} 級。獎金 ${round.reward} 金。</div>
       <div class="row wrap">
         <button class="go" id="arena" ${ready ? '' : 'disabled'}>報名比武</button>
         <button class="alt" id="arenaBet" ${ready && canAfford(this.roster, ARENA.bet) ? '' : 'disabled'}>下注自己贏 ${ARENA.bet} 金</button>
       </div>
-      ${ready ? '' : `<p class="sub">呢度第 ${w.arenaUntil[p.id]} 日先有下一場。</p>`}`;
+      ${ready ? '' : `<p class="sub">呢度第 ${w.arenaUntil[p.id]} 日先有下一場。</p>`}
+      <div class="pick-title">錦標賽：每 ${everyDays} 日一屆，四輪連戰，輸一場就出局，冠軍 ${prize} 金。</div>
+      <div class="row wrap"><button class="alt" id="cup" ${cup ? '' : 'disabled'}>${cup ? '參加錦標賽' : `第 ${w.tournamentUntil} 日再辦`}</button></div>`;
   }
 
   village(p: PlaceDef) {

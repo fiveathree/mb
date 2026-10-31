@@ -148,7 +148,7 @@ export class Hud {
     </div>`;
   }
 
-  showResult(r: BattleResult, p: BattleProgress, extra: string, onContinue: () => void) {
+  showResult(r: BattleResult, p: BattleProgress, extra: string, onContinue: () => void, nextLabel = '返回大地圖') {
     const s = r.stats;
     this.hudEl.hidden = true;
     const title = r.win ? '大獲全勝' : r.retreated ? '撤退' : '戰敗';
@@ -168,7 +168,7 @@ export class Hud {
           <div><small>用時</small><b>${Math.round(s.time)} 秒</b></div>
         </div>
         ${this.progressHtml(p, extra)}
-        <div class="row"><button class="go" id="next">返回大地圖</button></div>
+        <div class="row"><button class="go" id="next">${nextLabel}</button></div>
       </div>`);
     this.q('#next').onclick = onContinue;
   }

@@ -28,7 +28,7 @@ export function showNewGame(hud: Hud, onDone: (c: NewGameChoice) => void, onBack
     const chip = (attr: string, id: string, label: string, on: boolean) => `<button class="wp ${on ? 'on' : ''}" data-${attr}="${id}">${label}</button>`;
     const b = c.background;
     hud.showScreen(`
-      <div class="card camp">
+      <div class="card camp newgame">
         <h2>開局</h2>
         <div class="pick-title">劇本</div>
         <div class="weapons">${SCENARIOS.map((s) => chip('sc', s.id, s.name, s.id === c.scenario.id)).join('')}</div>

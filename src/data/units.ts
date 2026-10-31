@@ -63,6 +63,8 @@ export interface UnitDef {
   boss?: boolean;
   /** 最大法力 */
   mp?: number;
+  /** 覆蓋種族膚色，五色龍用 */
+  skin?: number;
 }
 
 /** 兩軍外觀：顏色同盔型都要一眼分到 */
@@ -404,7 +406,16 @@ const boss = (id: string, name: string, race: Race, weapon: string, hp: number, 
 UNITS.boss_golem = boss('boss_golem', '遠古魔像', 'golem', 'boss_fist', 380, 16, 1.1, 3.2);
 UNITS.boss_giant = boss('boss_giant', '牛角巨人', 'giant', 'boss_club', 480, 10, 1.3, 3.8);
 UNITS.boss_demon = boss('boss_demon', '惡魔領主', 'demon', 'boss_club', 1500, 20, 1, 4.6);
-UNITS.boss_dragon = { ...boss('boss_dragon', '赤焰巨龍', 'dragon', 'dragon_fire', 1500, 16, 2.2, 4), weapons: ['dragon_fire', 'boss_club'], role: 'archer' };
+const dragon = (id: string, name: string, breath: string, hp: number, armor: number, speed: number, skin: number): UnitDef => ({
+  ...boss(id, name, 'dragon', breath, hp, armor, 2.2, speed), weapons: [breath, 'boss_club'], role: 'archer', skin,
+});
+UNITS.boss_dragon = dragon('boss_dragon', '赤焰巨龍', 'dragon_fire', 1500, 16, 4, 0xb02a1e);
+UNITS.boss_dragon_white = dragon('boss_dragon_white', '霜白巨龍', 'dragon_frost', 1300, 14, 4.8, 0xd8e8f0);
+UNITS.boss_dragon_blue = dragon('boss_dragon_blue', '雷霆藍龍', 'dragon_bolt', 1400, 15, 4.4, 0x2f6fc8);
+UNITS.boss_dragon_green = dragon('boss_dragon_green', '毒霧綠龍', 'dragon_poison', 1600, 13, 3.8, 0x3f8f45);
+UNITS.boss_dragon_black = dragon('boss_dragon_black', '蝕骨黑龍', 'dragon_acid', 1700, 18, 3.6, 0x24222c);
+/** 離巢巨龍輪流係五色之一 */
+export const DRAGON_BREEDS = ['boss_dragon', 'boss_dragon_white', 'boss_dragon_blue', 'boss_dragon_green', 'boss_dragon_black'];
 
 // 各劇本兵種
 const troop = (
@@ -413,7 +424,7 @@ const troop = (
 ): UnitDef => ({
   id, name, role, tier, hp, armor, weapons, trimColor, walkSpeed: 2.2, runSpeed: 4.4, radius: 0.46, morale: 55 + tier * 8,
   blockSkill: 0.3 + tier * 0.06, blockChance: 0.3 + tier * 0.05, reaction: 0.3, attackCooldown: [1.3, 2.3], dodgeChance: 0.15,
-  pool: 'scenario' as PoolId, ...extra,
+  pool: 'scenario' as PoolId, rarity: tier >= 4 ? 'special' : tier === 3 ? 'fine' : 'common', ...extra,
 });
 for (const u of [
   troop('legionary', '羅馬軍團兵', 'infantry', 3, 95, 10, ['elite_sword'], 0xb5362c),
@@ -428,7 +439,15 @@ for (const u of [
   troop('demon_grunt', '深淵魔卒', 'infantry', 3, 100, 8, ['elite_axe'], 0x7a1a24, { race: 'demon' }),
   troop('awakened', '覺醒者', 'infantry', 4, 120, 9, ['elite_sword'], 0xe8c04a),
   troop('kobold', '狗頭人', 'infantry', 1, 45, 2, ['spear'], 0x8a6a3a, { race: 'goblin' }),
+  // 異族
+  troop('centaur', '半人馬戰士', 'cavalry', 3, 100, 6, ['cavalry_sword'], 0x8a6a3a, { race: 'centaur', pool: 'beast', horse: 'steppe', desc: '人馬一體，草原之子' }),
+  troop('harpy', '哈比', 'archer', 2, 50, 2, ['troop_bow', 'short_sword'], 0xb06a8a, { race: 'harpy', pool: 'beast', desc: '尖叫同利爪' }),
+  troop('merfolk', '人魚衛士', 'infantry', 2, 72, 5, ['spear'], 0x2d9aa8, { race: 'merfolk', pool: 'beast', desc: '由河口上岸嘅矛手' }),
+  troop('vampire', '吸血鬼伯爵', 'infantry', 5, 150, 10, ['elite_sword'], 0x8a1a2c, { race: 'vampire', pool: 'undead', desc: '永夜貴族' }),
+  troop('werewolf', '狼人', 'infantry', 4, 130, 6, ['elite_axe'], 0x5a5650, { race: 'werewolf', pool: 'beast', runSpeed: 5.4, desc: '月圓之下冇人走得甩' }),
+  troop('treant', '樹人', 'infantry', 4, 210, 12, ['elite_axe'], 0x4f7a3a, { race: 'treant', pool: 'fair', walkSpeed: 1.6, runSpeed: 3.2, desc: '慢，但斬唔死' }),
 ]) UNITS[u.id] = u;
+UNITS.fairy = caster('fairy', '妖精術士', '細粒，雷擊好痛', 'fairy', 'fair', 'fine', 'troop_bolt', 3, 0xe0a0e8);
 // 劇場英雄：唔喺抽卡池
 const storyHero = (id: string, name: string, desc: string, role: Role, weapons: string[], hp: number, trim: number, aura: number, extra: Partial<UnitDef> = {}) =>
   troop(id, name, role, 6, hp, 14, weapons, trim, {

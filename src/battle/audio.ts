@@ -1,5 +1,8 @@
+import { DRUMS } from '../data/battlefield';
+
 /** 全部音效都係 WebAudio 即時合成，唔用音檔 */
 export class Sfx {
+  private drumTimer = 0;
   private ctx: AudioContext | null = null;
   private noise: AudioBuffer | null = null;
   muted = false;
@@ -83,6 +86,17 @@ export class Sfx {
   fanfare(win: boolean) {
     const notes = win ? [392, 494, 587, 784] : [392, 330, 262];
     notes.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.16, 0.45, 'triangle'), i * 170));
+  }
+
+  /** 戰鼓：暫停時停 */
+  drums(on: boolean, playing: () => boolean = () => true) {
+    window.clearInterval(this.drumTimer);
+    if (!on) return;
+    let i = 0;
+    this.drumTimer = window.setInterval(() => {
+      const hit = DRUMS.pattern[i++ % DRUMS.pattern.length];
+      if (hit && playing()) this.tone(DRUMS.freq, DRUMS.gain * hit, DRUMS.decay, 'sine');
+    }, DRUMS.stepMs);
   }
 
   hoof(strength: number) {

@@ -1,6 +1,55 @@
 import type { ArmyEntry } from './battlefield';
 import type { TicketPool } from './gacha';
 
+/** 大地圖斜角鏡頭 */
+export const MAP_VIEW = {
+  /** 地平線喺畫面幾高（比例） */
+  horizon: 0.24,
+  /** 焦點（主角）喺畫面幾高 */
+  focus: 0.62,
+  /** 鏡頭距離（畫面高度倍數），愈細透視愈強 */
+  depth: 0.95,
+  zoom: 0.9,
+  /** 地面每幾多像素畫一行 */
+  rowStep: 2,
+  /** 天空同時有幾多隻飛行生物 */
+  skyCount: 12,
+  skyRange: 900,
+  sea: '#1f4660',
+  sky: {
+    day: ['#5fa4dc', '#d6ebf4'],
+    dusk: ['#3c3f78', '#f0a060'],
+    night: ['#080d1e', '#232c48'],
+  },
+  ridge: { day: '#7f9cb0', dusk: '#5a4a68', night: '#141a2c' },
+};
+
+export interface SkyFauna {
+  name: string;
+  color: string;
+  /** 翼展（地圖像素） */
+  wing: number;
+  speed: number;
+  /** 拍翼快慢 */
+  flap: number;
+  alt: [number, number];
+  /** 一群幾多隻 */
+  flock: number;
+}
+
+export const SKY_FAUNA: Record<string, SkyFauna> = {
+  bird: { name: '飛鳥', color: '#2a2e38', wing: 10, speed: 90, flap: 9, alt: [70, 180], flock: 5 },
+  crane: { name: '仙鶴', color: '#f0f0f0', wing: 22, speed: 70, flap: 4, alt: [120, 240], flock: 3 },
+  immortal: { name: '御劍修士', color: '#8fe0e8', wing: 16, speed: 170, flap: 0, alt: [160, 280], flock: 1 },
+  griffin: { name: '獅鷲', color: '#b08a4a', wing: 46, speed: 120, flap: 5, alt: [150, 280], flock: 2 },
+  pegasus: { name: '天馬', color: '#eef2fa', wing: 44, speed: 130, flap: 5, alt: [150, 280], flock: 2 },
+  harpy: { name: '哈比', color: '#a0607a', wing: 30, speed: 110, flap: 7, alt: [100, 200], flock: 4 },
+  wyvern: { name: '雙足飛龍', color: '#3f7a5a', wing: 60, speed: 110, flap: 3.5, alt: [170, 300], flock: 1 },
+  demonbat: { name: '魔蝠', color: '#5a1a2c', wing: 34, speed: 130, flap: 10, alt: [90, 190], flock: 5 },
+  phoenix: { name: '火鳳凰', color: '#f0702a', wing: 56, speed: 150, flap: 3, alt: [190, 320], flock: 1 },
+  dragon: { name: '巨龍', color: '#a82a1e', wing: 96, speed: 95, flap: 2.2, alt: [220, 360], flock: 1 },
+};
+
 export const MAP = {
   width: 160,
   height: 100,

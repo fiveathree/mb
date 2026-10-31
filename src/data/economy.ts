@@ -108,6 +108,8 @@ export interface ArmorDef {
   /** 速度懲罰比例 */
   weight: number;
   price: number;
+  /** 品質；冇就係普通貨，鐵匠有得賣 */
+  quality?: 'worn' | 'fine' | 'legend';
 }
 
 export const ARMORS: ArmorDef[] = [
@@ -121,7 +123,26 @@ export const ARMORS: ArmorDef[] = [
   { id: 'gauntlets', name: '鐵手套', slot: 'hands', armor: 2, weight: 0.01, price: 320 },
   { id: 'boots', name: '皮靴', slot: 'feet', armor: 1, weight: 0, price: 60 },
   { id: 'greaves', name: '鐵脛甲', slot: 'feet', armor: 3, weight: 0.02, price: 420 },
+  // 只會由戰利品掉落
+  { id: 'rusty_mail', name: '殘破鎖甲', slot: 'body', armor: 4, weight: 0.04, price: 0, quality: 'worn' },
+  { id: 'rusty_helm', name: '殘破鐵盔', slot: 'head', armor: 2, weight: 0.01, price: 0, quality: 'worn' },
+  { id: 'fine_plate', name: '精良板甲', slot: 'body', armor: 15, weight: 0.07, price: 0, quality: 'fine' },
+  { id: 'fine_gauntlets', name: '精良鐵手套', slot: 'hands', armor: 4, weight: 0.01, price: 0, quality: 'fine' },
+  { id: 'legend_helm', name: '傳說戰盔', slot: 'head', armor: 9, weight: 0.01, price: 0, quality: 'legend' },
+  { id: 'legend_boots', name: '傳說戰靴', slot: 'feet', armor: 7, weight: 0, price: 0, quality: 'legend' },
 ];
+
+/** 戰利品：每場打贏掉落機率 */
+export const LOOT = {
+  /** 貨物數量 */
+  goodsMin: 1,
+  goodsMax: 3,
+  worn: 0.3,
+  fine: 0.1,
+  legend: 0.02,
+  /** 鐵匠收購價 */
+  sell: { worn: 60, fine: 700, legend: 3000 },
+};
 
 export const WEAPON_PRICE: Record<string, number> = {
   sword: 0, lance: 0, horsebow: 0, hand_axe: 350, mace: 380, axe: 520, greatsword: 800,
@@ -129,7 +150,10 @@ export const WEAPON_PRICE: Record<string, number> = {
   fireball: 1800, lightning: 2200, ward: 1400, heal: 1600,
 };
 
-export const HORSE_PRICE: Record<string, number> = { hunter: 0, pack: 300, steppe: 900, warhorse: 2400 };
+export const HORSE_PRICE: Record<string, number> = {
+  hunter: 0, pack: 300, steppe: 900, warhorse: 2400, camel: 700, elk: 1100,
+  dire_wolf: 1600, tiger: 2600, drake: 3200, rhino: 3600, unicorn: 4200, nightmare: 4500, pegasus: 5000, griffin_mount: 6000,
+};
 
 // ── 主角 ──
 export type AttrId = 'str' | 'agi' | 'int' | 'cha';
@@ -220,6 +244,8 @@ export const ARENA = {
   ],
   bet: 200,
   betMult: 2,
+  /** 錦標賽：四輪連戰，輸一場就出局 */
+  tournament: { everyDays: 10, prize: 1500, renown: 12 },
   /** 同一城每幾多日可以再比 */
   cooldownDays: 2,
   renownXp: 150,

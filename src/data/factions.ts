@@ -81,6 +81,9 @@ export const POLITICS = {
   warRelation: -40,
   /** 議和金：每級戰爭 */
   peaceCost: 800,
+  /** 送禮 */
+  giftCost: 500,
+  giftRelation: 8,
   /** 打贏該國部隊加好感 */
   beatEnemyRelation: 3,
   /** 聲望：打贏普通仗、攻陷領地 */
@@ -103,6 +106,8 @@ export const SIEGE = {
   breachWidth: 9,
   /** 守軍喺牆後幾遠 */
   defenderOffset: 10,
+  /** 守城時敵軍攻破幾多個缺口 */
+  defendBreaches: 2,
 };
 
 /** 地下城：只帶幾個精兵 */
@@ -150,7 +155,7 @@ export const ARTIFACTS: ArtifactDef[] = [
 /** 主角開局 */
 export type PlayableRace =
   | 'human' | 'elf' | 'dwarf' | 'orc' | 'dragonkin' | 'beastkin' | 'halfling' | 'demon'
-  | 'goblin' | 'lizard' | 'minotaur' | 'undead';
+  | 'goblin' | 'lizard' | 'minotaur' | 'undead' | 'vampire' | 'werewolf' | 'harpy' | 'merfolk' | 'treant' | 'fairy';
 
 export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs: Partial<Record<'str' | 'agi' | 'int' | 'cha', number>>; spell?: string; friend?: string; foe?: string }> = {
   human: { name: '人類', desc: '平均，起步多 2 技能點', attrs: { cha: 1 } },
@@ -165,6 +170,12 @@ export const PLAYABLE: Record<PlayableRace, { name: string; desc: string; attrs:
   lizard: { name: '蜥蜴人', desc: '力敏各 +1，沼澤戰士', attrs: { str: 1, agi: 1 } },
   minotaur: { name: '牛頭人', desc: '力量 +3、敏捷 −1，又大隻又食得', attrs: { str: 3, agi: -1 }, foe: 'griffin' },
   undead: { name: '亡靈', desc: '智力 +2、魅力 −1，唔使食飯', attrs: { int: 2, cha: -1 }, spell: 'lightning', friend: 'undead', foe: 'sylvan' },
+  vampire: { name: '吸血鬼', desc: '力智 +1，唔使食飯，夜視', attrs: { str: 1, int: 1 }, spell: 'heal', friend: 'undead', foe: 'griffin' },
+  werewolf: { name: '狼人', desc: '力 +2、敏 +1、魅 −1，會戰吼', attrs: { str: 2, agi: 1, cha: -1 }, foe: 'griffin' },
+  harpy: { name: '哈比', desc: '敏捷 +3、力量 −1，一跳好高', attrs: { agi: 3, str: -1 } },
+  merfolk: { name: '人魚', desc: '智敏各 +1，江東友好', attrs: { int: 1, agi: 1 }, friend: 'jiangdong' },
+  treant: { name: '樹人', desc: '力量 +3、敏捷 −2，唔騎馬唔使食', attrs: { str: 3, agi: -2 }, friend: 'sylvan', foe: 'dwarves' },
+  fairy: { name: '妖精', desc: '智力 +3、力量 −2，起步火球', attrs: { int: 3, str: -2 }, spell: 'fireball', friend: 'sylvan' },
 };
 
 export interface StartOption {

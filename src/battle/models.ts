@@ -156,10 +156,27 @@ function addRaceFeatures(torso: THREE.Group, look: RaceLook, skin: number) {
     case 'dragon':
       torso.add(box(0.2, 0.15, 0.42, skin, 0, 0.78, 0.26), box(0.14, 0.14, 0.9, skin, 0, 0.1, -0.55));
       side((s) => {
-        const wing = box(1.1, 0.04, 0.6, 0x7a1a14, s * 0.75, 0.62, -0.18);
+        const wing = box(1.1, 0.04, 0.6, new THREE.Color(skin).multiplyScalar(0.55).getHex(), s * 0.75, 0.62, -0.18);
         wing.rotation.z = s * 0.45;
         return wing;
       });
+      break;
+    case 'wings':
+      side((s) => {
+        const wing = box(0.7, 0.03, 0.34, skin, s * 0.5, 0.58, -0.17);
+        wing.rotation.z = s * 0.5;
+        return wing;
+      });
+      break;
+    case 'antlers':
+      side((s) => {
+        const branch = box(0.05, 0.42, 0.05, 0x5a7a3a, s * 0.14, 1.06, 0);
+        branch.rotation.z = -s * 0.5;
+        return branch;
+      });
+      break;
+    case 'fins':
+      side((s) => box(0.03, 0.16, 0.14, 0x2d9aa8, s * 0.15, 0.84, 0));
       break;
     default:
       break;
@@ -184,10 +201,11 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   torso.add(box(0.48, 0.08, 0.29, def.trimColor, 0, 0.05, 0));
   torso.add(box(0.52, 0.12, 0.3, def.trimColor, 0, 0.6, 0));
 
-  const head = ico(0.135, race.skin);
+  const skin = def.skin ?? race.skin;
+  const head = ico(0.135, skin);
   head.position.y = 0.82;
   torso.add(head);
-  addRaceFeatures(torso, race.look, race.skin);
+  addRaceFeatures(torso, race.look, skin);
   if (race.look !== 'bull') {
     const helmet = cyl(0.05, 0.16, 0.17, 6, style.helmet);
     helmet.position.y = 0.93;
@@ -328,6 +346,42 @@ export function buildHorse(def: HorseDef, team: number, batches: Batches): Horse
   head.add(box(0.05, 0.14, 0.05, dark, 0.08, 0.17, -0.04), box(0.05, 0.14, 0.05, dark, -0.08, 0.17, -0.04));
   neck.add(head);
   body.add(neck);
+
+  switch (def.look) {
+    case 'wings':
+      for (const s of [1, -1]) {
+        const wing = box(1.5, 0.05, 0.85, c, s * 1, 0.42, 0.1);
+        wing.rotation.z = s * 0.35;
+        body.add(wing);
+      }
+      break;
+    case 'horn': {
+      const horn = cone(0.05, 0.55, 5, 0xf0e0a0);
+      horn.position.set(0, 0.28, 0.32);
+      horn.rotation.x = 0.8;
+      head.add(horn);
+      break;
+    }
+    case 'antlers':
+      for (const s of [1, -1]) {
+        const antler = box(0.05, 0.6, 0.05, 0xd8c8a0, s * 0.2, 0.36, -0.05);
+        antler.rotation.z = -s * 0.5;
+        head.add(antler);
+      }
+      break;
+    case 'tusk': {
+      const tusk = cone(0.1, 0.4, 5, 0xe8dcc0);
+      tusk.position.set(0, 0.18, 0.56);
+      tusk.rotation.x = 0.5;
+      head.add(tusk);
+      break;
+    }
+    case 'hump':
+      body.add(box(0.46, 0.34, 0.5, c, 0, 0.5, 0.48));
+      break;
+    default:
+      break;
+  }
 
   const tail = new THREE.Group();
   tail.position.set(0, 0.24, -1.07);

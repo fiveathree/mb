@@ -1,6 +1,7 @@
 import type { ArmyEntry } from '../data/battlefield';
 import { CAMPAIGN, GACHA, LEVEL, POOL_ORDER, RARITY, RARITY_ORDER, type PoolId, type Rarity } from '../data/gacha';
 import { RACES, UPKEEP, type Race } from '../data/races';
+import { currentScenario } from '../data/scenarios';
 import { PROMOTION, UPGRADES } from '../data/economy';
 import { UNITS, type Role, type UnitDef } from '../data/units';
 import { migrateHero, newHero, partyLimit, skillOf, type Gear, type Hero } from './hero';
@@ -205,7 +206,12 @@ export function roleCounts(list: Soldier[]): Record<Role, number> {
 }
 
 export function poolUnits(pool: PoolId, rarity: Rarity): UnitDef[] {
-  return Object.values(UNITS).filter((u) => !u.companion && (u.pool ?? 'human') === pool && rarityOf(u) === rarity);
+  const list = Object.values(UNITS).filter((u) => !u.companion && (u.pool ?? 'human') === pool && rarityOf(u) === rarity);
+  if (pool !== 'human') return list;
+  // 通用卡池跟劇本：羅馬抽到軍團兵，三國抽到刀盾手
+  const { levy, mercs } = currentScenario();
+  const local = [...new Set([levy, ...mercs])].map((id) => UNITS[id]).filter((u) => u.pool === 'scenario' && rarityOf(u) === rarity);
+  return [...list, ...local];
 }
 
 function rollRarity(): Rarity {

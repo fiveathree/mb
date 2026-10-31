@@ -1,7 +1,7 @@
 import './style.css';
 import { Battle, type BattleResult } from './battle/battle';
 import { createHero, gainHeroXp, playerDef, playerHorse, skillOf } from './core/hero';
-import { ARTIFACTS, DUNGEON, PLAYABLE, START_REGIONS, factionOf } from './data/factions';
+import { ARTIFACTS, DUNGEON, PLAYABLE, SIEGE, START_REGIONS, factionOf } from './data/factions';
 import { showNewGame } from './ui/newgame';
 import { showFormationPick } from './ui/formation';
 import { formationsFor, type FormationCheck } from './core/formation';
@@ -16,8 +16,9 @@ import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import type { ArmyEntry } from './data/battlefield';
-import { ARENA, CAPTIVE, HERO, NPC_RULES } from './data/economy';
+import { ARENA, ARMORS, CAPTIVE, GOODS, GOOD_ORDER, HERO, LOOT, NPC_RULES } from './data/economy';
 import { CAMPAIGN, POOLS } from './data/gacha';
+import { RACES } from './data/races';
 import { MORALE_PARTY, PLACES, type BattleTheme, type PlaceDef } from './data/world';
 import { Camp } from './ui/camp';
 import { Hud } from './ui/hud';
@@ -42,6 +43,8 @@ let ignoreUnlock = false;
 let afterBattle: (win: boolean) => string = () => '';
 /** 競技場唔計部隊戰利品 */
 let arenaFight = false;
+/** 結算畫面之後接住做嘅事（錦標賽下一輪） */
+let afterResult: (() => void) | null = null;
 let tutorial: Tutorial | null = null;
 /** 而家喺邊個地點入面，返回用 */
 let currentPlace: PlaceDef | null = null;
@@ -53,6 +56,7 @@ const screens = new PlaceScreens(hud, world, roster, {
   onBandit: (b, auto) => fightBandit(b, auto),
   onEscaped: () => backToMap(),
   onArena: (town, bet) => fightArena(town, bet),
+  onTournament: (town) => fightTournament(town),
   onRaider: (n) => fightRaider(n),
   onSiege: (p, breaches) => assaultFief(p, breaches),
   onDefend: (p, by) => defendFief(p, by),
@@ -181,7 +185,7 @@ function releaseMouse() {
 
 async function startBattle(
   enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
-  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean } = {},
+  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean } = {},
 ) {
   afterBattle = done;
   view.stop();
@@ -191,6 +195,7 @@ async function startBattle(
     hud.hideScreen();
     battle.start({
       playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy, enemyLevel, theme, moraleMult: moraleMult(), ...extra,
+      dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky,
       formations, enemyCultures: arenaFight ? [] : currentScenario().cultures,
     });
     inBattle = true;
@@ -202,6 +207,28 @@ async function startBattle(
     return;
   }
   showFormationPick(hud, formationsFor(currentScenario().cultures, h, soldiers), (order) => void launch(order));
+}
+
+/** 打贏之後掉落：貨物同有機會出品質裝備 */
+function rollLoot(): string {
+  const w = world.save;
+  const out: string[] = [];
+  const count = LOOT.goodsMin + Math.floor(Math.random() * (LOOT.goodsMax - LOOT.goodsMin + 1));
+  for (let i = 0; i < count; i++) {
+    const g = GOOD_ORDER[Math.floor(Math.random() * GOOD_ORDER.length)];
+    if (world.cargoCount() + GOODS[g].weight > world.cargoCap()) continue;
+    w.cargo[g]++;
+    out.push(GOODS[g].name);
+  }
+  const roll = Math.random();
+  const quality = roll < LOOT.legend ? 'legend' : roll < LOOT.legend + LOOT.fine ? 'fine' : roll < LOOT.legend + LOOT.fine + LOOT.worn ? 'worn' : null;
+  if (quality) {
+    const list = ARMORS.filter((a) => a.quality === quality);
+    const piece = list[Math.floor(Math.random() * list.length)];
+    roster.hero.armors.push(piece.id);
+    out.push(piece.name);
+  }
+  return out.length ? `戰利品：${out.join('、')}` : '';
 }
 
 function placeReward(p: PlaceDef): string {
@@ -261,11 +288,11 @@ function assaultFief(p: PlaceDef, breaches: number) {
 function defendFief(p: PlaceDef, by: string) {
   const pol = world.politics;
   const f = factionOf(by)!;
-  void startBattle(f.garrison, f.level, 'plains', (win) => {
+  void startBattle(f.garrison, f.level, p.theme ?? 'fort', (win) => {
     if (!win) return '';
     pol.s.threats = pol.s.threats.filter((t) => t.place !== p.id);
     return `成功保衛${p.name}`;
-  });
+  }, deployment(roster), { breaches: SIEGE.defendBreaches, dismount: true, defend: true });
 }
 
 function fightBandit(b: BanditParty, auto: boolean) {
@@ -273,6 +300,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
   if (auto) {
     const res = autoResolve(roster, army, b.level);
     const progress = applyBattle(roster, res.outcomes, res.gold, res.win);
+    const loot = res.win ? rollLoot() : '';
     if (res.win) gainHeroXp(roster.hero, HERO.xpBattleWin);
     world.winMorale(res.win);
     if (res.win) {
@@ -281,7 +309,7 @@ function fightBandit(b: BanditParty, auto: boolean) {
       const n = Math.floor(Math.random() * (CAPTIVE.autoResolveMax + 1));
       for (let i = 0; i < n; i++) world.save.captives.push(army[0].unit);
     } else world.escape(b);
-    showAutoResult(res.win, progress);
+    showAutoResult(res.win, progress, loot);
     return;
   }
   void startBattle(army, b.level, isNight(world.save) ? 'night' : 'plains', (win) => {
@@ -324,11 +352,31 @@ function fightArena(town: PlaceDef, bet: boolean) {
   }, []);
 }
 
-function showAutoResult(win: boolean, p: BattleProgress) {
+/** 錦標賽：連戰四輪 */
+function fightTournament(town: PlaceDef, round = 0) {
+  const w = world.save;
+  const { rounds, tournament } = ARENA;
+  if (round === 0) w.tournamentUntil = dayOf(w) + tournament.everyDays;
+  arenaFight = true;
+  const r = rounds[round];
+  void startBattle(r.enemy, r.level, 'fort', (win) => {
+    if (!win) return `錦標賽第 ${round + 1} 輪出局`;
+    if (round < rounds.length - 1) {
+      afterResult = () => fightTournament(town, round + 1);
+      return `贏咗第 ${round + 1} 輪，繼續下一輪`;
+    }
+    roster.gold += tournament.prize;
+    world.politics.s.renown += tournament.renown;
+    gainHeroXp(roster.hero, ARENA.renownXp);
+    return `${town.name}錦標賽冠軍！${tournament.prize} 金、聲望 +${tournament.renown}`;
+  }, []);
+}
+
+function showAutoResult(win: boolean, p: BattleProgress, loot: string) {
   hud.showScreen(`
     <div class="card">
       <h2 class="${win ? 'win' : 'lose'}">${win ? '勝利' : '敗退'}</h2>
-      <p class="sub">獲得 ${p.gold} 金，陣亡 ${p.lost.length} 人，傷兵 ${p.hurt} 人，升級 ${p.levelUps.length} 人。</p>
+      <p class="sub">獲得 ${p.gold} 金，陣亡 ${p.lost.length} 人，傷兵 ${p.hurt} 人，升級 ${p.levelUps.length} 人。${loot}</p>
       <div class="row"><button class="go" id="next">返回大地圖</button></div>
     </div>`);
   document.getElementById('next')!.onclick = backToMap;
@@ -369,6 +417,7 @@ battle.onEnd = (result: BattleResult) => {
   inBattle = false;
   battle.active = false;
   releaseMouse();
+  const loot = !arenaFight && !tutorial && result.win ? rollLoot() : '';
   const gold = arenaFight ? 0 : Math.round(result.gold * (result.win ? 1 : CAMPAIGN.loseGoldRatio));
   const progress = applyBattle(roster, result.outcomes, gold, result.win);
   if (!arenaFight) {
@@ -395,8 +444,13 @@ battle.onEnd = (result: BattleResult) => {
   }
   const xp = result.playerKills * HERO.xpPerKill + (result.win ? HERO.xpBattleWin : 0);
   const ups = gainHeroXp(roster.hero, xp);
-  const extra = [afterBattle(result.win), `主角經驗 +${xp}`, ups ? `主角升到 ${roster.hero.level} 級！` : ''].filter(Boolean).join('、');
-  hud.showResult(result, progress, extra, backToMap);
+  const extra = [afterBattle(result.win), loot, `主角經驗 +${xp}`, ups ? `主角升到 ${roster.hero.level} 級！` : ''].filter(Boolean).join('、');
+  hud.showResult(result, progress, extra, () => {
+    const next = afterResult;
+    afterResult = null;
+    if (next) next();
+    else backToMap();
+  }, afterResult ? '下一輪' : undefined);
 };
 
 view.onEvent = (e) => {

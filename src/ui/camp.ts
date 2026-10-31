@@ -162,6 +162,9 @@ export class Camp {
     act('.peace', (f) => {
       if (spend(this.roster, POLITICS.peaceCost)) pol.makePeace(f);
     });
+    act('.gift', (f) => {
+      if (spend(this.roster, POLITICS.giftCost)) pol.addRelation(f, POLITICS.giftRelation);
+    });
     this.$$('#crown', (el) => {
       el.onclick = () => {
         const name = document.querySelector<HTMLInputElement>('#screen #kname')?.value.trim() || '鐵騎王國';
@@ -263,6 +266,7 @@ export class Camp {
       const fiefs = pol.fiefsOf(f.id).length;
       const btns = [
         pol.hostile(f.id) && pol.atWar(PLAYER, f.id) ? `<button class="mini peace" data-f="${f.id}">議和 ${POLITICS.peaceCost}</button>` : '',
+        `<button class="mini gift" data-f="${f.id}">送禮 ${POLITICS.giftCost}</button>`,
         pol.canContract(f.id) ? `<button class="mini contract" data-f="${f.id}">簽約</button>` : '',
         pol.canSwear(f.id) ? `<button class="mini swear" data-f="${f.id}">效忠</button>` : '',
       ].join('');

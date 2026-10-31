@@ -19,6 +19,8 @@ export interface Scenario {
   mercs: string[];
   /** 龍巢嘅 Boss 同地名 */
   boss?: { unit: string; lair: string; desc: string };
+  /** 天上飛過嘅生物 */
+  sky?: string[];
 }
 
 const army = (...list: [string, number][]): ArmyEntry[] => list.map(([unit, count]) => ({ unit, count }));
@@ -28,7 +30,7 @@ const WEST_MERCS = ['sergeant', 'pikeman', 'archer', 'crossbowman', 'horseman', 
 
 export const SCENARIOS: Scenario[] = [
   {
-    id: 'chaos', name: '大混戰', desc: '裂天大陸：中西魔幻全部同場，咩都有',
+    id: 'chaos', sky: ['bird', 'griffin', 'wyvern', 'pegasus', 'dragon'], name: '大混戰', desc: '裂天大陸：中西魔幻全部同場，咩都有',
     cultures: ['east', 'west', 'magic'], levy: 'footman', mercs: WEST_MERCS,
   },
   {
@@ -65,7 +67,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['sergeant', 12], ['crossbowman', 6], ['crusader', 5]), army(['footman', 12], ['archer', 8], ['mamluk', 6])],
   },
   {
-    id: 'greek', name: '希臘神話', desc: '城邦重裝步兵對抗獨眼巨人同怪物', cultures: ['west', 'magic'], levy: 'hoplite', mercs: ['hoplite', 'archer', 'horseman', 'minotaur_guard'],
+    id: 'greek', sky: ['bird', 'pegasus', 'harpy'], name: '希臘神話', desc: '城邦重裝步兵對抗獨眼巨人同怪物', cultures: ['west', 'magic'], levy: 'hoplite', mercs: ['hoplite', 'archer', 'horseman', 'minotaur_guard'],
     realms: [
       ['雅典', '雅典'], ['斯巴達', '斯巴達'], ['底比斯', '底比斯'], ['科林斯', '科林斯'], ['克里特', '克諾索斯'], ['特洛伊', '特洛伊'],
       ['馬其頓', '佩拉'], ['色薩利', '拉里薩'], ['亞馬遜', '忒彌斯庫拉'], ['波斯', '波斯波利斯'], ['冥府信眾', '冥河渡口'], ['巨人族', '獨眼島'],
@@ -74,7 +76,7 @@ export const SCENARIOS: Scenario[] = [
     boss: { unit: 'boss_cyclops', lair: '獨眼巨人洞', desc: '洞口滿地白骨，巨人鼻鼾如雷。' },
   },
   {
-    id: 'hellgate', name: '地獄深淵', desc: '黑暗哥德風：魔物湧出，人類退守孤城', cultures: ['magic', 'west'], levy: 'footman', mercs: WEST_MERCS,
+    id: 'hellgate', sky: ['demonbat', 'wyvern', 'dragon'], name: '地獄深淵', desc: '黑暗哥德風：魔物湧出，人類退守孤城', cultures: ['magic', 'west'], levy: 'footman', mercs: WEST_MERCS,
     realms: [
       ['聖光教團', '聖光城'], ['流浪者營地', '荒原營'], ['血月修會', '血月修院'], ['灰燼王庭', '灰燼城'], ['獵魔人公會', '獵魔堡'], ['沙漠商盟', '黃沙城'],
       ['叢林部族', '瘴林寨'], ['寒山蠻族', '霜牙嶺'], ['墮落教團', '墮落聖所'], ['骸骨軍團', '萬骨塚'], ['血肉軍團', '血肉巢'], ['深淵大軍', '深淵之門'],
@@ -83,7 +85,7 @@ export const SCENARIOS: Scenario[] = [
     boss: { unit: 'boss_hellking', lair: '深淵王座', desc: '整個世界嘅惡意都由呢度湧出。' },
   },
   {
-    id: 'dungeoncrawl', name: '地下城屠龍', desc: '冒險者公會、地下城同巨龍，刀劍魔法正統奇幻', cultures: ['west', 'magic'], levy: 'footman', mercs: WEST_MERCS,
+    id: 'dungeoncrawl', sky: ['bird', 'griffin', 'wyvern', 'dragon'], name: '地下城屠龍', desc: '冒險者公會、地下城同巨龍，刀劍魔法正統奇幻', cultures: ['west', 'magic'], levy: 'footman', mercs: WEST_MERCS,
     realms: [
       ['銀盾王國', '銀盾城'], ['冒險者公會', '公會都市'], ['矮人王國', '鐵爐堡壘'], ['精靈王國', '星歌林'], ['半身人鄉', '綠丘鎮'], ['法師議會', '奧術塔'],
       ['自由港', '黑帆港'], ['聖騎士團', '光輝要塞'], ['獸人大軍', '碎顱寨'], ['狗頭人礦坑', '黑礦坑'], ['蜥蜴沼澤', '毒沼'], ['巫妖領', '永夜塔'],
@@ -91,7 +93,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['footman', 10], ['archer', 6], ['elf_mage', 3], ['griffin_guard', 3]), army(['kobold', 14], ['orc_warrior', 8], ['lizard_warrior', 6])],
   },
   {
-    id: 'awakened', name: '覺醒者與巨龍', desc: '巨龍奪走你嘅心，覺醒者帶住隨從踏上討龍之旅', cultures: ['west', 'magic'], levy: 'awakened', mercs: ['awakened', 'archer', 'elf_mage', 'griffin_guard'],
+    id: 'awakened', sky: ['bird', 'griffin', 'harpy', 'dragon'], name: '覺醒者與巨龍', desc: '巨龍奪走你嘅心，覺醒者帶住隨從踏上討龍之旅', cultures: ['west', 'magic'], levy: 'awakened', mercs: ['awakened', 'archer', 'elf_mage', 'griffin_guard'],
     realms: [
       ['王都', '葛蘭城'], ['邊境村落', '黎明村'], ['山賊同盟', '斷崖寨'], ['古代遺民', '遺跡都'], ['騎士團', '白騎堡'], ['巫女殿', '神木殿'],
       ['妖魔群', '獸人谷'], ['獅鷲巢', '風鳴岩'], ['不死者', '亡者礦坑'], ['魔像遺跡', '石巨人原'], ['邪教', '救贖教堂'], ['龍之僕從', '焦土之地'],
@@ -99,7 +101,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['awakened', 5], ['footman', 12], ['archer', 6]), army(['orc_warrior', 10], ['goblin_spear', 10], ['skeleton', 6])],
   },
   {
-    id: 'sorcery', name: '魔法世界', desc: '法師學院統治大陸，魔法決定一切', cultures: ['magic'], levy: 'elf_mage', mercs: ['elf_mage', 'necromancer', 'footman', 'griffin_guard'],
+    id: 'sorcery', sky: ['griffin', 'phoenix', 'pegasus', 'dragon'], name: '魔法世界', desc: '法師學院統治大陸，魔法決定一切', cultures: ['magic'], levy: 'elf_mage', mercs: ['elf_mage', 'necromancer', 'footman', 'griffin_guard'],
     realms: [
       ['星辰學院', '星辰塔'], ['烈焰學院', '熔爐城'], ['寒霜學院', '冰晶宮'], ['雷霆學院', '雷鳴峰'], ['大地學院', '石心城'], ['幻影學院', '鏡之都'],
       ['死靈學院', '蒼白塔'], ['自然學院', '綠環'], ['煉金公會', '水銀城'], ['符文公會', '刻石鎮'], ['魔獸聯盟', '獸王谷'], ['禁咒教團', '禁忌島'],
@@ -107,7 +109,7 @@ export const SCENARIOS: Scenario[] = [
     camps: [army(['elf_mage', 8], ['footman', 12], ['griffin_guard', 3]), army(['necromancer', 4], ['skeleton', 14], ['elf_mage', 4])],
   },
   {
-    id: 'xianxia', name: '修仙問道', desc: '宗門爭霸，飛劍斬魔，渡劫飛昇', cultures: ['east', 'magic'], levy: 'dao_guard', mercs: ['sword_cultivator', 'dao_guard', 'archer', 'elf_mage'],
+    id: 'xianxia', sky: ['crane', 'immortal', 'phoenix'], name: '修仙問道', desc: '宗門爭霸，飛劍斬魔，渡劫飛昇', cultures: ['east', 'magic'], levy: 'dao_guard', mercs: ['sword_cultivator', 'dao_guard', 'archer', 'elf_mage'],
     realms: [
       ['青雲門', '青雲山'], ['天劍宗', '萬劍峰'], ['玄天觀', '玄天觀'], ['丹鼎派', '丹霞山'], ['百花谷', '百花谷'], ['金剛寺', '須彌寺'],
       ['妖族', '萬妖窟'], ['魔門', '血煞宗'], ['散修聯盟', '坊市'], ['海外仙島', '蓬萊'], ['鬼修', '幽冥谷'], ['龍宮', '東海龍宮'],

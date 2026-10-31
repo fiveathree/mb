@@ -1,6 +1,7 @@
 import { ARMORS, SLOT_NAME, type ArmorDef, type ArmorSlot } from '../data/economy';
 import { ARTIFACTS } from '../data/factions';
 import { HORSES } from '../data/horses';
+import { RACES } from '../data/races';
 import { UNITS } from '../data/units';
 import { LOADOUT_SIZE, WEAPONS } from '../data/weapons';
 import { applyGear, armorValue, freeArmor, playerDef } from '../core/hero';
@@ -93,7 +94,8 @@ export class GearPanel {
       const on = s ? s.gear?.weapon === id : hero.loadout.includes(id);
       return `<button class="mini ${on ? 'on' : ''}" data-weapon="${id}">${WEAPONS[id].name}</button>`;
     }).join('');
-    const horses = HORSES.filter((h) => hero.horses.includes(h.id)).map((h) => {
+    const noRide = RACES[(s ? UNITS[s.unit].race : hero.race) ?? 'human'].noRide;
+    const horses = HORSES.filter((h) => !noRide && hero.horses.includes(h.id)).map((h) => {
       const on = s ? s.gear?.horse === h.id : hero.horse === h.id;
       return `<button class="mini ${on ? 'on' : ''}" data-horse="${h.id}">${h.name}</button>`;
     }).join('');
