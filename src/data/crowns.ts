@@ -229,13 +229,13 @@ export interface MusouDef {
 
 /** 招式手感：幾多步、每步隔幾耐、傷害倍率（底數係專屬兵器）、範圍 */
 export const MUSOU_STYLES: Record<MusouStyle, { label: string; desc: string; steps: number; every: number; mult: number; radius: number; reach: number; spread: number }> = {
-  whirl: { label: '亂舞', desc: '原地掃蕩四周', steps: 6, every: 0.2, mult: 0.7, radius: 6, reach: 0, spread: 0 },
-  charge: { label: '突進', desc: '向前直衝，撞飛沿途敵人', steps: 7, every: 0.09, mult: 0.8, radius: 3.6, reach: 3, spread: 0 },
-  rain: { label: '天降', desc: '前方一片連環轟落', steps: 14, every: 0.09, mult: 0.7, radius: 3.2, reach: 13, spread: 9 },
-  nova: { label: '爆發', desc: '三重衝擊波向外擴散', steps: 3, every: 0.35, mult: 1.2, radius: 5, reach: 0, spread: 0 },
-  thunder: { label: '落雷', desc: '連環雷劈附近敵人', steps: 8, every: 0.14, mult: 1, radius: 2.5, reach: 24, spread: 8 },
-  shadow: { label: '瞬斬', desc: '瞬移連斬，一刀一個', steps: 6, every: 0.16, mult: 1.3, radius: 2.5, reach: 18, spread: 0 },
-  rally: { label: '號令', desc: '全軍回血回士氣，同時震開身邊敵人', steps: 3, every: 0.4, mult: 0.5, radius: 7, reach: 22, spread: 0 },
+  whirl: { label: '亂舞', desc: '原地掃蕩四周', steps: 6, every: 0.2, mult: 0.5, radius: 7, reach: 0, spread: 0 },
+  charge: { label: '突進', desc: '向前直衝，撞飛沿途敵人', steps: 7, every: 0.09, mult: 0.7, radius: 4.5, reach: 3, spread: 0 },
+  rain: { label: '天降', desc: '前方一片連環轟落', steps: 14, every: 0.09, mult: 1.3, radius: 4.5, reach: 10, spread: 7 },
+  nova: { label: '爆發', desc: '三重衝擊波向外擴散', steps: 3, every: 0.35, mult: 0.6, radius: 4, reach: 0, spread: 0 },
+  thunder: { label: '落雷', desc: '連環雷劈附近敵人', steps: 8, every: 0.14, mult: 0.7, radius: 2.5, reach: 24, spread: 8 },
+  shadow: { label: '瞬斬', desc: '瞬移連斬，一刀一個', steps: 6, every: 0.16, mult: 1, radius: 2.5, reach: 18, spread: 0 },
+  rally: { label: '號令', desc: '全軍回血回士氣，同時震開身邊敵人', steps: 3, every: 0.4, mult: 0.9, radius: 7, reach: 22, spread: 0 },
 };
 
 export const MUSOU_RULES = {
@@ -244,6 +244,11 @@ export const MUSOU_RULES = {
   perDamageDealt: 0.22,
   perDamageTaken: 0.4,
   perSecond: 1,
+  /** 絕招底數範圍：騎槍底數低、巨斧底數高，唔限就差幾倍 */
+  baseMin: 48,
+  baseMax: 58,
+  /** 法系加成只計一半，否則法師絕招係武將兩倍 */
+  spellScale: 0.5,
   /** 招式前搖 */
   windup: 0.22,
   /** 開招慢鏡（真實秒） */

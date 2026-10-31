@@ -298,6 +298,7 @@ GitHub Pages：Settings → Pages → Source 要揀 **GitHub Actions**。之後�
 
 ## 待確認
 
+- 七類絕招用 14 個敵人嘅模擬校平過，真實戰場強弱未經真人試；
 - 絕招手感參數喺 `src/data/crowns.ts` 嘅 `MUSOU_RULES`、`MUSOU_STYLES` 同 `CAMERA.musouZoom`，未經真人試
 - 大混戰只借「各時代強者被召喚、冠位對抗世界之惡」嘅結構，角色係史實、神話或者本作原創，冇用 FGO 嘅角色同專有名詞
 - 冠位角色數值、起手實力同招請價係初版估算，未經真人平衡

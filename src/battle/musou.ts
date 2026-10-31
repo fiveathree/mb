@@ -37,9 +37,10 @@ function forward(w: MusouWorld, c: Combatant): [number, number] {
 function hit(w: MusouWorld, cast: MusouCast, t: Combatant, x: number, z: number, scale = 1) {
   const { c, def } = cast;
   const weapon = WEAPONS[sigId({ id: c.def.crown! })];
-  const power = weapon.spell ? c.def.spellMult ?? 1 : c.def.damageMult ?? 1;
+  const power = weapon.spell ? 1 + ((c.def.spellMult ?? 1) - 1) * MUSOU_RULES.spellScale : c.def.damageMult ?? 1;
+  const base = Math.min(MUSOU_RULES.baseMax, Math.max(MUSOU_RULES.baseMin, weapon.baseDamage));
   const d = Math.max(Math.hypot(t.pos.x - x, t.pos.z - z), 0.01);
-  const dealt = musouHit(w, c, t, weapon.baseDamage * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d);
+  const dealt = musouHit(w, c, t, base * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d);
   if (!dealt) return;
   cast.hits++;
   cast.damage += dealt;
