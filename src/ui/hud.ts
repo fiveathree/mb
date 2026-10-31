@@ -218,7 +218,7 @@ export class Hud {
     this.showScreen(`
       <div class="card wide">
         <h2 class="${r.win ? 'win' : 'lose'}">${title}</h2>
-        ${r.playerDown ? '<p class="sub">你喺戰鬥中倒下，由部下打完呢場。</p>' : ''}
+        ${r.playerDown ? `<p class="sub">${r.aftermath || '你喺戰鬥中倒下。'}</p>` : ''}
         <div class="reports">${this.reportColumn(0, r.rows[0])}${this.reportColumn(1, r.rows[1])}</div>
         <div class="stats">
           <div><small>戰利品</small><b>${p.gold} 金</b></div>

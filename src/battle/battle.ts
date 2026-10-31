@@ -3,7 +3,7 @@ import { startMusou, updateMusou, type MusouCast } from './musou';
 import * as THREE from 'three';
 import { LOD } from '../data/animation';
 import {
-  BATTLEFIELD as F, COLORS, FOREST, FORMATION, REWARDS, TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId,
+  BATTLEFIELD as F, COLORS, DOWN_RESOLVE, FOREST, FORMATION, REWARDS, TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId,
 } from '../data/battlefield';
 import { DUNGEON, SIEGE } from '../data/factions';
 import {
@@ -102,6 +102,8 @@ export interface BattleResult {
   win: boolean;
   retreated: boolean;
   playerDown: boolean;
+  /** 主角倒下後嘅戰況文字 */
+  aftermath: string;
   stats: BattleStats;
   rows: ReportRow[][];
   gold: number;
@@ -138,6 +140,9 @@ export class Battle implements CombatWorld {
   cohesion = [1, 1];
   private formationT = 0;
   private warcryT = 0;
+  /** 主角倒下，等一陣就文字結算 */
+  private resolveLater = false;
+  private aftermath = '';
   private sky: SkyDome;
   /** 絕招鏡頭 0 到 1 */
   private musouCam = 0;
@@ -748,6 +753,8 @@ export class Battle implements CombatWorld {
       fog.far *= 1.7;
       this.hemi.intensity *= 1.6;
     }
+    this.resolveLater = false;
+    this.aftermath = '';
     this.fliers.set(setup.firstPerson ? [] : setup.sky ?? []);
     this.sfx.drums(!setup.town, () => this.running);
 
@@ -1420,12 +1427,43 @@ export class Battle implements CombatWorld {
       const alive = (team: number) => this.units.some((u) => u.team === team && !u.dead && !u.routing);
       if (!alive(0) || !alive(1)) {
         this.win = alive(0);
-        this.endT = RESULT_DELAY;
+        this.endT = this.player.dead ? DOWN_RESOLVE.delay : RESULT_DELAY;
+      } else if (this.player.dead) {
+        this.resolveLater = true;
+        this.endT = DOWN_RESOLVE.delay;
       }
       return;
     }
     this.endT -= real;
-    if (this.endT <= 0) this.finish();
+    if (this.endT > 0) return;
+    if (this.resolveLater) this.resolveByText();
+    this.finish();
+  }
+
+  /** 主角倒下：唔再打落去，按兩軍剩餘戰力定勝負 */
+  private resolveByText() {
+    const standing = (team: number) => this.units.filter((u) => u.team === team && !u.dead && !u.fled && !u.routing);
+    const power = (list: Combatant[]) => list.reduce((s, u) => s + u.hp * u.def.tier * (1 + u.def.armor / 20), 0);
+    const mine = standing(0);
+    const foes = standing(1);
+    const [a, b] = [power(mine), power(foes)];
+    // 兵力平方定律：人多嘅一邊優勢放大
+    this.win = Math.random() < (a * a) / (a * a + b * b);
+    const [winners, losers] = this.win ? [mine, foes] : [foes, mine];
+    const ratio = Math.min(1, this.win ? b / a : a / b);
+    const fall = (u: Combatant) => {
+      u.dead = true;
+      u.hp = 0;
+      u.wounded = Math.random() < REWARDS.woundedChance;
+    };
+    for (const u of losers) {
+      if (Math.random() < DOWN_RESOLVE.routShare) u.routing = true;
+      else fall(u);
+    }
+    for (const u of winners) if (Math.random() < ratio * ratio * DOWN_RESOLVE.winnerLoss) fall(u);
+    this.aftermath = this.win
+      ? `你倒下之後，${mine.length} 名部下死戰，擊退 ${foes.length} 名敵軍。`
+      : `你倒下之後，${mine.length} 名部下不敵 ${foes.length} 名敵軍，全軍潰敗。`;
   }
 
   retreat() {
@@ -1490,7 +1528,7 @@ export class Battle implements CombatWorld {
       });
     }
     return {
-      win: this.win, retreated: this.retreated, playerDown: this.player.dead, stats: this.stats, rows,
+      win: this.win, retreated: this.retreated, playerDown: this.player.dead, aftermath: this.aftermath, stats: this.stats, rows,
       gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills, captiveUnits,
     };
   }

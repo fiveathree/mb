@@ -102,6 +102,16 @@ export const TERRAIN = {
   heightDamageMax: 0.18,
 };
 
+/** 主角倒下：即刻離開戰場，餘下戰況用文字結算 */
+export const DOWN_RESOLVE = {
+  /** 睇完倒地先走（秒） */
+  delay: 0.8,
+  /** 勝方損失：(敗方戰力 / 勝方戰力)² × 呢個比例 */
+  winnerLoss: 0.6,
+  /** 敗方有幾多人潰逃，其餘倒下 */
+  routShare: 0.5,
+};
+
 /** 戰後結算 */
 export const REWARDS = {
   /** 倒下嘅士兵有呢個機率只係受傷 */
