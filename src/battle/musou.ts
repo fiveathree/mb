@@ -12,6 +12,8 @@ export interface MusouCast {
   step: number;
   hits: number;
   damage: number;
+  /** 按鍵技能用，大招係 1 */
+  power: number;
 }
 
 export interface MusouWorld extends CombatWorld {
@@ -40,10 +42,19 @@ function hit(w: MusouWorld, cast: MusouCast, t: Combatant, x: number, z: number,
   const power = weapon.spell ? 1 + ((c.def.spellMult ?? 1) - 1) * MUSOU_RULES.spellScale : c.def.damageMult ?? 1;
   const base = Math.min(MUSOU_RULES.baseMax, Math.max(MUSOU_RULES.baseMin, weapon.baseDamage));
   const d = Math.max(Math.hypot(t.pos.x - x, t.pos.z - z), 0.01);
-  const dealt = musouHit(w, c, t, base * power * MUSOU_STYLES[def.style].mult * scale, (t.pos.x - x) / d, (t.pos.z - z) / d);
+  const dealt = musouHit(w, c, t, base * power * MUSOU_STYLES[def.style].mult * cast.power * scale, (t.pos.x - x) / d, (t.pos.z - z) / d);
   if (!dealt) return;
   cast.hits++;
   cast.damage += dealt;
+}
+
+/** 按鍵技能命中：計法同大招一樣 */
+export function skillHit(w: MusouWorld, c: Combatant, t: Combatant, x: number, z: number, mult: number) {
+  const weapon = WEAPONS[sigId({ id: c.def.crown! })];
+  const power = weapon.spell ? 1 + ((c.def.spellMult ?? 1) - 1) * MUSOU_RULES.spellScale : c.def.damageMult ?? 1;
+  const base = Math.min(MUSOU_RULES.baseMax, Math.max(MUSOU_RULES.baseMin, weapon.baseDamage));
+  const d = Math.max(Math.hypot(t.pos.x - x, t.pos.z - z), 0.01);
+  musouHit(w, c, t, base * power * mult, (t.pos.x - x) / d, (t.pos.z - z) / d);
 }
 
 /** 近戰招每步揮一下，法系同弓唔使 */
@@ -155,9 +166,9 @@ const castTime = (def: MusouDef) => {
   return s.steps * s.every + MUSOU_RULES.windup;
 };
 
-export function startMusou(w: MusouWorld, c: Combatant) {
-  const def = musouOf(c.def.crown!);
-  c.musou = 0;
+export function startMusou(w: MusouWorld, c: Combatant, skill?: MusouDef, power = 1) {
+  const def = skill ?? musouOf(c.def.crown!);
+  if (!skill) c.musou = 0;
   c.musouT = castTime(def);
   // 打斷手上動作，專心出招
   c.phase = 'idle';
@@ -167,13 +178,14 @@ export function startMusou(w: MusouWorld, c: Combatant) {
   c.musouReady = false;
   c.vel.x = 0;
   c.vel.z = 0;
-  w.casts.push({ c, def, t: -MUSOU_RULES.windup, step: 0, hits: 0, damage: 0 });
+  w.casts.push({ c, def, t: -MUSOU_RULES.windup, step: 0, hits: 0, damage: 0, power });
   tmp.set(c.pos.x, c.pos.y, c.pos.z);
   w.fx.pillar(tmp, def.color, 5);
   w.fx.ring(tmp, 3, def.color);
   w.fx.flashAt(tmp, def.color);
   w.sfx.boom();
   w.shake(0.5);
+  if (skill) return;
   if (c === w.player) {
     w.slowMo(MUSOU_RULES.startSlow);
     w.musouCut(def.name, def.color);

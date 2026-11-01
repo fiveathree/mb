@@ -36,6 +36,8 @@ import { updateHorse } from './horse';
 import { Input } from './input';
 import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
 import { SkinPool, skinHorse } from './skins';
+import { trySkill, updateSkills } from './skills';
+import { SKILL_KEYS, SKILL_RULES, SKILL_TUNE } from '../data/skills';
 import { skinLook } from '../data/skins';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
@@ -983,7 +985,7 @@ export class Battle implements CombatWorld {
     this.tickCommand(dt);
 
     for (const u of this.units) {
-      if (u === p || u.dead || u.musouT > 0) continue;
+      if (u === p || u.dead || u.musouT > 0 || u.bindT > 0 || u.cloudT > 0) continue;
       if (u.def.colossal) updateColossus(u, dt, this);
       else updateAi(u, dt, this);
     }
@@ -1045,7 +1047,10 @@ export class Battle implements CombatWorld {
     this.formationT = Math.max(0, this.formationT - dt);
     this.warcryT = Math.max(0, this.warcryT - dt);
     this.updateStrikes(dt);
-    if (!this.peaceful) updateMusou(this, dt);
+    if (!this.peaceful) {
+      updateMusou(this, dt);
+      updateSkills(this, dt);
+    }
     if (this.peaceful) this.updateTown(dt);
     // 主角倒下：跟隨嘅部隊唔再等，繼續打
     else if (this.player.dead) for (const g of this.groups[0]) if (g.order === 'follow') g.order = 'charge';
@@ -1157,6 +1162,7 @@ export class Battle implements CombatWorld {
     if (i.pressed('KeyF')) this.toggleMount();
     if (i.pressed('KeyV')) this.warcry();
     if (i.pressed('KeyR')) this.tryMusou();
+    if (p.def.crown && !this.peaceful) SKILL_KEYS.forEach((k, n) => { if (i.pressed(k)) trySkill(this, p, n); });
     if (i.pressed('KeyE') && !this.peaceful) this.toggleCouch();
 
     // 出招期間鎖走位，招式自己帶位移
@@ -1196,6 +1202,22 @@ export class Battle implements CombatWorld {
     if (!p.def.crown || this.peaceful || p.musouT > 0) return;
     if (p.musou >= MUSOU_RULES.max) startMusou(this, p);
     else this.hud.announce(`氣未夠 ${Math.floor(p.musou)}／${MUSOU_RULES.max}`, 'guard');
+  }
+
+  /** 分身抄主人數值，召喚物用部眾兵種 */
+  spawnAlly(c: Combatant, unit: string | null, life: number, x: number, z: number) {
+    const base = unit ? levelDef(UNITS[unit], 1) : c.def;
+    const def: UnitDef = { ...base, crown: undefined, hero: false, hp: Math.round(c.def.hp * SKILL_TUNE.cloneHp), damageMult: (c.def.damageMult ?? 1) * SKILL_TUNE.cloneDamage };
+    const group = this.groups[c.team].find((g) => g.role === def.role) ?? this.groups[c.team][0];
+    const u = this.createUnit(def, c.team, unit ? def.weapons : c.weapons.map((w) => w.id));
+    u.ai = makeAi(group);
+    u.ai.slotX = x;
+    u.ai.slotZ = z;
+    u.lifeT = life;
+    u.pos.set(x, heightAt(x, z), z);
+    u.yaw = c.yaw;
+    group.members.push(u);
+    if (group.order !== 'charge' && c === this.player) group.order = 'charge';
   }
 
   inBounds(x: number, z: number) {
@@ -1584,7 +1606,7 @@ export class Battle implements CombatWorld {
       return;
     }
     this.musouCam += ((p.musouT > 0 ? 1 : 0) - this.musouCam) * (1 - Math.exp(-6 * dt));
-    const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1) * (1 + CAMERA.musouZoom * this.musouCam);
+    const dist = (h ? CAMERA.distanceMounted : CAMERA.distanceOnFoot) * (aiming ? CAMERA.aimDistanceMult : 1) * (1 + CAMERA.musouZoom * this.musouCam) * (p.giantT > 0 ? SKILL_RULES.giant.power! * 0.7 : 1);
     const height = h ? CAMERA.heightMounted : CAMERA.heightOnFoot;
     const yaw = this.viewYaw;
     const cp = Math.cos(this.viewPitch);

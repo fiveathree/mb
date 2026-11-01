@@ -12,6 +12,7 @@ import { flushParts, type Batches, type Part } from './batch';
 import { clamp, angleDiff, type Combatant, type Horse } from './entities';
 import { crownOf } from '../data/crowns';
 import { HORSE_CLIPS } from './skins';
+import { hover } from './skills';
 import { axeGeo, bladeGeo, bowGeo, leafGeo, limbGeo, loftGeo, torsoGeo, wingGeo, type Ring } from './shapes';
 
 /** 建模時嘅目標：部件加入邊個 rig、由邊個節點控制顯示 */
@@ -966,6 +967,7 @@ export function syncHuman(c: Combatant, dt: number) {
     r.legL.rotation.set(-0.6 + s * 0.5, 0, 0);
     r.legR.rotation.set(-0.6 - s * 0.5, 0, 0);
   }
+  r.root.position.y += hover(c);
   r.marker.visible = !c.dead && !c.def.civilian && !c.def.colossal;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
   // 有骨架模型：舊 rig 繼續計位，只畫頭頂標記

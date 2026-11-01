@@ -256,6 +256,7 @@ export class HorseSkin {
     g.position.copy(h.pos);
     g.rotation.y = r.rotation.y;
     g.rotation.z = h.dead ? 0 : r.rotation.z;
+    g.scale.copy(r.scale);
     const v = Math.abs(h.speed);
     if (h.dead) this.a.play('body', death, true);
     else if (v > 6) this.a.play('body', run, false, v / 11);

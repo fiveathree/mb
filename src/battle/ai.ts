@@ -37,7 +37,7 @@ function nearestEnemy(c: Combatant, world: CombatWorld): Combatant | null {
   let best: Combatant | null = null;
   let bestD = Infinity;
   for (const u of world.units) {
-    if (u.team === c.team || u.dead) continue;
+    if (u.team === c.team || u.dead || u.stealthT > 0) continue;
     // 潰兵優先度低，避免全軍追住走佬嘅人
     const d = Math.abs(u.pos.x - c.pos.x) + Math.abs(u.pos.z - c.pos.z) + (u.routing ? 25 : 0);
     if (d < bestD) {

@@ -487,3 +487,10 @@ kbd { background: linear-gradient(180deg, #4a3a2a, #2a2018); border: 1px solid r
 .quest.doom b { color: #ffc8a8; }
 .crown-panel { grid-template-columns: 96px 170px 1fr; }
 .crown-face { width: 96px; height: 120px; object-fit: cover; }
+
+/* ????? */
+#skills { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+.skill { position: relative; width: 58px; height: 46px; overflow: hidden; padding-top: 16px; text-align: center; font-size: 11px; line-height: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; color: #f4e8d0; }
+.skill i { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.65); }
+.skill kbd { position: absolute; top: 1px; left: 3px; font: 700 11px var(--font, inherit); color: #ffd24a; }
+.skill span { position: relative; display: block; padding: 0 2px; }

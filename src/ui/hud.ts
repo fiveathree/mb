@@ -1,4 +1,5 @@
 import { MUSOU_RULES } from '../data/crowns';
+import { SKILL_KEY_NAMES, SKILL_RULES, skillsOf } from '../data/skills';
 import { Vector3 } from 'three';
 import { COMBAT, type AttackDir } from '../data/combat';
 import { BATTLEFIELD } from '../data/battlefield';
@@ -35,6 +36,7 @@ const CONTROLS: [string, string][] = [
   ['空白鍵', '跳；飛行坐騎按住爬升'],
   ['V', '戰吼（獸人、牛頭人、狼人）'],
   ['R', '冠位戰技（氣滿）'],
+  ['T Z X B N H', '冠位絕技（冷卻）'],
   ['1 2 3 4 0', '選步弓騎法／全軍'],
   ['F1 F2 F3', '跟隨／守住／衝鋒'],
   ['F4 F5 F6', '散開／密集／停射'],
@@ -84,6 +86,7 @@ export class Hud {
           <div id="weapon"></div>
           <div id="hint"></div>
         </div>
+        <div id="skills" hidden></div>
         <div id="table" hidden></div>
       </div>
       <div id="screen"></div>`;
@@ -238,6 +241,21 @@ export class Hud {
   }
 
   /** 出絕招嘅大字 */
+  /** 底部技能列：換角色先重砌，之後只更新冷卻 */
+  private drawSkills(p: Combatant) {
+    const box = this.q('#skills');
+    const list = skillsOf(p.def.crown);
+    box.hidden = !list.length;
+    if (box.dataset.owner !== p.def.crown) {
+      box.dataset.owner = p.def.crown ?? '';
+      box.innerHTML = list.map((s, i) => `<div class="skill" title="${SKILL_RULES[s.kind].desc}"><i></i><kbd>${SKILL_KEY_NAMES[i]}</kbd><span>${s.name}</span></div>`).join('');
+    }
+    list.forEach((s, i) => {
+      const cd = box.children[i]?.firstElementChild as HTMLElement | undefined;
+      if (cd) cd.style.height = `${(p.skillCd[i] / SKILL_RULES[s.kind].cd) * 100}%`;
+    });
+  }
+
   musouCut(name: string, color: number) {
     const el = document.createElement('div');
     el.className = 'musou-cut';
@@ -354,6 +372,7 @@ export class Hud {
     this.setBar('shield', p.shieldHp, p.shieldMax, p.weapon.hasShield);
     this.q('#stam').classList.toggle('low', h.exhausted);
     this.setBar('musou', p.musou, MUSOU_RULES.max, !!p.def.crown);
+    this.drawSkills(p);
     const giant = b.units.find((u) => u.def.colossal && !u.dead);
     const gbar = this.q('#bossbar');
     gbar.hidden = !giant;

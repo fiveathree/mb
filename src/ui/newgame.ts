@@ -12,6 +12,7 @@ import { WEAPONS } from '../data/weapons';
 import { armorValue, createCrownHero, partyLimit, playerDef } from '../core/hero';
 import type { Hud } from './hud';
 import { portrait } from './portrait';
+import { skillsOf } from '../data/skills';
 
 export interface NewGameChoice {
   /** 自己改嘅名，一般本先用 */
@@ -59,6 +60,7 @@ function crownPanel(k: CrownDef): string {
         <div>生命 ${def.hp}・法力 ${def.mp}・護甲 ${armorValue(h)}・傷害 ×${(def.damageMult ?? 1).toFixed(2)}・帶兵 ${partyLimit(h, [])}</div>
         <div>專屬：${k.sig[0]}（${WEAPONS[sigId(k)].baseDamage} 傷害）</div>
         <div>戰技：${musou.name}（${MUSOU_STYLES[musou.style].label}：${MUSOU_STYLES[musou.style].desc}）</div>
+        <div>絕技：${skillsOf(k.id).map((s) => s.name).join('、')}</div>
         <div>技能：${skills}</div>
         <div>坐騎：${HORSES.find((x) => x.id === k.horse)?.name}・${k.gold} 金・${k.food} 糧</div>
         <div>部隊：${army}</div>

@@ -75,6 +75,20 @@ export class Combatant {
   skin?: HumanSkin;
   /** 夠近，呢幀畫骨架模型 */
   skinOn = false;
+  /** 按鍵技能冷卻同效果剩餘秒數 */
+  skillCd = [0, 0, 0, 0, 0, 0];
+  skillThink = 0;
+  guardT = 0;
+  focusT = 0;
+  drainT = 0;
+  stealthT = 0;
+  giantT = 0;
+  cloudT = 0;
+  stompT = 0;
+  bindT = 0;
+  /** 分身、召喚物嘅存在時間 */
+  lifeT = 0;
+  lineQueue: number[] = [];
   /** 爬緊雲梯或者攻城塔 */
   climbing = false;
   pos = new Vector3();

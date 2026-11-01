@@ -4,6 +4,7 @@ import { COLORS, TERRAIN } from '../data/battlefield';
 import { SHIELD, SPELL_GLOW, type WeaponDef } from '../data/weapons';
 import { HORSE_RADIUS } from '../data/horses';
 import { MUSOU_RULES } from '../data/crowns';
+import { SKILL_RULES } from '../data/skills';
 import { angleDiff, bearing, clamp, flatDist, rad, type Combatant, type Horse } from './entities';
 import type { Fx } from './fx';
 import type { Sfx } from './audio';
@@ -317,6 +318,12 @@ function applyDamage(
   const isPlayerAtt = att === world.player;
   const isPlayerTgt = t === world.player;
   if (t.musouT > 0) return;
+  if (t.guardT > 0) {
+    world.fx.burst(tmp.set(t.pos.x, t.pos.y + 1.2, t.pos.z), 0xffd24a, 8, 3);
+    return;
+  }
+  if (att.focusT > 0) final = Math.round(final * SKILL_RULES.focus.power!);
+  if (att.drainT > 0) att.hp = Math.min(att.def.hp, att.hp + final * SKILL_RULES.drain.power!);
   // 絕招自己計節奏，唔逐下停頓
   const feel = isPlayerAtt && att.musouT <= 0;
   t.hp -= final;
@@ -399,7 +406,7 @@ function kill(world: CombatWorld, t: Combatant, att: Combatant) {
 
 export function damageHorse(world: CombatWorld, h: Horse, dmg: number, by: Combatant) {
   // 出絕招時連馬都無敵，唔會跌落馬
-  if (h.dead || (h.rider && h.rider.musouT > 0)) return;
+  if (h.dead || (h.rider && (h.rider.musouT > 0 || h.rider.guardT > 0))) return;
   h.hp -= dmg;
   const rider = h.rider;
   if (rider === world.player) world.announce(`戰馬受傷 −${dmg}`, 'hurt');

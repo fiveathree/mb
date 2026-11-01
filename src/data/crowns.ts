@@ -656,13 +656,13 @@ export interface MusouDef {
 
 /** 招式手感：幾多步、每步隔幾耐、傷害倍率（底數係專屬兵器）、範圍 */
 export const MUSOU_STYLES: Record<MusouStyle, { label: string; desc: string; steps: number; every: number; mult: number; radius: number; reach: number; spread: number }> = {
-  whirl: { label: '亂舞', desc: '原地掃蕩四周', steps: 6, every: 0.2, mult: 0.5, radius: 7, reach: 0, spread: 0 },
-  charge: { label: '突進', desc: '向前直衝，撞飛沿途敵人', steps: 7, every: 0.09, mult: 0.7, radius: 4.5, reach: 3, spread: 0 },
-  rain: { label: '天降', desc: '前方一片連環轟落', steps: 14, every: 0.09, mult: 1.3, radius: 4.5, reach: 10, spread: 7 },
-  nova: { label: '爆發', desc: '三重衝擊波向外擴散', steps: 3, every: 0.35, mult: 0.6, radius: 4, reach: 0, spread: 0 },
-  thunder: { label: '落雷', desc: '連環雷劈附近敵人', steps: 8, every: 0.14, mult: 0.7, radius: 2.5, reach: 24, spread: 8 },
-  shadow: { label: '瞬斬', desc: '瞬移連斬，一刀一個', steps: 6, every: 0.16, mult: 1, radius: 2.5, reach: 18, spread: 0 },
-  rally: { label: '號令', desc: '全軍回血回士氣，同時震開身邊敵人', steps: 3, every: 0.4, mult: 0.9, radius: 7, reach: 22, spread: 0 },
+  whirl: { label: '亂舞', desc: '原地掃蕩四周', steps: 6, every: 0.2, mult: 0.75, radius: 7, reach: 0, spread: 0 },
+  charge: { label: '突進', desc: '向前直衝，撞飛沿途敵人', steps: 7, every: 0.09, mult: 1.05, radius: 4.5, reach: 3, spread: 0 },
+  rain: { label: '天降', desc: '前方一片連環轟落', steps: 14, every: 0.09, mult: 1.95, radius: 4.5, reach: 10, spread: 7 },
+  nova: { label: '爆發', desc: '三重衝擊波向外擴散', steps: 3, every: 0.35, mult: 0.9, radius: 4, reach: 0, spread: 0 },
+  thunder: { label: '落雷', desc: '連環雷劈附近敵人', steps: 8, every: 0.14, mult: 1.05, radius: 2.5, reach: 24, spread: 8 },
+  shadow: { label: '瞬斬', desc: '瞬移連斬，一刀一個', steps: 6, every: 0.16, mult: 1.5, radius: 2.5, reach: 18, spread: 0 },
+  rally: { label: '號令', desc: '全軍回血回士氣，同時震開身邊敵人', steps: 3, every: 0.4, mult: 1.35, radius: 7, reach: 22, spread: 0 },
 };
 
 export const MUSOU_RULES = {
