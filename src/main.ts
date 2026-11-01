@@ -49,7 +49,7 @@ const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
 void loadSkins();
-if (import.meta.env.DEV) (window as unknown as { battle: Battle }).battle = battle;
+if (import.meta.env.DEV) Object.assign(window, { battle, debug: { startBattle: () => startBattle, openPlace: () => openPlace } });
 if (settings.quality !== battle.quality) battle.setQuality(settings.quality);
 
 let slot = 0;
@@ -175,6 +175,7 @@ function leaveTown() {
   battle.active = false;
   releaseMouse();
   hud.hideHud();
+  view.pause();
   showPlace(p);
 }
 
@@ -205,6 +206,7 @@ function backToMap() {
 }
 
 function showEnding() {
+  view.pause();
   const pol = world.politics;
   hud.showScreen(`
     <div class="card">
@@ -252,7 +254,7 @@ function storyHeroAt(p: PlaceDef): StoryHero | undefined {
 
 function openPlace(p: PlaceDef) {
   currentPlace = p;
-  view.stop();
+  view.pause();
   const done = onArrive(world, p);
   if (done.length) screens.say(done.join('　'));
   saveGame();
@@ -302,13 +304,14 @@ async function startBattle(
   afterBattle = done;
   walking = null;
   screens.walking = false;
-  view.stop();
+  view.pause();
   const h = roster.hero;
   const hard = DIFFICULTY[world.save.difficulty ?? 'normal'];
   const scaled = enemy.map((e) => (UNITS[e.unit].boss || UNITS[e.unit].hero ? e : { ...e, count: Math.max(1, Math.round(e.count * hard.count)) }));
   const launch = async (formations: FormationCheck[]) => {
     battle.sfx.unlock();
     await loadSkins();
+    view.stop();
     hud.hideScreen();
     battle.start({
       playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy: arenaFight ? enemy : scaled,
@@ -695,7 +698,7 @@ battle.onEnd = (result: BattleResult) => {
 view.onEvent = (e) => {
   if (e.type === 'place') openPlace(e.place);
   else {
-    view.stop();
+    view.pause();
     if (e.type === 'bandit') screens.bandit(e.bandit);
     else if (e.type === 'npc') screens.npc(e.npc);
     else if (e.type === 'hunted') screens.hunted(e.npc);
@@ -761,11 +764,11 @@ window.addEventListener('keydown', (e) => {
 });
 
 view.onJob = () => {
-  view.stop();
+  view.pause();
   camp.show(() => reopenPlace(), 'job');
 };
 view.onParty = () => {
-  view.stop();
+  view.pause();
   camp.show(() => reopenPlace());
 };
 view.onMenu = () => {

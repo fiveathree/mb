@@ -420,6 +420,12 @@ export class WorldView {
     cancelAnimationFrame(this.raf);
   }
 
+  /** 停低但留低地圖做背景：開選單用，否則會見到底下 3D 畫布上一場戰鬥嘅殘影 */
+  pause() {
+    this.stop();
+    this.canvas.hidden = false;
+  }
+
   private frame(now: number) {
     if (!this.active) return;
     const dt = Math.min((now - this.last) / 1000, 0.1);
