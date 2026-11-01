@@ -95,6 +95,12 @@ function storyText(world: World, text: string): string {
     .replace(/\{c\}/g, name('xuan_city')).replace(/\{d\}/g, name('dragonlair')).replace(/\{name\}/g, () => world.roster.hero.name);
 }
 
+/** 主線任務嘅故事文字，支線冇 */
+export function questStory(world: World, q: Quest): string {
+  const c = q.story !== undefined ? CHAPTERS[q.story] : undefined;
+  return c ? storyText(world, c.text) : '';
+}
+
 /** 開新一章：主線唔過期，亦唔佔任務名額 */
 export function nextChapter(world: World, index: number) {
   const w = world.save;

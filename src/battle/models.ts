@@ -969,7 +969,7 @@ export function syncHuman(c: Combatant, dt: number) {
     r.legR.rotation.set(-0.6 - s * 0.5, 0, 0);
   }
   r.root.position.y += hover(c);
-  r.marker.visible = !c.dead && !c.def.civilian && !c.def.colossal;
+  r.marker.visible = !c.dead && !c.def.civilian && !c.def.colossal && !c.def.animal;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
   // 有骨架模型：舊 rig 繼續計位，只畫頭頂標記
   flushParts(r.root, r.parts, false, c.skin ? r.marker : undefined);

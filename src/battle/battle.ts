@@ -36,6 +36,8 @@ import { updateHorse } from './horse';
 import { Input } from './input';
 import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
 import { SkinPool } from './skins';
+import { Mission } from './mission';
+import type { MissionDef } from '../data/missions';
 import { trySkill, updateSkills } from './skills';
 import { SKILL_KEYS, SKILL_RULES, SKILL_TUNE } from '../data/skills';
 import { mountLook, skinLook } from '../data/skins';
@@ -93,6 +95,8 @@ export interface BattleSetup {
   river?: boolean;
   /** 入城行街，唔係打仗 */
   town?: { shops: [string, string][]; style: TownStyleId; seed: number };
+  /** 職業工作場景 */
+  mission?: MissionDef;
   /** 地下城陷阱數，冇就用預設 */
   traps?: number;
   /** 地下城隔牆數，冇就用預設 */
@@ -114,6 +118,8 @@ export interface BattleResult {
   gold: number;
   exp: number;
   renown: number;
+  /** 職業工作，唔係打仗 */
+  work: boolean;
   captives: number;
   outcomes: BattleOutcome[];
   playerKills: number;
@@ -133,6 +139,7 @@ export class Battle implements CombatWorld {
   private baseObstacles: Obstacle[];
   private batches: Batches;
   private skins: SkinPool;
+  mission: Mission | null = null;
   private wall = new THREE.Group();
   /** 牆同門位 */
   private walls: { z: number; gaps: number[]; width: number; ladders?: number[] }[] = [];
@@ -217,7 +224,7 @@ export class Battle implements CombatWorld {
   onPauseKey: (() => void) | null = null;
   onCursorKey: (() => void) | null = null;
 
-  constructor(canvas: HTMLCanvasElement, private hud: Hud) {
+  constructor(canvas: HTMLCanvasElement, public hud: Hud) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio));
     this.renderer.shadowMap.enabled = true;
@@ -379,8 +386,9 @@ export class Battle implements CombatWorld {
   }
 
   /** 森林戰場：樹擋路，騎兵慢 */
-  private plantForest() {
-    const { trees, spreadX, spreadZ, treeRadius } = FOREST;
+  private plantForest(count = FOREST.trees) {
+    const { spreadX, spreadZ, treeRadius } = FOREST;
+    const trees = count;
     const list = Array.from({ length: trees }, () => {
       const x = (Math.random() - 0.5) * spreadX * 2;
       const z = (Math.random() - 0.5) * spreadZ * 2;
@@ -777,7 +785,7 @@ export class Battle implements CombatWorld {
       : DUNGEON.walls;
     this.buildWalls(setup.breaches ?? 0, !!setup.firstPerson);
     this.forest = setup.theme === 'forest';
-    if (this.forest) this.plantForest();
+    if (this.forest) this.plantForest(setup.mission?.trees);
     paintScenery(setup.theme);
     setRiver(!!setup.river);
     if (setup.river) this.layRiver();
@@ -887,6 +895,7 @@ export class Battle implements CombatWorld {
         if (u.horse) u.horse.pos.copy(u.pos);
       }
     }
+    this.mission = setup.mission ? new Mission(this, setup.mission) : null;
     this.running = true;
     this.active = true;
     this.lastNow = 0;
@@ -988,7 +997,7 @@ export class Battle implements CombatWorld {
     this.tickCommand(dt);
 
     for (const u of this.units) {
-      if (u === p || u.dead || u.musouT > 0 || u.bindT > 0 || u.cloudT > 0) continue;
+      if (u === p || u.dead || u.musouT > 0 || u.bindT > 0 || u.cloudT > 0 || u.calm) continue;
       if (u.def.colossal) updateColossus(u, dt, this);
       else updateAi(u, dt, this);
     }
@@ -1053,6 +1062,7 @@ export class Battle implements CombatWorld {
     if (!this.peaceful) {
       updateMusou(this, dt);
       updateSkills(this, dt);
+      this.mission?.update(dt);
     }
     if (this.peaceful) this.updateTown(dt);
     // 主角倒下：跟隨嘅部隊唔再等，繼續打
@@ -1480,6 +1490,7 @@ export class Battle implements CombatWorld {
   private checkEnd(real: number) {
     if (this.peaceful) return;
     if (this.endT < 0) {
+      if (this.mission) return;
       const alive = (team: number) => this.units.some((u) => u.team === team && !u.dead && !u.routing);
       if (!alive(0) || !alive(1)) {
         this.win = alive(0);
@@ -1520,6 +1531,16 @@ export class Battle implements CombatWorld {
     this.aftermath = this.win
       ? `你倒下之後，${mine.length} 名部下死戰，擊退 ${foes.length} 名敵軍。`
       : `你倒下之後，${mine.length} 名部下不敵 ${foes.length} 名敵軍，全軍潰敗。`;
+  }
+
+  /** 職業工作完成或者時間到 */
+  endMission(win: boolean) {
+    this.win = win;
+    this.endT = RESULT_DELAY;
+  }
+
+  addProp(o: THREE.Object3D) {
+    this.wall.add(o);
   }
 
   retreat() {
@@ -1585,7 +1606,7 @@ export class Battle implements CombatWorld {
     }
     return {
       win: this.win, retreated: this.retreated, playerDown: this.player.dead, aftermath: this.aftermath, stats: this.stats, rows,
-      gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills, captiveUnits,
+      gold, exp, renown: Math.round(renown), captives, outcomes, playerKills: this.stats.kills, captiveUnits, work: !!this.mission,
     };
   }
 

@@ -1,5 +1,5 @@
 import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef } from '../data/world';
-import type { Quest } from '../quests/quests';
+import { questStory, type Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
 import { jobTitle } from '../data/jobs';
@@ -30,6 +30,9 @@ const LABEL_MIN_SCALE = 0.34;
 const DEFAULT_SKY = ['bird'];
 /** 行咗幾多格就重新計預覽路線 */
 const PREVIEW_REPLAN = 3;
+/** 任務詳情嘅全圖縮圖：畫布大小、最少睇幾闊、留邊 */
+const QUEST_MAP = { w: 320, h: 240, minSpan: 420, pad: 1.25 };
+type Preview = { id: number; x: number; y: number; name: string; path: { x: number; y: number }[]; fromX: number; fromY: number };
 /** 大地圖 NPC 造型 */
 const NPC_LOOK: Partial<Record<string, PartyLook>> = {
   caravan: 'wagon', fisher: 'boat', patrol: 'horse', messenger: 'horse', lord: 'horse', raider: 'orc', expedition: 'horse', figure: 'mage',
@@ -63,9 +66,10 @@ export class WorldView {
   private zoomGoal = 1;
   private zoomNow = 1;
   private questBar: HTMLElement;
+  private questPanel: HTMLElement;
   private questKey = '';
   /** 任務欄撳出嚟嘅路線預覽 */
-  private preview: { id: number; x: number; y: number; name: string; path: { x: number; y: number }[]; fromX: number; fromY: number } | null = null;
+  private preview: Preview | null = null;
   private picker: HTMLElement | null = null;
   private pickerClose: (() => void) | null = null;
   private follow = true;
@@ -92,6 +96,10 @@ export class WorldView {
     this.renderBase();
     this.bar = document.getElementById('mapbar')!;
     this.questBar = document.getElementById('questbar')!;
+    this.questPanel = document.createElement('div');
+    this.questPanel.id = 'questpanel';
+    this.questPanel.hidden = true;
+    document.body.append(this.questPanel);
     this.questBar.addEventListener('click', (e) => {
       const doom = (e.target as HTMLElement).closest<HTMLElement>('[data-c]');
       if (doom) {
@@ -330,12 +338,100 @@ export class WorldView {
   private clickQuest(id: number) {
     const q = this.world.save.quests.find((x) => x.id === id);
     if (!q) return;
-    if (this.preview?.id === id) {
-      this.world.goTo(this.preview.x, this.preview.y, PLACES.find((p) => p.id === q.target) ?? null);
+    this.planRoute(q);
+    this.questKey = '';
+    this.openQuest(q);
+  }
+
+  private closeQuest() {
+    this.questPanel.hidden = true;
+  }
+
+  /** 任務詳情：全圖路線、內容、獎勵；窗口大小固定 */
+  private openQuest(q: Quest) {
+    const w = this.world.save;
+    const goal = this.questGoal(q);
+    const route = this.preview?.id === q.id ? this.preview : null;
+    const place = PLACES.find((p) => p.id === q.target);
+    const days = route ? Math.ceil(route.path.length / this.world.partySpeed() / TIME.secondsPerDay) : 0;
+    const giver = PLACES.find((p) => p.id === q.giver)?.name ?? '';
+    const what: Record<string, string> = {
+      letter: `將信親手送到${place?.name ?? '目的地'}，行到就完成。`,
+      grain: `帶足 ${q.food} 糧去${place?.name ?? '目的地'}。你而家有 ${Math.floor(w.food)} 糧。`,
+      bandits: `打低 ${q.need} 夥山賊，已清 ${q.progress} 夥。`,
+      boss: `攻入${place?.name ?? '目的地'}，打贏首領。`,
+    };
+    const chapter = questStory(this.world, q);
+    const reward = [q.gold ? `${q.gold} 金` : '', q.renown ? `聲望 +${q.renown}` : '', q.relation ? `關係 +${q.relation}` : ''].filter(Boolean).join('、') || '推進主線';
+    const limit = q.story !== undefined ? '主線，冇時限' : `第 ${q.deadline} 日前（剩 ${Math.max(0, q.deadline - dayOf(w))} 日）`;
+    const state = !goal ? '而家地圖上搵唔到目標，等佢出現先去' : !route ? '陸路行唔到，要去港口搭船' : `去${goal.name}，約 ${days} 日`;
+    this.questPanel.innerHTML = `
+      <canvas width="${QUEST_MAP.w}" height="${QUEST_MAP.h}"></canvas>
+      <div class="qinfo">
+        <h3>${q.title}</h3>
+        <p>${what[q.kind] ?? ''}</p>
+        ${chapter ? `<p class="dim">${chapter}</p>` : ''}
+        <p><b>獎勵</b> ${reward}</p>
+        <p><b>期限</b> ${limit}</p>
+        ${giver ? `<p><b>委託</b> ${giver}</p>` : ''}
+        <p><b>路線</b> ${state}</p>
+        <div class="row"><button class="go small" data-go ${route ? '' : 'disabled'}>出發</button><button class="alt small" data-close>關閉</button></div>
+      </div>`;
+    this.questPanel.hidden = false;
+    this.questPanel.querySelector<HTMLElement>('[data-close]')!.onclick = () => this.closeQuest();
+    this.questPanel.querySelector<HTMLElement>('[data-go]')!.onclick = () => {
+      if (!route) return;
+      this.world.goTo(route.x, route.y, place ?? null);
       this.follow = true;
       this.preview = null;
-    } else this.planRoute(q);
-    this.questKey = '';
+      this.questKey = '';
+      this.closeQuest();
+    };
+    this.drawQuestMap(this.questPanel.querySelector('canvas')!, route, goal);
+  }
+
+  /** 全圖縮圖：鏡頭睇唔到嘅路線都見到 */
+  private drawQuestMap(c: HTMLCanvasElement, route: Preview | null, goal: { x: number; y: number; name: string } | null) {
+    const w = this.world.save;
+    const g = c.getContext('2d')!;
+    const pts = [{ x: w.x, y: w.y }, ...(route?.path ?? []), ...(goal ? [goal] : [])].map((p) => ({ x: p.x * PX, y: p.y * PX }));
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const span = Math.max(Math.max(...xs) - Math.min(...xs), (Math.max(...ys) - Math.min(...ys)) * (c.width / c.height), QUEST_MAP.minSpan) * QUEST_MAP.pad;
+    const sw = Math.min(span, this.base.width);
+    const sh = Math.min(sw * (c.height / c.width), this.base.height);
+    const sx = Math.max(0, Math.min(this.base.width - sw, (Math.min(...xs) + Math.max(...xs) - sw) / 2));
+    const sy = Math.max(0, Math.min(this.base.height - sh, (Math.min(...ys) + Math.max(...ys) - sh) / 2));
+    g.drawImage(this.base, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const X = (x: number) => ((x * PX - sx) / sw) * c.width;
+    const Y = (y: number) => ((y * PX - sy) / sh) * c.height;
+    if (route) {
+      g.strokeStyle = '#f2c14e';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(X(w.x), Y(w.y));
+      for (const p of route.path) g.lineTo(X(p.x), Y(p.y));
+      g.stroke();
+    }
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.arc(X(w.x), Y(w.y), 5, 0, Math.PI * 2);
+    g.fill();
+    if (goal) {
+      g.strokeStyle = '#ff5a3a';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.arc(X(goal.x), Y(goal.y), 8, 0, Math.PI * 2);
+      g.stroke();
+      g.font = '700 13px "Noto Sans HK"';
+      g.textAlign = 'center';
+      g.lineWidth = 3;
+      g.strokeStyle = '#000';
+      const ty = Math.max(14, Y(goal.y) - 13);
+      g.strokeText(goal.name, X(goal.x), ty);
+      g.fillStyle = '#fff';
+      g.fillText(goal.name, X(goal.x), ty);
+    }
   }
 
   private drawQuests() {
@@ -353,11 +449,11 @@ export class WorldView {
     this.questBar.hidden = !w.quests.length && !dooms.length;
     const line = (q: Quest) => {
       const on = this.preview?.id === q.id;
-      const note = on ? `去${this.preview!.name}，約 ${days} 日。再撳出發` : `${q.story !== undefined ? '主線' : `第 ${q.deadline} 日前`}${q.need > 1 ? `　${q.progress}／${q.need}` : ''}`;
+      const note = `${q.story !== undefined ? '主線' : `第 ${q.deadline} 日前`}${q.need > 1 ? `　${q.progress}／${q.need}` : ''}`;
       return `<button class="quest ${on ? 'on' : ''}" data-q="${q.id}"><b>${q.title}</b><small>${note}</small></button>`;
     };
     const alarm = dooms.map((n) => `<button class="quest doom" data-c="${n.id}"><b>${NPC[n.kind].name}</b><small>距離 ${Math.round(Math.hypot(n.x - w.x, n.y - w.y))} 格，撳即追擊</small></button>`).join('');
-    this.questBar.innerHTML = `${alarm}<div class="pick-title">任務（撳睇路線）</div>${w.quests.map(line).join('')}`;
+    this.questBar.innerHTML = `${alarm}<div class="pick-title">任務（撳睇內容同路線）</div>${w.quests.map(line).join('')}`;
   }
 
   private visit(p: PlaceDef) {
@@ -411,6 +507,7 @@ export class WorldView {
   }
 
   stop() {
+    this.closeQuest();
     this.closePicker();
     this.active = false;
     this.canvas.hidden = true;

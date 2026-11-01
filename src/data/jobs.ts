@@ -160,17 +160,6 @@ export const ACHIEVEMENTS: { name: string; desc: string; done: (s: AchieveState)
 ];
 
 /** 做工小遊戲：指針來回，撳中綠區同紅心收成多啲 */
-export const WORK_GAME = {
-  period: 1100,
-  zone: 0.24,
-  /** 每職業級闊幾多 */
-  zonePerLevel: 0.012,
-  bullseye: 0.05,
-  perfect: 1.6,
-  good: 1.25,
-  miss: 0.7,
-};
-
 /** 十級職業結局嘅獎勵 */
 export const CAREER_REWARD = { gold: 3000, renown: 30 };
 export const CAREER_ENDING = '唔靠刀兵，唔爭天下。你由一個無名嘅{job}做起，一朝一日，成為人人傳頌嘅{title}。史書未必有你，但市井街頭，人人都講你嘅故事。';

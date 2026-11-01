@@ -145,6 +145,7 @@ const BOSS_TINT: Record<string, number> = { boss_lightgod: 0xfff0c0, boss_jiangw
 
 /** 按兵種、武器、種族揀外觀：所有單位都有 */
 export function skinLook(def: UnitDef, weapons: WeaponDef[]): SkinLook {
+  if (def.animal) return { file: def.animal.file, family: 'beast' };
   const race: Race = def.race ?? 'human';
   const model = weapons[0]?.model;
   const shield = weapons.some((w) => w.hasShield) && def.role !== 'mage';

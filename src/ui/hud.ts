@@ -86,6 +86,7 @@ export class Hud {
           <div id="weapon"></div>
           <div id="hint"></div>
         </div>
+        <div id="mission" hidden></div>
         <div id="skills" hidden></div>
         <div id="table" hidden></div>
       </div>
@@ -218,6 +219,16 @@ export class Hud {
   showResult(r: BattleResult, p: BattleProgress, extra: string, onContinue: () => void, nextLabel = '返回大地圖') {
     const s = r.stats;
     this.hudEl.hidden = true;
+    if (r.work) {
+      this.showScreen(`
+        <div class="card">
+          <h2 class="${r.win ? 'win' : 'lose'}">${r.win ? '收工' : r.retreated ? '提早收工' : '未做完'}</h2>
+          <p class="sub">${extra}</p>
+          <div class="row"><button class="go" id="next">${nextLabel}</button></div>
+        </div>`);
+      this.q('#next').onclick = onContinue;
+      return;
+    }
     const title = r.win ? '大獲全勝' : r.retreated ? '撤退' : '戰敗';
     this.showScreen(`
       <div class="card wide">
@@ -241,6 +252,13 @@ export class Hud {
   }
 
   /** 出絕招嘅大字 */
+  /** 職業工作目標 */
+  setMission(text: string) {
+    const el = this.q('#mission');
+    el.hidden = !text;
+    if (el.textContent !== text) el.textContent = text;
+  }
+
   /** 底部技能列：換角色先重砌，之後只更新冷卻 */
   private drawSkills(p: Combatant) {
     const box = this.q('#skills');

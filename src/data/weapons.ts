@@ -281,6 +281,8 @@ const WEAPON_LIST: WeaponDef[] = [
 ];
 
 export const WEAPONS: Record<string, WeaponDef> = Object.fromEntries(WEAPON_LIST.map((w) => [w.id, w]));
+/** 動物咬人：冇盾、冇手持模型 */
+WEAPONS.animal_bite = { ...WEAPONS.sword, id: 'animal_bite', name: '獸牙', hasShield: false, baseDamage: 16, reach: 2.4 };
 
 /** 落雷：由天劈落瞄準點，範圍細 */
 for (const id of ['lightning', 'troop_bolt', 'lich_bolt', 'dragon_bolt']) {

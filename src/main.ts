@@ -18,6 +18,8 @@ import { STORY_HEROES, type StoryHero } from './data/honor';
 import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten, onBossBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
+import { MISSION_RULES, missionOf, type MissionDef } from './data/missions';
+import type { WorkDef } from './data/jobs';
 import { loadSkins } from './battle/skins';
 import { mountLook, skinLook } from './data/skins';
 import { WEAPONS } from './data/weapons';
@@ -53,13 +55,14 @@ const battle = new Battle(canvas, hud);
 const looksOf = (units: string[]) => units.map((u) => skinLook(UNITS[u], UNITS[u].weapons.map((w) => WEAPONS[w]).filter(Boolean)));
 // 背景載入全部模型，開戰前只等今場要用嗰啲
 void loadSkins(looksOf(Object.keys(UNITS)));
-if (import.meta.env.DEV) Object.assign(window, { battle, debug: { startBattle: () => startBattle, openPlace: () => openPlace } });
+if (import.meta.env.DEV) Object.assign(window, { battle, debug: { startBattle: () => startBattle, openPlace: () => openPlace, startWork: () => startWork, roster: () => roster, world: () => world } });
 if (settings.quality !== battle.quality) battle.setQuality(settings.quality);
 
 let slot = 0;
 let roster: Roster = newRoster();
 let world = new World(newWorld(), roster);
 const camp = new Camp(hud, roster, world);
+camp.onWork = (work, index) => startWork(work, index);
 let inBattle = false;
 let ignoreUnlock = false;
 let afterBattle: (win: boolean) => string = () => '';
@@ -303,7 +306,7 @@ function releaseMouse() {
 
 async function startBattle(
   enemy: ArmyEntry[], enemyLevel: number, theme: BattleTheme, done: (win: boolean) => string, soldiers: Soldier[] = deployment(roster),
-  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean; traps?: number; rooms?: number } = {},
+  extra: { breaches?: number; dismount?: boolean; firstPerson?: boolean; defend?: boolean; traps?: number; rooms?: number; mission?: MissionDef } = {},
 ) {
   afterBattle = done;
   walking = null;
@@ -319,9 +322,9 @@ async function startBattle(
     view.stop();
     hud.hideScreen();
     battle.start({
-      playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy: arenaFight ? enemy : scaled,
+      playerDef: playerDef(h), horse: playerHorse(h), loadout: extra.mission?.tool && !h.loadout.includes(extra.mission.tool) ? [...h.loadout, extra.mission.tool] : h.loadout, soldiers, enemy: arenaFight ? enemy : scaled,
       enemyLevel: Math.max(1, enemyLevel + (arenaFight ? 0 : hard.level)), theme, moraleMult: moraleMult(), ...extra,
-      dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky, river: !extra.firstPerson && !extra.breaches && nearWater(),
+      dismount: extra.dismount || RACES[h.race].noRide, sky: currentScenario().sky, river: extra.mission ? !!extra.mission.river : !extra.firstPerson && !extra.breaches && nearWater(),
       formations, enemyCultures: arenaFight ? [] : currentScenario().cultures,
     });
     inBattle = true;
@@ -334,6 +337,21 @@ async function startBattle(
     return;
   }
   showFormationPick(hud, formationsFor(currentScenario().cultures, h, soldiers), (order) => void launch(order));
+}
+
+/** 職業工作：入場做完先結算收成 */
+function startWork(work: WorkDef, index: number) {
+  const hero = roster.hero;
+  const mission = missionOf(hero.job, index);
+  if (!mission) return;
+  const before = hero.careers.length;
+  arenaFight = true;
+  void startBattle(mission.foes ?? [], 1, mission.theme, () => {
+    const m = battle.mission;
+    const text = world.doWork(work, MISSION_RULES.yieldBase + (m?.score ?? 0), m?.caught);
+    if (hero.careers.length > before) afterResult = () => camp.showCareerEnding();
+    return text;
+  }, [], { dismount: true, mission });
 }
 
 /** 打贏之後掉落：貨物同有機會出品質裝備 */

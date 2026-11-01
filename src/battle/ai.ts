@@ -331,7 +331,7 @@ function dodge(c: Combatant, ai: AiState, t: Combatant, dist: number) {
   if (!charging && dist > AI.chargeAwareDist) ai.dodgeDecided = false;
 }
 
-function moveVel(c: Combatant, vx: number, vz: number, dt: number) {
+export function moveVel(c: Combatant, vx: number, vz: number, dt: number) {
   const step = AI.accel * dt;
   c.vel.x = moveToward(c.vel.x, vx, step);
   c.vel.z = moveToward(c.vel.z, vz, step);

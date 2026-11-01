@@ -71,6 +71,8 @@ export interface UnitDef {
   colossal?: boolean;
   /** 冠位角色 id，有就有專屬戰技 */
   crown?: string;
+  /** 動物：用邊個模型、會唔會走 */
+  animal?: { file: string; flee?: boolean };
   /** 覆蓋種族膚色，五色龍用 */
   skin?: number;
   /** 額外體型倍率 */
@@ -720,3 +722,13 @@ export const ENEMY_COMMAND = {
   /** 敵軍前進點離我軍前線嘅距離 */
   advanceStep: 14,
 };
+
+/** 打獵用動物：鹿、狐會走，狼、野牛會反攻 */
+const animal = (id: string, name: string, file: string, hp: number, run: number, scale: number, flee: boolean): UnitDef => ({
+  ...UNITS.kobold, id, name, hp, armor: 0, walkSpeed: run * 0.4, runSpeed: run, scale, weapons: ['animal_bite'], animal: { file, flee }, tier: 1, morale: 200, pool: 'boss', race: undefined,
+});
+UNITS.anim_deer = animal('anim_deer', '野鹿', 'a_Deer', 40, 6.4, 0.85, true);
+UNITS.anim_stag = animal('anim_stag', '雄鹿', 'a_Stag', 60, 6, 1, true);
+UNITS.anim_fox = animal('anim_fox', '狐狸', 'a_Fox', 25, 6.8, 0.55, true);
+UNITS.anim_wolf = animal('anim_wolf', '野狼', 'a_Wolf', 70, 6.2, 0.75, false);
+UNITS.anim_bull = animal('anim_bull', '野牛', 'a_Bull', 160, 5, 1.1, false);

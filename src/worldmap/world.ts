@@ -307,17 +307,25 @@ export class World {
     return out;
   }
 
-  /** 做一份工：過時間、攞收成、加職業經驗，回傳結果 */
-  doWork(work: WorkDef, skill = 1): string {
+  /** 做唔做到呢份工，唔得就講原因 */
+  workBlock(work: WorkDef): string {
     const w = this.save;
-    const h = this.roster.hero;
     if (!this.workPlaces().has(work.where)) return `要去${WORK_PLACE[work.where]}先做到`;
     if (work.needFood && w.food < work.needFood) return `要 ${work.needFood} 糧`;
     if (work.needGood && w.cargo[work.needGood[0]] < work.needGood[1]) return `要 ${work.needGood[1]} 件${GOODS[work.needGood[0]].name}`;
+    return '';
+  }
+
+  /** 做一份工：過時間、攞收成、加職業經驗，回傳結果 */
+  doWork(work: WorkDef, skill = 1, caught = false): string {
+    const w = this.save;
+    const h = this.roster.hero;
+    const block = this.workBlock(work);
+    if (block) return block;
     if (work.needFood) w.food -= work.needFood;
     if (work.needGood) w.cargo[work.needGood[0]] -= work.needGood[1];
     this.advanceTime((work.hours / 24) * TIME.secondsPerDay);
-    if (work.risk && Math.random() < work.risk.chance) {
+    if (work.risk && caught) {
       w.pol.justice = Math.max(-100, w.pol.justice + work.risk.justice);
       this.roster.gold = Math.max(0, this.roster.gold - work.risk.gold);
       return `失手被捉！罰 ${work.risk.gold} 金，正義 ${work.risk.justice}`;

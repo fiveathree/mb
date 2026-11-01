@@ -1,7 +1,8 @@
 import { ATTR_DESC, ATTR_NAME, EXPEDITION, EXPEDITION_POST, HERO, SKILLS, SKILL_ORDER, type AttrId, type SkillId } from '../data/economy';
 import { HORSES, HORSE_RANK, MOUNT_REWARD, MOVE_NAME, STABLES, moveOf } from '../data/horses';
 import { currentFigures, currentScenario } from '../data/scenarios';
-import { ACHIEVEMENTS, CAREER_ENDING, JOBS, JOB_RULES, JOB_TITLES, WORK_GAME, WORK_PLACE, jobOf, jobTitle, type AchieveState, type WorkDef } from '../data/jobs';
+import { missionOf } from '../data/missions';
+import { ACHIEVEMENTS, CAREER_ENDING, JOBS, JOB_RULES, JOB_TITLES, WORK_PLACE, jobOf, jobTitle, type AchieveState, type WorkDef } from '../data/jobs';
 import { dayOf } from '../worldmap/world';
 import { PLACES } from '../data/world';
 import { GACHA, LEVEL, POOLS, POOL_ORDER, RARITY, RARITY_ORDER, CAMPAIGN, type TicketPool } from '../data/gacha';
@@ -39,6 +40,8 @@ export class Camp {
   private lastDraw: DrawResult[] = [];
   private notice = '';
   private onBack: () => void = () => {};
+  /** 開工：入 3D 場景 */
+  onWork: ((work: WorkDef, index: number) => void) | null = null;
 
   private gear: GearPanel;
 
@@ -85,7 +88,15 @@ export class Camp {
     if (this.tab === 'gear') this.gear.bind();
     this.$$('#back', (el) => { el.onclick = this.onBack; });
     this.$$('[data-work]', (el) => {
-      el.onclick = () => this.playWork(jobOf(hero.job).work[Number(el.dataset.work)]);
+      el.onclick = () => {
+        const i = Number(el.dataset.work);
+        const work = jobOf(hero.job).work[i];
+        const block = this.world.workBlock(work);
+        if (block) {
+          this.notice = block;
+          this.render();
+        } else this.onWork?.(work, i);
+      };
     });
     this.$$('[data-job]', (el) => {
       el.onclick = () => {
@@ -310,60 +321,8 @@ export class Camp {
       </div>`;
   }
 
-  /** 做工小遊戲：用時間計指針位置，唔靠畫面幀數 */
-  private playWork(work: WorkDef) {
-    if (document.querySelector('.work-game')) return;
-    const hero = this.roster.hero;
-    const { period, zone, zonePerLevel, bullseye, perfect, good, miss } = WORK_GAME;
-    const wide = zone + hero.jobLevel * zonePerLevel;
-    const center = wide / 2 + Math.random() * (1 - wide);
-    const start = performance.now();
-    const pos = () => {
-      const t = ((performance.now() - start) / period) % 2;
-      return t < 1 ? t : 2 - t;
-    };
-    const box = document.createElement('div');
-    box.className = 'work-game';
-    box.innerHTML = `
-      <div class="pick-title">${work.label}：撳中綠區收成加碼，紅心最多</div>
-      <div class="work-bar">
-        <i class="zone" style="left:${(center - wide / 2) * 100}%;width:${wide * 100}%"></i>
-        <i class="heart" style="left:${(center - bullseye) * 100}%;width:${bullseye * 200}%"></i>
-        <i class="needle"></i>
-      </div>
-      <button class="go" id="workStop">撳！</button>`;
-    document.querySelector('#screen .card')!.append(box);
-    const needle = box.querySelector<HTMLElement>('.needle')!;
-    let raf = 0;
-    const draw = () => {
-      needle.style.left = `${pos() * 100}%`;
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    const stop = () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('keydown', onKey);
-      const off = Math.abs(pos() - center);
-      const skill = off <= bullseye ? perfect : off <= wide / 2 ? good : miss;
-      const grade = off <= bullseye ? '完美' : off <= wide / 2 ? '做得好' : '手震';
-      const before = hero.careers.length;
-      const text = this.world.doWork(work, skill);
-      this.notice = `${grade}！${text}`;
-      if (hero.careers.length > before) this.showCareerEnding();
-      else this.render();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        stop();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    box.querySelector<HTMLElement>('#workStop')!.onclick = stop;
-  }
-
   /** 登頂結局 */
-  private showCareerEnding() {
+  showCareerEnding() {
     const h = this.roster.hero;
     const title = JOB_TITLES[h.job][2];
     this.hud.showScreen(`
@@ -387,7 +346,7 @@ export class Camp {
     const here = this.world.workPlaces();
     const works = job.work.map((w, i) => {
       const ok = here.has(w.where);
-      return `<button class="alt work" data-work="${i}" ${ok ? '' : 'disabled'}>${w.label}（${w.hours} 個鐘）<small>${ok ? '' : `要去${WORK_PLACE[w.where]}`}</small></button>`;
+      return `<button class="alt work" data-work="${i}" ${ok ? '' : 'disabled'}>${w.label}（${w.hours} 個鐘）<small>${ok ? missionOf(h.job, i)?.brief ?? '' : `要去${WORK_PLACE[w.where]}`}</small></button>`;
     }).join('');
     const need = h.jobLevel * JOB_RULES.xpPerLevel;
     const list = JOBS.map((j) => `<button class="wp ${j.id === h.job ? 'on' : ''}" data-job="${j.id}">${j.name}</button>`).join('');
@@ -396,7 +355,7 @@ export class Camp {
       <div class="pick-title">呢行嘅終點：做到 ${JOB_RULES.maxLevel} 級成為「${JOB_TITLES[h.job][2]}」，唔使打仗都青史留名。</div>
       ${h.careers.length ? `<div class="pick-title">已經登頂：${h.careers.map((c) => JOB_TITLES[c][2]).join('、')}</div>` : ''}
       <p class="notice">${this.notice}</p>
-      <div class="pick-title">工作（會過時間，收成隨等級增加）</div>
+      <div class="pick-title">工作（落場實際做嘢，做得齊收成多，收成隨等級增加）</div>
       <div class="row wrap">${works}</div>
       <div class="pick-title">轉職（${JOB_RULES.changeCost} 金，職業等級重新計）</div>
       <div class="weapons">${list}</div>`;

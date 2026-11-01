@@ -75,6 +75,8 @@ export class Combatant {
   skin?: HumanSkin;
   /** 夠近，呢幀畫骨架模型 */
   skinOn = false;
+  /** 職業場景：未發現主角，由 Mission 控制 */
+  calm = false;
   /** 按鍵技能冷卻同效果剩餘秒數 */
   skillCd = [0, 0, 0, 0, 0, 0];
   skillThink = 0;
