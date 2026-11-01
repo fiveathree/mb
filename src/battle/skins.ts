@@ -10,7 +10,7 @@ import { FAMILY_CLIPS, type SkinFamily, type SkinLook } from '../data/skins';
 const HUMAN_HEIGHT = 1.9;
 const MOUNT_LENGTH = 2.6;
 /** 騎馬時腳部同馬鞍嘅高度修正 */
-const RIDER_DROP = 0.42;
+const RIDER_DROP = -0.42;
 const FADE = 0.14;
 const CROWD_CAPACITY = 160;
 const SKIN_TONE = 0xe0b48c;
@@ -143,7 +143,8 @@ const WEAPON_GEO: Record<string, () => THREE.BufferGeometry> = {
 const geoCache = new Map<string, THREE.BufferGeometry>();
 const weaponGeo = (k: string) => {
   let g = geoCache.get(k);
-  if (!g) geoCache.set(k, (g = WEAPON_GEO[k]()));
+  // 手部骨頭 y 軸向手腕，反轉先指向前上方
+  if (!g) geoCache.set(k, (g = WEAPON_GEO[k]().rotateX(Math.PI)));
   return g;
 };
 
