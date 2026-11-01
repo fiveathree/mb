@@ -19,6 +19,8 @@ import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten, onBossBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
 import { loadSkins } from './battle/skins';
+import { mountLook, skinLook } from './data/skins';
+import { WEAPONS } from './data/weapons';
 import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
 import { ARENA, ARMORS, CAPTIVE, DIFFICULTY, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { settings } from './core/settings';
@@ -48,7 +50,9 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
-void loadSkins();
+const looksOf = (units: string[]) => units.map((u) => skinLook(UNITS[u], UNITS[u].weapons.map((w) => WEAPONS[w]).filter(Boolean)));
+// 背景載入全部模型，開戰前只等今場要用嗰啲
+void loadSkins(looksOf(Object.keys(UNITS)));
 if (import.meta.env.DEV) Object.assign(window, { battle, debug: { startBattle: () => startBattle, openPlace: () => openPlace } });
 if (settings.quality !== battle.quality) battle.setQuality(settings.quality);
 
@@ -310,7 +314,8 @@ async function startBattle(
   const scaled = enemy.map((e) => (UNITS[e.unit].boss || UNITS[e.unit].hero ? e : { ...e, count: Math.max(1, Math.round(e.count * hard.count)) }));
   const launch = async (formations: FormationCheck[]) => {
     battle.sfx.unlock();
-    await loadSkins();
+    const units = [...scaled.map((e) => e.unit), ...soldiers.map((s) => s.unit)];
+    await loadSkins([...looksOf([...new Set(units)]), skinLook(playerDef(h), h.loadout.map((w) => WEAPONS[w]).filter(Boolean)), mountLook(playerHorse(h))]);
     view.stop();
     hud.hideScreen();
     battle.start({

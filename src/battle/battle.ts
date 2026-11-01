@@ -35,10 +35,10 @@ import { Fx } from './fx';
 import { updateHorse } from './horse';
 import { Input } from './input';
 import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
-import { SkinPool, skinHorse } from './skins';
+import { SkinPool } from './skins';
 import { trySkill, updateSkills } from './skills';
 import { SKILL_KEYS, SKILL_RULES, SKILL_TUNE } from '../data/skills';
-import { skinLook } from '../data/skins';
+import { mountLook, skinLook } from '../data/skins';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
@@ -734,7 +734,7 @@ export class Battle implements CombatWorld {
       color: rider.def.race === 'centaur' ? RACES.centaur.skin : base.color,
     };
     const h = new Horse(def, buildHorse(def, rider.team, this.batches));
-    if (skinHorse(def) && rider.def.race !== 'centaur') h.skin = this.skins.horse();
+    if (rider.def.race !== 'centaur') h.skin = this.skins.horse(mountLook(def));
     h.pos.copy(rider.pos);
     h.heading = rider.yaw;
     h.rider = rider;
@@ -1438,6 +1438,10 @@ export class Battle implements CombatWorld {
       const distant = isFar(u.pos.x, u.pos.z);
       if (!distant || !offBeat(i)) syncHuman(u, distant ? dt * LOD.interval : dt);
     });
+    this.skins.crowd.begin();
+    for (const h of this.horses) h.skin?.far(this.skins.crowd, h);
+    for (const u of this.units) u.skin?.far(this.skins.crowd, u);
+    this.skins.crowd.end();
     this.batches.commit();
   }
 
@@ -1446,10 +1450,10 @@ export class Battle implements CombatWorld {
     const cam = this.camera.position;
     const reach = LOD.skinDistance * LOD.skinDistance;
     const dist = (u: Combatant) => (u.pos.x - cam.x) ** 2 + (u.pos.z - cam.z) ** 2;
-    const near = this.units.filter((u) => u.skin && !u.fled && dist(u) < reach).sort((a, b) => dist(a) - dist(b)).slice(0, LOD.skinned);
+    const near = this.units.filter((u) => u.skin && !u.fled && !u.def.colossal && dist(u) < reach).sort((a, b) => dist(a) - dist(b)).slice(0, LOD.skinned);
     for (const u of this.units) u.skinOn = false;
     for (const h of this.horses) h.skinOn = false;
-    for (const u of [...near, this.player]) {
+    for (const u of [...near, this.player, ...this.units.filter((x) => x.def.colossal)]) {
       u.skinOn = !!u.skin;
       if (u.horse) u.horse.skinOn = !!u.horse.skin;
     }
