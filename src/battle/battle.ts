@@ -35,6 +35,8 @@ import { Fx } from './fx';
 import { updateHorse } from './horse';
 import { Input } from './input';
 import { buildHorse, buildHuman, syncHorse, syncHuman } from './models';
+import { SkinPool, skinHorse } from './skins';
+import { skinLook } from '../data/skins';
 import { onDeath, teamMorale, tickMorale } from './morale';
 import { Group, ORDER_LABEL, deployGroup, makeGroups, thinkEnemy, type OrderType } from './orders';
 import { Projectiles } from './projectiles';
@@ -128,6 +130,7 @@ export class Battle implements CombatWorld {
   private obstacles: Obstacle[];
   private baseObstacles: Obstacle[];
   private batches: Batches;
+  private skins: SkinPool;
   private wall = new THREE.Group();
   /** 牆同門位 */
   private walls: { z: number; gaps: number[]; width: number; ladders?: number[] }[] = [];
@@ -243,6 +246,7 @@ export class Battle implements CombatWorld {
     this.torch = new THREE.PointLight(0xffc880, 0, DUNGEON.torchRange, 1.2);
     this.scene.add(this.torch);
     this.batches = new Batches(this.scene);
+    this.skins = new SkinPool(this.scene);
     this.fx = new Fx(this.scene);
     this.projectiles = new Projectiles(this.scene);
     this.resize();
@@ -715,6 +719,7 @@ export class Battle implements CombatWorld {
   private createUnit(def: UnitDef, team: number, weaponIds: string[]): Combatant {
     const weapons = weaponIds.map((id) => WEAPONS[id]);
     const c = new Combatant(def, team, buildHuman(def, team, weapons, this.batches), weaponIds);
+    c.skin = this.skins.human(skinLook(def, weapons));
     this.units.push(c);
     return c;
   }
@@ -727,6 +732,7 @@ export class Battle implements CombatWorld {
       color: rider.def.race === 'centaur' ? RACES.centaur.skin : base.color,
     };
     const h = new Horse(def, buildHorse(def, rider.team, this.batches));
+    if (skinHorse(def) && rider.def.race !== 'centaur') h.skin = this.skins.horse();
     h.pos.copy(rider.pos);
     h.heading = rider.yaw;
     h.rider = rider;
@@ -783,6 +789,7 @@ export class Battle implements CombatWorld {
     this.firstPerson = !!setup.firstPerson;
     this.torch.intensity = this.firstPerson ? DUNGEON.torchPower : 0;
     this.batches.reset();
+    this.skins.reset();
     this.projectiles.reset();
     this.units = [];
     this.horses = [];
@@ -1400,6 +1407,7 @@ export class Battle implements CombatWorld {
     const far = LOD.distance * LOD.distance;
     const isFar = (x: number, z: number) => (x - cam.x) ** 2 + (z - cam.z) ** 2 > far;
     const offBeat = (i: number) => (i + this.frameNo) % LOD.interval !== 0;
+    if (this.frameNo % LOD.skinEvery === 1) this.pickSkinned();
     this.horses.forEach((h, i) => {
       const distant = isFar(h.pos.x, h.pos.z);
       if (!distant || !offBeat(i)) syncHorse(h, distant ? dt * LOD.interval : dt);
@@ -1409,6 +1417,20 @@ export class Battle implements CombatWorld {
       if (!distant || !offBeat(i)) syncHuman(u, distant ? dt * LOD.interval : dt);
     });
     this.batches.commit();
+  }
+
+  /** 骨架模型貴：只畫最近鏡頭嗰班，其餘用 InstancedMesh 嘅 rig */
+  private pickSkinned() {
+    const cam = this.camera.position;
+    const reach = LOD.skinDistance * LOD.skinDistance;
+    const dist = (u: Combatant) => (u.pos.x - cam.x) ** 2 + (u.pos.z - cam.z) ** 2;
+    const near = this.units.filter((u) => u.skin && !u.fled && dist(u) < reach).sort((a, b) => dist(a) - dist(b)).slice(0, LOD.skinned);
+    for (const u of this.units) u.skinOn = false;
+    for (const h of this.horses) h.skinOn = false;
+    for (const u of [...near, this.player]) {
+      u.skinOn = !!u.skin;
+      if (u.horse) u.horse.skinOn = !!u.horse.skin;
+    }
   }
 
   private hoofSound(dt: number) {

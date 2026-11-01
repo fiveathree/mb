@@ -18,6 +18,7 @@ import { STORY_HEROES, type StoryHero } from './data/honor';
 import { PLAYER } from './politics/politics';
 import { onArrive, onBanditBeaten, onBossBeaten } from './quests/quests';
 import { Tutorial } from './ui/tutorial';
+import { loadSkins } from './battle/skins';
 import { TOWN, TOWN_STYLES, type ArmyEntry, type TownStyleId } from './data/battlefield';
 import { ARENA, ARMORS, CAPTIVE, DIFFICULTY, GOODS, GOOD_ORDER, HERO, LOOT, NPC, NPC_RULES } from './data/economy';
 import { settings } from './core/settings';
@@ -47,6 +48,8 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
 const hud = new Hud(document.getElementById('ui')!);
 const battle = new Battle(canvas, hud);
+void loadSkins();
+if (import.meta.env.DEV) (window as unknown as { battle: Battle }).battle = battle;
 if (settings.quality !== battle.quality) battle.setQuality(settings.quality);
 
 let slot = 0;
@@ -305,6 +308,7 @@ async function startBattle(
   const scaled = enemy.map((e) => (UNITS[e.unit].boss || UNITS[e.unit].hero ? e : { ...e, count: Math.max(1, Math.round(e.count * hard.count)) }));
   const launch = async (formations: FormationCheck[]) => {
     battle.sfx.unlock();
+    await loadSkins();
     hud.hideScreen();
     battle.start({
       playerDef: playerDef(h), horse: playerHorse(h), loadout: h.loadout, soldiers, enemy: arenaFight ? enemy : scaled,

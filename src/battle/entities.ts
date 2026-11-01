@@ -7,6 +7,7 @@ import { SHIELD, WEAPONS, type WeaponDef } from '../data/weapons';
 import type { HorseRig, HumanRig } from './models';
 import type { Group } from './orders';
 import type { Soldier } from '../core/roster';
+import type { HorseSkin, HumanSkin } from './skins';
 
 export type Phase = 'idle' | 'charge' | 'swing' | 'recover' | 'block' | 'stagger';
 
@@ -33,6 +34,8 @@ export class Horse {
   dead = false;
   deadT = 0;
   rider: Combatant | null = null;
+  skin?: HorseSkin;
+  skinOn = false;
   gaitPhase = 0;
   turnInput = 0;
   ctl: HorseControl = { throttle: 0, turn: 0, sprint: false, jump: false };
@@ -68,6 +71,10 @@ export interface AiState {
 }
 
 export class Combatant {
+  /** CC0 骨架模型；冇就用程式畫嘅 rig */
+  skin?: HumanSkin;
+  /** 夠近，呢幀畫骨架模型 */
+  skinOn = false;
   /** 爬緊雲梯或者攻城塔 */
   climbing = false;
   pos = new Vector3();

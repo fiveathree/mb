@@ -59,7 +59,7 @@ export const RANGED_POSES = {
 /** 姿勢追隨速度（每秒） */
 export const POSE_RATE = { normal: 16, swing: 34, block: 22 };
 /** 遠處單位每幾幀先更新一次動畫 */
-export const LOD = { distance: 55, interval: 3 };
+export const LOD = { distance: 55, interval: 3, skinned: 24, skinDistance: 45, skinEvery: 12 };
 /** 步行擺腿頻率：每公尺幾多弧度 */
 export const WALK_PHASE_PER_METER = 3.1;
 /** 馬匹步態頻率 */

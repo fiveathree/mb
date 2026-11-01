@@ -75,10 +75,10 @@ export class Batches {
 }
 
 /** 將 rig 嘅部件世界矩陣寫入 InstancedMesh */
-export function flushParts(root: THREE.Object3D, parts: Part[], hidden = false) {
+export function flushParts(root: THREE.Object3D, parts: Part[], hidden = false, only?: THREE.Object3D) {
   root.updateMatrixWorld(true);
   for (const p of parts) {
-    const off = hidden || (p.gate !== null && !p.gate.visible);
+    const off = hidden || (p.gate !== null && !p.gate.visible) || (only !== undefined && p.gate !== only);
     p.mesh.setMatrixAt(p.index, off ? ZERO : p.node.matrixWorld);
   }
 }

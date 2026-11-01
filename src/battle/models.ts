@@ -11,6 +11,7 @@ import type { WeaponDef } from '../data/weapons';
 import { flushParts, type Batches, type Part } from './batch';
 import { clamp, angleDiff, type Combatant, type Horse } from './entities';
 import { crownOf } from '../data/crowns';
+import { HORSE_CLIPS } from './skins';
 import { axeGeo, bladeGeo, bowGeo, leafGeo, limbGeo, loftGeo, torsoGeo, wingGeo, type Ring } from './shapes';
 
 /** 建模時嘅目標：部件加入邊個 rig、由邊個節點控制顯示 */
@@ -897,6 +898,7 @@ export function syncHuman(c: Combatant, dt: number) {
 
   if (c.fled || c.hiddenBody) {
     flushParts(r.root, r.parts, true);
+    c.skin?.sync(c, dt);
     return;
   }
 
@@ -966,7 +968,9 @@ export function syncHuman(c: Combatant, dt: number) {
   }
   r.marker.visible = !c.dead && !c.def.civilian && !c.def.colossal;
   for (const [id, m] of r.weaponMeshes) m.visible = id === w.id && !c.def.civilian;
-  flushParts(r.root, r.parts);
+  // 有骨架模型：舊 rig 繼續計位，只畫頭頂標記
+  flushParts(r.root, r.parts, false, c.skinOn ? r.marker : undefined);
+  c.skin?.sync(c, dt);
 }
 
 function syncDragon(c: Combatant, d: DragonRig, dt: number) {
@@ -996,7 +1000,8 @@ export function syncHorse(h: Horse, dt: number) {
     const f = clamp(h.deadT / 0.7, 0, 1);
     r.root.rotation.z = (Math.PI / 2) * f * f;
     r.root.position.y = h.pos.y + 0.32 * f;
-    flushParts(r.root, r.parts);
+    flushParts(r.root, r.parts, h.skinOn);
+    syncHorseSkin(h, dt);
     return;
   }
 
@@ -1014,5 +1019,8 @@ export function syncHorse(h: Horse, dt: number) {
   r.root.rotation.z = -h.turnInput * ratio * 0.14;
   r.neck.rotation.x = -0.72 + ratio * 0.3 + Math.sin(h.gaitPhase) * 0.1 * ratio;
   r.tail.rotation.x = 0.5 + ratio * 0.75;
-  flushParts(r.root, r.parts);
+  flushParts(r.root, r.parts, h.skinOn);
+  syncHorseSkin(h, dt);
 }
+
+const syncHorseSkin = (h: Horse, dt: number) => h.skin?.sync(h, dt, HORSE_CLIPS.walk, HORSE_CLIPS.run, HORSE_CLIPS.idle, HORSE_CLIPS.death);
