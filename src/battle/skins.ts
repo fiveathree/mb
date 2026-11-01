@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { MeshoptSimplifier } from 'meshoptimizer';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { Combatant, Horse } from './entities';
 import { FAMILY_CLIPS, type SkinFamily, type SkinLook } from '../data/skins';
@@ -18,9 +19,15 @@ const LIFT = 0.7;
 const LIFT_GAIN = 1.25;
 
 const BASE = `${import.meta.env.BASE_URL}models/`;
-const LOWER = /^(root|hips|upperleg|lowerleg|foot|toes|kneeIK|control-|heelIK|IK-|Bone|Foot|Body|Hips|UpperLeg|LowerLeg|PoleTarget)/;
+const LOWER = /^(root|hips|upperleg|lowerleg|foot|toes|kneeIK|control-|heelIK|IK-|pelvis|thigh|calf|ball)/;
 
 const flat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const ATLAS_SIZE = 1024;
+const FAR_TRIS = 1400;
+const WHITE = new THREE.Color(0xffffff);
+const atlases = new Map<string, THREE.Texture>();
+/** 農民服裝冇頭，用基礎人物抽出嚟嘅頭 */
+const HEAD_OF: Record<string, string> = { h_MP: 'h_HeadM', h_FP: 'h_HeadF' };
 
 interface Template {
   key: string;
@@ -52,7 +59,8 @@ function shade(mat: THREE.MeshStandardMaterial, file: string) {
   return new THREE.Color(Math.min(1, c.r ** LIFT * LIFT_GAIN), Math.min(1, c.g ** LIFT * LIFT_GAIN), Math.min(1, c.b ** LIFT * LIFT_GAIN));
 }
 
-function bake(scene: THREE.Object3D, file: string): THREE.Object3D {
+function bake(scene: THREE.Object3D, look: SkinLook): THREE.Object3D {
+  const file = look.file;
   scene.updateMatrixWorld(true);
   const skinned: THREE.SkinnedMesh[] = [];
   const statics: THREE.Mesh[] = [];
@@ -89,17 +97,86 @@ function bake(scene: THREE.Object3D, file: string): THREE.Object3D {
       g.setAttribute('skinIndex', new THREE.BufferAttribute(idx, 4));
       g.setAttribute('skinWeight', new THREE.BufferAttribute(wgt, 4));
     }
+    mat.vertexColors = false;
     add(mat.map ? mat : flat, g);
   }
+  // 頭同頭髮同一副骨架，直接當身體一部分
+  const extras = [HEAD_OF[file], look.hair].flatMap((n) => (n && raw.get(n) ? [raw.get(n)!.scene] : []));
+  for (const part of extras) part.traverse((o) => {
+    const h = o as THREE.SkinnedMesh;
+    if (!h.isSkinnedMesh) return;
+    (h.material as THREE.MeshStandardMaterial).vertexColors = false;
+    const g = new THREE.BufferGeometry();
+    for (const [k, C] of [['position', Float32Array], ['normal', Float32Array], ['uv', Float32Array], ['skinIndex', Uint16Array], ['skinWeight', Float32Array]] as const) g.setAttribute(k, plain(h.geometry.getAttribute(k), C));
+    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(h.geometry.index!.array), 1));
+    add(h.material as THREE.Material, g);
+  });
+  for (const g of gearGeo(look, skeleton, skinned)) add(flat, g);
   const bindMatrix = skinned[0].bindMatrix.clone();
   const host = skinned[0].parent!;
   [...skinned, ...statics].forEach((s) => s.removeFromParent());
-  for (const [material, list] of groups) {
-    const mesh = new THREE.SkinnedMesh(mergeGeometries(list)!, material);
-    mesh.bind(skeleton, bindMatrix);
-    mesh.castShadow = true;
-    host.add(mesh);
+  const textured = [...groups.keys()].filter((m) => m !== flat);
+  if (!textured.length) {
+    for (const [material, list] of groups) {
+      const mesh = new THREE.SkinnedMesh(mergeGeometries(list)!, material);
+      mesh.bind(skeleton, bindMatrix);
+      mesh.castShadow = true;
+      host.add(mesh);
+    }
+    return scene;
   }
+  // 每人一張圖集、一隻物料：一個人一個 draw call
+  const atlasKey = `${file}|${look.hair ?? ''}`;
+  const n = Math.ceil(Math.sqrt(textured.length + 1));
+  const cell = ATLAS_SIZE / n;
+  let tex = atlases.get(atlasKey);
+  if (!tex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = ATLAS_SIZE;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+    textured.forEach((m, i) => ctx.drawImage((m as THREE.MeshStandardMaterial).map!.image as CanvasImageSource, (i % n) * cell, Math.floor(i / n) * cell, cell, cell));
+    tex = new THREE.CanvasTexture(canvas);
+    tex.flipY = false;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 2;
+    atlases.set(atlasKey, tex);
+  }
+  const whiteU = ((textured.length % n) + 0.5) / n;
+  const whiteV = (Math.floor(textured.length / n) + 0.5) / n;
+  const all: THREE.BufferGeometry[] = [];
+  for (const [material, list] of groups) {
+    const slot = textured.indexOf(material);
+    for (const g of list) {
+      const count = g.getAttribute('position').count;
+      const uv = new Float32Array(count * 2);
+      const src = g.getAttribute('uv');
+      for (let i = 0; i < count; i++) {
+        if (slot < 0) {
+          uv[i * 2] = whiteU;
+          uv[i * 2 + 1] = whiteV;
+        } else {
+          const fu = src.getX(i) - Math.floor(src.getX(i));
+          const fv = src.getY(i) - Math.floor(src.getY(i));
+          uv[i * 2] = ((slot % n) + fu * 0.98 + 0.01) / n;
+          uv[i * 2 + 1] = (Math.floor(slot / n) + fv * 0.98 + 0.01) / n;
+        }
+      }
+      g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      if (!g.getAttribute('color')) g.setAttribute('color', solid(g, WHITE));
+      all.push(g.index ? g.toNonIndexed() : g);
+    }
+  }
+  const body = mergeVertices(mergeGeometries(all)!, 1e-4);
+  const mesh = new THREE.SkinnedMesh(body, new THREE.MeshLambertMaterial({ map: tex, vertexColors: true, side: THREE.DoubleSide }));
+  // 遠鏡用同一堆頂點、面數少好多嘅 index
+  const [lo] = MeshoptSimplifier.simplify(Uint32Array.from(body.index!.array), body.getAttribute('position').array as Float32Array, 3, FAR_TRIS * 3, 0.08);
+  body.userData.lo = lo;
+  mesh.bind(skeleton, bindMatrix);
+  mesh.castShadow = true;
+  mesh.userData.white = [whiteU, whiteV];
+  host.add(mesh);
   return scene;
 }
 
@@ -114,6 +191,101 @@ function measure(root: THREE.Object3D): THREE.Vector3 {
     }
   });
   return bounds.getSize(new THREE.Vector3());
+}
+
+/* ---------- 程式砌嘅盔甲同種族特徵：跟骨頭郁 ---------- */
+
+function gearGeo(look: SkinLook, skeleton: THREE.Skeleton, skinned: THREE.SkinnedMesh[]): THREE.BufferGeometry[] {
+  if (!look.gear?.length) return [];
+  const bounds = new THREE.Box3();
+  for (const s of skinned) {
+    s.geometry.computeBoundingBox();
+    bounds.union(s.geometry.boundingBox!);
+  }
+  const u = (bounds.max.y - bounds.min.y) / 1.8;
+  const metal = look.metal ?? 0x8a8a90;
+  const trim = look.trim ?? 0x6a4a30;
+  const out: THREE.BufferGeometry[] = [];
+  const add = (bone: string, g: THREE.BufferGeometry, color: number, x = 0, y = 0, z = 0) => {
+    const i = skeleton.bones.findIndex((b) => b.name === bone);
+    if (i < 0) return;
+    const at = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(skeleton.boneInverses[i]).invert());
+    g.scale(u, u, u).translate(at.x + x * u, at.y + y * u, at.z + z * u);
+    const flatG = g.index ? g.toNonIndexed() : g;
+    flatG.deleteAttribute('uv');
+    flatG.setAttribute('color', solid(flatG, new THREE.Color(color)));
+    const n = flatG.getAttribute('position').count;
+    const idx = new Uint16Array(n * 4);
+    const wgt = new Float32Array(n * 4);
+    for (let k = 0; k < n; k++) {
+      idx[k * 4] = i;
+      wgt[k * 4] = 1;
+    }
+    flatG.setAttribute('skinIndex', new THREE.BufferAttribute(idx, 4));
+    flatG.setAttribute('skinWeight', new THREE.BufferAttribute(wgt, 4));
+    out.push(flatG);
+  };
+  const sphere = (r: number, sy = 1, sz = 1) => new THREE.SphereGeometry(r, 8, 6).scale(1, sy, sz);
+  const dome = (r: number) => new THREE.SphereGeometry(r, 8, 4, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  const cone = (r: number, h: number, seg = 8) => new THREE.ConeGeometry(r, h, seg);
+  const HEAD_TOP = 0.15;
+  const skirtGeo = (top: number, bottom: number, h: number) => new THREE.CylinderGeometry(top, bottom, h, 8, 1, true);
+  for (const p of look.gear) {
+    switch (p) {
+      case 'helm': add('Head', dome(0.135), metal, 0, HEAD_TOP, 0.015); break;
+      case 'conical':
+        add('Head', dome(0.135), metal, 0, HEAD_TOP, 0.015);
+        add('Head', cone(0.06, 0.16, 6), metal, 0, HEAD_TOP + 0.19, 0.015);
+        break;
+      case 'plume': add('Head', cone(0.035, 0.26, 5).rotateX(-0.5), trim, 0, HEAD_TOP + 0.22, -0.06); break;
+      case 'crown': add('Head', new THREE.CylinderGeometry(0.115, 0.1, 0.07, 8, 1, true), metal, 0, HEAD_TOP + 0.07, 0.015); break;
+      case 'circlet': add('Head', new THREE.TorusGeometry(0.105, 0.012, 5, 12).rotateX(Math.PI / 2), metal, 0, HEAD_TOP + 0.03, 0.015); break;
+      case 'wizardHat':
+        add('Head', cone(0.19, 0.05, 10), metal, 0, HEAD_TOP + 0.05, 0);
+        add('Head', cone(0.11, 0.32, 8), metal, 0, HEAD_TOP + 0.22, -0.01);
+        break;
+      case 'cuirass': add('spine_03', sphere(0.2, 1.2, 0.72), metal, 0, -0.03, 0.01); break;
+      case 'pauldrons':
+        add('upperarm_l', sphere(0.095, 0.8, 1), metal, 0, 0.02, 0);
+        add('upperarm_r', sphere(0.095, 0.8, 1), metal, 0, 0.02, 0);
+        break;
+      case 'skirt': add('pelvis', skirtGeo(0.17, 0.25, 0.3), trim, 0, -0.14, 0); break;
+      case 'greaves':
+        add('calf_l', new THREE.CylinderGeometry(0.06, 0.05, 0.3, 6), metal, 0, -0.17, 0.01);
+        add('calf_r', new THREE.CylinderGeometry(0.06, 0.05, 0.3, 6), metal, 0, -0.17, 0.01);
+        break;
+      case 'robe':
+        add('spine_03', sphere(0.19, 1.25, 0.72), metal, 0, -0.03, 0.01);
+        add('pelvis', skirtGeo(0.17, 0.34, 0.95), metal, 0, -0.45, 0);
+        add('pelvis', new THREE.TorusGeometry(0.17, 0.02, 5, 10).rotateX(Math.PI / 2), trim, 0, 0.03, 0);
+        break;
+      case 'horns':
+        add('Head', cone(0.03, 0.2, 5).rotateZ(-0.5), 0x2a2420, 0.1, HEAD_TOP + 0.08, 0);
+        add('Head', cone(0.03, 0.2, 5).rotateZ(0.5), 0x2a2420, -0.1, HEAD_TOP + 0.08, 0);
+        break;
+      case 'bigHorns':
+        add('Head', cone(0.05, 0.36, 6).rotateZ(-1), 0xd8d0b8, 0.2, HEAD_TOP + 0.04, 0);
+        add('Head', cone(0.05, 0.36, 6).rotateZ(1), 0xd8d0b8, -0.2, HEAD_TOP + 0.04, 0);
+        break;
+      case 'tusks':
+        add('Head', cone(0.012, 0.07, 4), 0xe8e0c8, 0.04, 0.0, 0.1);
+        add('Head', cone(0.012, 0.07, 4), 0xe8e0c8, -0.04, 0.0, 0.1);
+        break;
+      case 'ears':
+        add('Head', cone(0.025, 0.14, 4).rotateZ(-1.1), look.tint ?? 0xe0b48c, 0.13, 0.08, -0.01);
+        add('Head', cone(0.025, 0.14, 4).rotateZ(1.1), look.tint ?? 0xe0b48c, -0.13, 0.08, -0.01);
+        break;
+      case 'antlers':
+        add('Head', cone(0.02, 0.3, 4).rotateZ(-0.6), 0x5a4028, 0.09, HEAD_TOP + 0.12, 0);
+        add('Head', cone(0.02, 0.3, 4).rotateZ(0.6), 0x5a4028, -0.09, HEAD_TOP + 0.12, 0);
+        break;
+      case 'wings':
+        add('spine_03', new THREE.ConeGeometry(0.25, 0.7, 3).scale(1, 1, 0.1).rotateZ(-1.1), metal, 0.3, 0.1, -0.14);
+        add('spine_03', new THREE.ConeGeometry(0.25, 0.7, 3).scale(1, 1, 0.1).rotateZ(1.1), metal, -0.3, 0.1, -0.14);
+        break;
+    }
+  }
+  return out;
 }
 
 /* ---------- 手持武器：程式砌，用頂點色 ---------- */
@@ -143,8 +315,7 @@ const WEAPON_GEO: Record<string, () => THREE.BufferGeometry> = {
 const geoCache = new Map<string, THREE.BufferGeometry>();
 const weaponGeo = (k: string) => {
   let g = geoCache.get(k);
-  // 手部骨頭 y 軸向手腕，反轉先指向前上方
-  if (!g) geoCache.set(k, (g = WEAPON_GEO[k]().rotateX(Math.PI)));
+  if (!g) geoCache.set(k, (g = WEAPON_GEO[k]()));
   return g;
 };
 
@@ -153,25 +324,12 @@ const weaponGeo = (k: string) => {
 const raw = new Map<string, { scene: THREE.Object3D; clips: THREE.AnimationClip[] }>();
 const pending = new Map<string, Promise<void>>();
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const EXTRA: Record<string, Record<string, string>> = {
-  skeleton: { Skeleton_Blade: 'handslotr' },
-  skel_minion: { Skeleton_Blade: 'handslotr' },
-  skel_mage: { Skeleton_Staff: 'handslotr' },
-  skel_rogue: { Skeleton_Crossbow: 'handslotr' },
-};
 
 function loadFile(file: string): Promise<void> {
   let p = pending.get(file);
   if (!p) {
     p = (async () => {
       const g = await loader.loadAsync(`${BASE}${file}.glb`);
-      await Promise.all(Object.entries(EXTRA[file] ?? {}).map(async ([name, slot]) => {
-        const item = (await loader.loadAsync(`${BASE}items/${name}.gltf`)).scene.getObjectByProperty('isMesh', true)!;
-        item.name = name;
-        item.position.set(0, 0, 0);
-        item.rotation.set(0, 0, 0);
-        g.scene.getObjectByName(slot)!.add(item);
-      }));
       for (const c of g.animations) c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale'));
       raw.set(file, { scene: g.scene, clips: g.animations });
     })().catch((e) => { console.error('[skins] 載入失敗', file, e); });
@@ -182,9 +340,11 @@ function loadFile(file: string): Promise<void> {
 
 /** 開戰前等齊要用嘅模型 */
 export async function loadSkins(looks: SkinLook[]) {
-  const files = new Set<string>(['c_Knight_Male', 'a_Horse', 'a_Horse_White']);
+  await MeshoptSimplifier.ready;
+  const files = new Set<string>(['h_anim', 'h_MP', 'h_FP', 'h_HeadM', 'h_HeadF', 'a_Horse', 'a_Horse_White']);
   for (const l of looks) {
     files.add(l.file);
+    if (l.hair) files.add(l.hair);
     const src = FAMILY_CLIPS[l.family].source;
     if (src) files.add(src);
   }
@@ -209,15 +369,13 @@ function clipsOf(look: SkinLook) {
 
 const templates = new Map<string, Template>();
 function templateFor(look: SkinLook): Template | null {
-  const key = `${look.file}|${look.tint ?? ''}`;
+  const key = `${look.file}|${look.tint ?? ''}|${look.gear?.join() ?? ''}|${look.metal ?? ''}|${look.trim ?? ''}|${look.hair ?? ''}`;
   const hit = templates.get(key);
   if (hit) return hit;
   const r = raw.get(look.file);
   if (!r) return null;
-  const root = bake(cloneSkinned(r.scene), look.file);
+  const root = bake(cloneSkinned(r.scene), look);
   const dims = measure(root);
-  const { head, headScale } = FAMILY_CLIPS[look.family].bones;
-  if (head) root.getObjectByName(head)!.scale.setScalar(headScale!);
   const beast = look.family === 'beast';
   const scale = beast ? MOUNT_LENGTH / Math.max(dims.x, dims.z) : HUMAN_HEIGHT / dims.y;
   if (look.tint !== undefined) {
@@ -244,7 +402,8 @@ function heldGeo(t: Template, look: SkinLook, model: THREE.Object3D) {
     const b = model.getObjectByName(bone);
     if (!b) return null;
     const k = 1 / (t.scale * b.getWorldScale(v).x);
-    const m = new THREE.Matrix4().copy(b.matrixWorld).multiply(new THREE.Matrix4().makeScale(k, k, k));
+    const fam = FAMILY_CLIPS[t.family];
+    const m = new THREE.Matrix4().copy(b.matrixWorld).multiply(new THREE.Matrix4().makeScale(k, k, k)).multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...(kind === 'shield' ? fam.guard : fam.grip))));
     const g = weaponGeo(kind).clone().applyMatrix4(m).applyMatrix4(new THREE.Matrix4().makeScale(t.scale, t.scale, t.scale));
     return g;
   };
@@ -278,17 +437,34 @@ function bakePose(t: Template, look: SkinLook, clip: string, phase: number): THR
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(baked, 3));
     for (const k of ['color', 'uv']) if (src.getAttribute(k)) g.setAttribute(k, src.getAttribute(k));
-    g.setIndex(src.index);
+    const lo = src.userData.lo as Uint32Array | undefined;
+    if (lo) g.setIndex(new THREE.BufferAttribute(lo, 1));
+    else if (src.index) g.setIndex(src.index);
     g.computeVertexNormals();
-    const held = g.getAttribute('color') ? heldGeo(t, look, model) : [];
-    parts.push(held.length ? mergeGeometries([g.toNonIndexed(), ...held])! : g);
+    g.userData.white = m.userData.white;
+    parts.push(g);
   });
+  const held = heldGeo(t, look, model);
+  if (held.length) {
+    const i = parts.findIndex((g) => g.getAttribute('color'));
+    const white = parts[i]?.userData.white as [number, number] | undefined;
+    if (white) {
+      for (const h of held) {
+        const n = h.getAttribute('position').count;
+        const uv = new Float32Array(n * 2);
+        for (let k = 0; k < n; k++) uv.set(white, k * 2);
+        h.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      }
+    }
+    if (i >= 0) parts[i] = mergeGeometries([parts[i].index ? parts[i].toNonIndexed() : parts[i], ...held])!;
+    else parts.push(mergeGeometries(held)!);
+  }
   mixer.stopAllAction();
   return parts;
 }
 
 type PoseId = 'idle' | 'walk0' | 'walk1' | 'walk2' | 'walk3' | 'slash' | 'die' | 'sit';
-const POSES: [PoseId, 'idle' | 'walk' | 'slash' | 'die' | 'sit', number][] = [['idle', 'idle', 0], ['walk0', 'walk', 0.1], ['walk1', 'walk', 0.35], ['walk2', 'walk', 0.6], ['walk3', 'walk', 0.85], ['slash', 'slash', 0.45], ['die', 'die', 0.98], ['sit', 'sit', 0.98]];
+const POSES: [PoseId, 'idle' | 'walk' | 'slash' | 'die' | 'sit', number][] = [['idle', 'idle', 0], ['walk0', 'walk', 0.1], ['walk1', 'walk', 0.35], ['walk2', 'walk', 0.6], ['walk3', 'walk', 0.85], ['slash', 'slash', 0.45], ['die', 'die', 0.98], ['sit', 'sit', 0.5]];
 
 interface Bucket { mesh: THREE.InstancedMesh; n: number }
 
@@ -324,6 +500,11 @@ class Crowd {
     return b;
   }
 
+  /** 開戰前烤好，唔好喺打緊嘅時候卡一下 */
+  warm(t: Template, look: SkinLook) {
+    for (const [id] of POSES) this.pose(t, look, id);
+  }
+
   begin() {
     for (const b of this.live) b.n = 0;
   }
@@ -339,6 +520,9 @@ class Crowd {
   end() {
     for (const b of this.live) {
       b.mesh.count = b.n;
+      if (!b.n) continue;
+      b.mesh.instanceMatrix.clearUpdateRanges();
+      b.mesh.instanceMatrix.addUpdateRange(0, b.n * 16);
       b.mesh.instanceMatrix.needsUpdate = true;
     }
   }
@@ -353,7 +537,7 @@ class Actor {
   private slots = new Map<string, THREE.AnimationAction>();
   private held = new Map<string, THREE.Mesh>();
 
-  constructor(public t: Template, scene: THREE.Scene) {
+  constructor(public t: Template, private scene: THREE.Scene) {
     this.model = cloneSkinned(t.root);
     this.model.scale.setScalar(t.scale);
     this.model.traverse((o) => {
@@ -363,7 +547,13 @@ class Actor {
     this.group.add(this.model);
     this.group.visible = false;
     this.mixer = new THREE.AnimationMixer(this.model);
-    scene.add(this.group);
+  }
+
+  /** 唔喺鏡頭近處就唔留喺場景：65 條骨頭每幀重算好貴 */
+  show(on: boolean) {
+    if (on === !!this.group.parent) return;
+    if (on) this.scene.add(this.group);
+    else this.group.removeFromParent();
   }
 
   /** 手上武器：轉武器即換 */
@@ -375,6 +565,8 @@ class Actor {
     const m = new THREE.Mesh(weaponGeo(kind), flat);
     m.castShadow = true;
     m.scale.setScalar(1 / (this.t.scale * b.getWorldScale(v).x || 1) * this.t.scale);
+    const fam = FAMILY_CLIPS[this.t.family];
+    m.rotation.set(...(kind === 'shield' ? fam.guard : fam.grip));
     b.add(m);
     this.held.set(`${slot}:${kind}`, m);
   }
@@ -414,7 +606,7 @@ function matrixOf(root: THREE.Object3D, y: number) {
 }
 
 export class HumanSkin {
-  private clip: (typeof FAMILY_CLIPS)['q'];
+  private clip: (typeof FAMILY_CLIPS)['h'];
 
   constructor(private a: Actor, public look: SkinLook) {
     this.clip = FAMILY_CLIPS[a.t.family];
@@ -423,6 +615,7 @@ export class HumanSkin {
   sync(c: Combatant, dt: number) {
     const g = this.a.group;
     g.visible = c.skinOn && !c.fled && !c.hiddenBody;
+    this.a.show(g.visible);
     if (!g.visible) return;
     const r = c.rig.root;
     const h = c.horse;
@@ -432,12 +625,12 @@ export class HumanSkin {
     g.rotation.y = r.rotation.y;
     g.rotation.z = r.rotation.z;
     g.scale.copy(r.scale);
-    if (this.a.t.family === 'q' || this.a.t.family === 'mon') {
+    if (this.a.t.family === 'h') {
       this.a.hold(c.weapon.model ?? this.look.weapon, this.clip.bones.hand, 'r');
       this.a.hold(c.hasActiveShield ? 'shield' : undefined, this.clip.bones.off, 'l');
     }
     this.a.play('body', ...this.state(c, !!h));
-    if (h && !c.dead && this.clip.sit) this.a.play('legs', `${this.clip.sit}@low`, true);
+    if (h && !c.dead && this.clip.sit) this.a.play('legs', `${this.clip.sit}@low`);
     this.a.mixer.update(dt);
   }
 
@@ -445,7 +638,7 @@ export class HumanSkin {
     const up = mounted ? '@up' : '';
     const k = this.clip;
     if (c.dead) return [k.die, true, 1];
-    if (c.phase === 'charge' || c.phase === 'swing') return [(c.weapon.ranged || c.def.role === 'mage' ? k.shot : k.slash) + up, true, 1.1];
+    if (c.phase === 'charge' || c.phase === 'swing') return [(c.def.role === 'mage' ? k.spell : c.weapon.ranged ? k.shot : k.slash) + up, true, 1.1];
     if (c.phase === 'stagger') return [k.hit + up, true, 1];
     if (mounted) return [`${k.idle}@up`, false, 1];
     const s = Math.hypot(c.vel.x, c.vel.z);
@@ -474,6 +667,7 @@ export class HorseSkin {
     const r = h.rig.root;
     const g = this.a.group;
     g.visible = h.skinOn && h.pos.y > -30;
+    this.a.show(g.visible);
     if (!g.visible) return;
     g.position.copy(h.pos);
     g.rotation.y = r.rotation.y;
@@ -504,6 +698,8 @@ export class SkinPool {
     this.crowd = new Crowd(scene);
   }
 
+  ready = (look: SkinLook) => !!templateFor(look);
+
   private spawn(look: SkinLook): Actor | null {
     const t = templateFor(look);
     if (!t) return null;
@@ -514,11 +710,13 @@ export class SkinPool {
 
   human(look: SkinLook): HumanSkin | undefined {
     const a = this.spawn(look);
+    if (a) this.crowd.warm(a.t, look);
     return a ? new HumanSkin(a, look) : undefined;
   }
 
   horse(look: SkinLook): HorseSkin | undefined {
     const a = this.spawn(look);
+    if (a) this.crowd.warm(a.t, look);
     return a ? new HorseSkin(a, look) : undefined;
   }
 

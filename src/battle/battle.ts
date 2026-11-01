@@ -720,8 +720,9 @@ export class Battle implements CombatWorld {
 
   private createUnit(def: UnitDef, team: number, weaponIds: string[]): Combatant {
     const weapons = weaponIds.map((id) => WEAPONS[id]);
-    const c = new Combatant(def, team, buildHuman(def, team, weapons, this.batches), weaponIds);
-    c.skin = this.skins.human(skinLook(def, weapons));
+    const look = skinLook(def, weapons);
+    const c = new Combatant(def, team, buildHuman(def, team, weapons, this.batches, this.skins.ready(look)), weaponIds);
+    c.skin = this.skins.human(look);
     this.units.push(c);
     return c;
   }
@@ -733,8 +734,10 @@ export class Battle implements CombatWorld {
       // 半人馬：下身同上身同色
       color: rider.def.race === 'centaur' ? RACES.centaur.skin : base.color,
     };
-    const h = new Horse(def, buildHorse(def, rider.team, this.batches));
-    if (rider.def.race !== 'centaur') h.skin = this.skins.horse(mountLook(def));
+    const look = mountLook(def);
+    const skinned = rider.def.race !== 'centaur' && this.skins.ready(look);
+    const h = new Horse(def, buildHorse(def, rider.team, this.batches, skinned));
+    if (skinned) h.skin = this.skins.horse(look);
     h.pos.copy(rider.pos);
     h.heading = rider.yaw;
     h.rider = rider;

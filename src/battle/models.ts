@@ -15,14 +15,15 @@ import { hover } from './skills';
 import { axeGeo, bladeGeo, bowGeo, leafGeo, limbGeo, loftGeo, torsoGeo, wingGeo, type Ring } from './shapes';
 
 /** 建模時嘅目標：部件加入邊個 rig、由邊個節點控制顯示 */
-let ctx: { batches: Batches; parts: Part[]; gate: THREE.Object3D | null };
+/** ghost：有骨架模型，舊 rig 只計位唔畫 */
+let ctx: { batches: Batches; parts: Part[]; gate: THREE.Object3D | null; ghost: boolean };
 
 function part(
   key: string, make: () => THREE.BufferGeometry, color: number, sx: number, sy: number, sz: number,
 ): THREE.Object3D {
   const node = new THREE.Object3D();
   node.scale.set(sx, sy, sz);
-  ctx.parts.push(ctx.batches.alloc(key, make, color, node, ctx.gate));
+  if (!ctx.ghost) ctx.parts.push(ctx.batches.alloc(key, make, color, node, ctx.gate));
   return node;
 }
 
@@ -528,8 +529,8 @@ function buildHelmet(torso: THREE.Group, def: UnitDef, color: number, crest: 'pl
   }
 }
 
-export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches): HumanRig {
-  ctx = { batches, parts: [], gate: null };
+export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], batches: Batches, ghost = false): HumanRig {
+  ctx = { batches, parts: [], gate: null, ghost };
   const style = TEAM_STYLES[team];
   const race = RACES[def.race ?? 'human'];
   // 巨神唔著軍服：皮膚當身體，配暗鐵
@@ -672,6 +673,7 @@ export function buildHuman(def: UnitDef, team: number, weapons: WeaponDef[], bat
   // 頭頂標記：英雄用金色，細細粒唔搶畫面
   const marker = new THREE.Group();
   ctx.gate = marker;
+  ctx.ghost = false;
   const tip = cone(0.09, 0.18, 4, def.hero ? 0xffd34d : style.marker);
   tip.rotation.x = Math.PI;
   tip.position.y = 2.45;
@@ -712,8 +714,8 @@ const MOUNT_SHAPE: Record<string, { w: number; h: number; l: number; legs?: numb
   drake: { w: 1.1, h: 0.88, l: 1.18, legs: 0.68 }, griffin_mount: { w: 1.05, h: 1, l: 1, legs: 0.86 }, steppe: { w: 0.9, h: 0.95, l: 0.95 }, warhorse: { w: 1.1, h: 1.08, l: 1.05 }, pack: { w: 1.1, h: 0.92, l: 0.92, legs: 0.86 },
 };
 
-export function buildHorse(def: HorseDef, team: number, batches: Batches): HorseRig {
-  ctx = { batches, parts: [], gate: null };
+export function buildHorse(def: HorseDef, team: number, batches: Batches, ghost = false): HorseRig {
+  ctx = { batches, parts: [], gate: null, ghost };
   const cloth = TEAM_STYLES[team].cloth;
   const c = def.color;
   const dark = 0x2a2220;

@@ -66,7 +66,14 @@ export class Batches {
   }
 
   commit() {
-    for (const b of this.batches.values()) b.mesh.instanceMatrix.needsUpdate = true;
+    for (const b of this.batches.values()) {
+      if (!b.next) continue;
+      // 只傳用緊嘅部分：成個緩衝區每幀上傳會拖死內顯
+      const m = b.mesh.instanceMatrix;
+      m.clearUpdateRanges();
+      m.addUpdateRange(0, b.next * 16);
+      m.needsUpdate = true;
+    }
   }
 
   get drawCount(): number {
@@ -76,7 +83,11 @@ export class Batches {
 
 /** 將 rig 嘅部件世界矩陣寫入 InstancedMesh */
 export function flushParts(root: THREE.Object3D, parts: Part[], hidden = false, only?: THREE.Object3D) {
-  root.updateMatrixWorld(true);
+  // 骨架單位只畫頭頂標記，唔使成副 rig 重算
+  if (only) {
+    root.updateWorldMatrix(false, false);
+    only.updateWorldMatrix(false, true);
+  } else if (!hidden) root.updateMatrixWorld(true);
   for (const p of parts) {
     const off = hidden || (p.gate !== null && !p.gate.visible) || (only !== undefined && p.gate !== only);
     p.mesh.setMatrixAt(p.index, off ? ZERO : p.node.matrixWorld);
