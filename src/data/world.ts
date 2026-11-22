@@ -101,7 +101,18 @@ export const LANDS = {
 /** 港口：搭船同打魚 */
 export const SHIP = { perTile: 1.1, minCost: 30, tilesPerDay: 45, portRange: 16, always: ['linjiang', 'iceharbor', 'southpond'], fishHours: 8, fishFood: 14, fishGold: 30 };
 /** 渡口船塢：大江每隔幾格一對、沿海每隔幾格一個；搭船嘅費用同尋路成本 */
-export const DOCKS = { riverEvery: 22, riverScan: 16, coastEvery: 30, coastScan: 20, fare: 12, boardCost: 4, waterCost: 0.8, labelScale: 0.5 };
+export const DOCKS = {
+  riverEvery: 22, riverScan: 16, coastEvery: 30, coastScan: 20, fare: 12, boardCost: 4, waterCost: 0.8, labelScale: 0.5,
+  /** 渡口離城鎮最少幾格，太近就移開 */
+  placeGap: 8,
+  /** 畫面上離地點名幾多像素內就唔寫渡口名，避免疊埋 */
+  labelGap: 70,
+};
+/** 渡口自己嘅名：一對渡口共用一個名，唔跟附近地點 */
+export const DOCK_NAMES = {
+  river: ['白沙渡', '柳灣渡', '石磯渡', '青萍渡', '老鸛渡', '烏篷渡', '竹排渡', '雁落渡', '蘆花渡', '鐵索渡', '月牙渡', '桃葉渡', '黃泥渡', '鯉魚渡', '寒煙渡', '長亭渡'],
+  coast: ['望潮塢', '鹽灘塢', '珊瑚塢', '漁火塢', '燈塔塢', '海鷗塢', '浪花塢', '蚌殼塢', '銅錨塢', '風帆塢'],
+};
 
 export const TIME = {
   /** 現實幾多秒一日（行軍時） */

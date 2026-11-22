@@ -1,4 +1,4 @@
-import { BIOMES, DOCKS, LANDS, MAP, PLACES, SHIP, TERRAIN_COST } from '../data/world';
+import { BIOMES, DOCKS, DOCK_NAMES, LANDS, MAP, PLACES, SHIP, TERRAIN_COST } from '../data/world';
 import { VISTAS, type VistaDef } from '../data/vistas';
 import { makeRng } from '../battle/terrain';
 import { paintMap } from './paint';
@@ -314,14 +314,22 @@ export class WorldTerrain {
     return null;
   }
 
-  private dockName(x: number, y: number, kind: Dock['kind']): string {
-    const near = PLACES.filter((p) => !p.hidden).reduce((b, p) => (Math.hypot(p.x - x, p.y - y) < Math.hypot(b.x - x, b.y - y) ? p : b));
-    return `${near.name}${kind === 'river' ? '渡口' : '船塢'}`;
+  private named = { river: 0, coast: 0 };
+
+  /** 渡口有自己嘅名；一對渡口共用一個 */
+  private dockName(kind: Dock['kind']): string {
+    const list = DOCK_NAMES[kind];
+    return list[this.named[kind]++ % list.length];
   }
 
-  private addDock(d: Omit<Dock, 'name'>): number {
-    this.docks.push({ ...d, name: this.dockName(d.x, d.y, d.kind) });
+  private addDock(d: Omit<Dock, 'name'>, name: string): number {
+    this.docks.push({ ...d, name });
     return this.docks.length - 1;
+  }
+
+  /** 離城鎮太近嘅位唔起渡口 */
+  private clearOfPlaces(...pts: { x: number; y: number }[]): boolean {
+    return pts.every((p) => PLACES.every((q) => Math.hypot(q.x - p.x, q.y - p.y) >= DOCKS.placeGap));
   }
 
   private link(a: number, b: number) {
@@ -340,22 +348,34 @@ export class WorldTerrain {
 
   /** 大江兩岸每隔一段一對渡口；沿海一串船塢，海路相連 */
   private layDocks() {
-    for (let y = 8; y < H - 4; y += DOCKS.riverEvery) {
-      const cx = Math.round(jiangX(y));
-      let mx = cx;
-      for (let i = 0; i < 6 && !isDeep(this.at(mx, y)); i++) mx += i % 2 ? i : -i;
-      if (!isDeep(this.at(mx, y)) || this.at(mx, y) === 'sea') continue;
-      const west = this.shore(mx, y, -1, 0, DOCKS.riverScan);
-      const east = this.shore(mx, y, 1, 0, DOCKS.riverScan);
-      if (!west || !east) continue;
-      this.link(this.addDock({ ...west, kind: 'river' }), this.addDock({ ...east, kind: 'river' }));
+    for (let base = 8; base < H - 4; base += DOCKS.riverEvery) {
+      // 撞正城鎮就上下移開少少
+      for (const off of [0, 4, -4, 8, -8]) {
+        const y = base + off;
+        if (y < 2 || y >= H - 2) continue;
+        let mx = Math.round(jiangX(y));
+        for (let i = 0; i < 6 && !isDeep(this.at(mx, y)); i++) mx += i % 2 ? i : -i;
+        if (!isDeep(this.at(mx, y)) || this.at(mx, y) === 'sea') continue;
+        const west = this.shore(mx, y, -1, 0, DOCKS.riverScan);
+        const east = this.shore(mx, y, 1, 0, DOCKS.riverScan);
+        if (!west || !east || !this.clearOfPlaces(west, east)) continue;
+        const name = this.dockName('river');
+        this.link(this.addDock({ ...west, kind: 'river' }, name), this.addDock({ ...east, kind: 'river' }, name));
+        break;
+      }
     }
     const coast: number[] = [];
-    for (let x = 6; x < W - 6; x += DOCKS.coastEvery) {
-      let y = H - 1;
-      while (y > 0 && this.at(x, y) === 'sea') y--;
-      const land = this.shore(x, y + 1, 0, -1, DOCKS.coastScan);
-      if (land) coast.push(this.addDock({ ...land, kind: 'coast' }));
+    for (let base = 6; base < W - 6; base += DOCKS.coastEvery) {
+      for (const off of [0, 5, -5, 10, -10]) {
+        const x = base + off;
+        if (x < 2 || x >= W - 2) continue;
+        let y = H - 1;
+        while (y > 0 && this.at(x, y) === 'sea') y--;
+        const land = this.shore(x, y + 1, 0, -1, DOCKS.coastScan);
+        if (!land || !this.clearOfPlaces(land)) continue;
+        coast.push(this.addDock({ ...land, kind: 'coast' }, this.dockName('coast')));
+        break;
+      }
     }
     for (let i = 1; i < coast.length; i++) this.link(coast[i - 1], coast[i]);
   }

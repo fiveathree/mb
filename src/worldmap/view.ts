@@ -907,18 +907,31 @@ export class WorldView {
   /** 渡口船塢：帆船圖示同名，近啲先寫字 */
   private drawDocks(at: (x: number, y: number) => Projected | null, horizon: number, height: number) {
     const g = this.g;
-    for (const d of this.world.terrain.docks) {
+    const t = this.world.terrain;
+    const places = this.visiblePlaces().map((p) => at(p.x, p.y)).filter((q): q is Projected => !!q);
+    const named = new Set<string>();
+    for (const d of t.docks) {
       const q = at(d.x + 0.5, d.y + 0.5);
       if (!q || q.y < horizon || q.y > height + 40) continue;
       const size = Math.max(12, 30 * q.s);
       g.drawImage(portIcon(), q.x - size / 2, q.y - size * 0.9, size, size);
-      if (q.s < DOCKS.labelScale) continue;
+    }
+    // 一對渡口只寫一次名，寫喺江面中間；近住地點名就唔寫
+    for (const d of t.docks) {
+      if (named.has(d.name)) continue;
+      const pair = t.docks.filter((k) => k.name === d.name);
+      const mx = pair.reduce((s, k) => s + k.wx, 0) / pair.length + 0.5;
+      const my = pair.reduce((s, k) => s + k.wy, 0) / pair.length + 0.5;
+      const q = at(mx, my);
+      if (!q || q.s < DOCKS.labelScale || q.y < horizon || q.y > height) continue;
+      if (places.some((p) => Math.hypot(p.x - q.x, p.y + 12 - (q.y + 16)) < DOCKS.labelGap)) continue;
+      named.add(d.name);
       g.font = `700 12px ${FONT}`;
       g.lineWidth = 4;
       g.strokeStyle = OUTLINE;
       g.fillStyle = '#bfe6ff';
-      g.strokeText(d.name, q.x, q.y + 10);
-      g.fillText(d.name, q.x, q.y + 10);
+      g.strokeText(d.name, q.x, q.y + 16);
+      g.fillText(d.name, q.x, q.y + 16);
     }
   }
 
