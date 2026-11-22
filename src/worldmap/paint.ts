@@ -169,6 +169,30 @@ function paintRiver(g: CanvasRenderingContext2D, t: WorldTerrain, px: number) {
     g.stroke();
   }
   g.setLineDash([]);
+  // 渡口船塢：木棧橋伸出水面，泊住一隻船
+  for (const d of t.docks) {
+    const a = Math.atan2(d.wy - d.y, d.wx - d.x);
+    g.save();
+    g.translate((d.x + 0.5) * px, (d.y + 0.5) * px);
+    g.rotate(a);
+    g.fillStyle = 'rgba(10,14,20,.3)';
+    g.fillRect(-px * 0.4, -px * 0.5, px * 2.6, px * 1.3);
+    g.fillStyle = '#8a6a44';
+    g.fillRect(-px * 0.4, -px * 0.7, px * 2.6, px * 1.3);
+    g.fillStyle = '#5a4028';
+    for (const k of [0.1, 1, 1.9]) g.fillRect(k * px, -px * 0.9, px * 0.3, px * 1.7);
+    g.fillStyle = '#6a4a2a';
+    g.beginPath();
+    g.ellipse(px * 2.4, px * 1.2, px * 1.1, px * 0.45, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#e8e0c8';
+    g.beginPath();
+    g.moveTo(px * 2.3, px * 1.1);
+    g.lineTo(px * 2.3, -px * 0.5);
+    g.lineTo(px * 3.1, px * 0.9);
+    g.fill();
+    g.restore();
+  }
   for (const s of t.spans) {
     g.save();
     g.translate((s.x + 0.5) * px, (s.y + 0.5) * px);

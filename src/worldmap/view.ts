@@ -1,4 +1,4 @@
-import { MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef } from '../data/world';
+import { DOCKS, MAP, MAP_VIEW, PARTY, PLACES, TIME, type PlaceDef } from '../data/world';
 import { questStory, type Quest } from '../quests/quests';
 import { NPC, NPC_RULES } from '../data/economy';
 import { figureOf } from '../data/figures';
@@ -15,7 +15,7 @@ import { HORSES, moveOf } from '../data/horses';
 import { RACES } from '../data/races';
 import { STRIKES, isCalamity } from '../data/colossus';
 import { Sky, type Projected } from './sky';
-import { dayOf, hourOf, isNight, isOpen, type Blast, type FerryPlan, type World, type WorldEvent } from './world';
+import { dayOf, hourOf, isNight, isOpen, type Blast, type World, type WorldEvent } from './world';
 
 const PX = MAP.tilePx;
 const PAN_SPEED = 620;
@@ -32,7 +32,7 @@ const DEFAULT_SKY = ['bird'];
 const PREVIEW_REPLAN = 3;
 /** 任務詳情嘅全圖縮圖：畫布大小、最少睇幾闊、留邊 */
 const QUEST_MAP = { w: 320, h: 240, minSpan: 420, pad: 1.25 };
-type Preview = { id: number; x: number; y: number; name: string; path: { x: number; y: number }[]; fromX: number; fromY: number; ferry?: FerryPlan };
+type Preview = { id: number; x: number; y: number; name: string; path: { x: number; y: number }[]; fromX: number; fromY: number };
 /** 大地圖 NPC 造型 */
 const NPC_LOOK: Partial<Record<string, PartyLook>> = {
   caravan: 'wagon', fisher: 'boat', patrol: 'horse', messenger: 'horse', lord: 'horse', raider: 'orc', expedition: 'horse', figure: 'mage',
@@ -332,9 +332,7 @@ export class WorldView {
     const w = this.world.save;
     const goal = this.questGoal(q);
     const path = goal && this.world.terrain.path(w.x, w.y, goal.x, goal.y, this.world.moveMode());
-    const ferry = goal && !path ? this.world.planFerry(goal.x, goal.y) : null;
-    this.preview = goal && path ? { id: q.id, ...goal, path, fromX: w.x, fromY: w.y }
-      : goal && ferry ? { id: q.id, ...goal, path: [...ferry.toPort, ...ferry.after], fromX: w.x, fromY: w.y, ferry } : null;
+    this.preview = goal && path ? { id: q.id, ...goal, path, fromX: w.x, fromY: w.y } : null;
   }
 
   /** 撳一下睇路線，再撳就出發 */
@@ -356,7 +354,8 @@ export class WorldView {
     const goal = this.questGoal(q);
     const route = this.preview?.id === q.id ? this.preview : null;
     const place = PLACES.find((p) => p.id === q.target);
-    const days = route ? Math.ceil(route.ferry ? route.ferry.days : route.path.length / this.world.partySpeed() / TIME.secondsPerDay) : 0;
+    const days = route ? Math.ceil(route.path.length / this.world.partySpeed() / TIME.secondsPerDay) : 0;
+    const boats = route ? this.crossingsOf(route.path) : [];
     const giver = PLACES.find((p) => p.id === q.giver)?.name ?? '';
     const what: Record<string, string> = {
       letter: `將信親手送到${place?.name ?? '目的地'}，行到就完成。`,
@@ -367,7 +366,7 @@ export class WorldView {
     const chapter = questStory(this.world, q);
     const reward = [q.gold ? `${q.gold} 金` : '', q.renown ? `聲望 +${q.renown}` : '', q.relation ? `關係 +${q.relation}` : ''].filter(Boolean).join('、') || '推進主線';
     const limit = q.story !== undefined ? '主線，冇時限' : `第 ${q.deadline} 日前（剩 ${Math.max(0, q.deadline - dayOf(w))} 日）`;
-    const state = !goal ? '而家地圖上搵唔到目標，等佢出現先去' : !route ? '去唔到：附近冇港口可以搭船' : route.ferry ? `行去${route.ferry.from.name}搭船到${route.ferry.to.name}（${route.ferry.cost} 金）${route.ferry.to.name === goal.name ? '' : `，再去${goal.name}`}，約 ${days} 日` : `去${goal.name}，約 ${days} 日`;
+    const state = !goal ? '而家地圖上搵唔到目標，等佢出現先去' : !route ? '去唔到：附近冇渡口' : boats.length ? `經${boats.join('、')}搭船過水（每程 ${DOCKS.fare} 金），去${goal.name}約 ${days} 日` : `去${goal.name}，約 ${days} 日`;
     this.questPanel.innerHTML = `
       <canvas width="${QUEST_MAP.w}" height="${QUEST_MAP.h}"></canvas>
       <div class="qinfo">
@@ -397,7 +396,7 @@ export class WorldView {
   private drawQuestMap(c: HTMLCanvasElement, route: Preview | null, goal: { x: number; y: number; name: string } | null) {
     const w = this.world.save;
     const g = c.getContext('2d')!;
-    const pts = [{ x: w.x, y: w.y }, ...(route?.path ?? []), ...(route?.ferry ? [route.ferry.from, route.ferry.to] : []), ...(goal ? [goal] : [])].map((p) => ({ x: p.x * PX, y: p.y * PX }));
+    const pts = [{ x: w.x, y: w.y }, ...(route?.path ?? []), ...(goal ? [goal] : [])].map((p) => ({ x: p.x * PX, y: p.y * PX }));
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
     const span = Math.max(Math.max(...xs) - Math.min(...xs), (Math.max(...ys) - Math.min(...ys)) * (c.width / c.height), QUEST_MAP.minSpan) * QUEST_MAP.pad;
@@ -408,29 +407,22 @@ export class WorldView {
     g.drawImage(this.base, sx, sy, sw, sh, 0, 0, c.width, c.height);
     const X = (x: number) => ((x * PX - sx) / sw) * c.width;
     const Y = (y: number) => ((y * PX - sy) / sh) * c.height;
-    const line = (from: { x: number; y: number }, pts: { x: number; y: number }[]) => {
-      g.strokeStyle = '#f2c14e';
-      g.lineWidth = 3;
+    if (route) {
+      // 陸路黃線，水路藍色虛線
+      let prev = { x: w.x, y: w.y };
+      for (const p of route.path) {
+        const wet = this.world.terrain.onWater(p.x, p.y);
+        g.strokeStyle = wet ? '#7fd0ff' : '#f2c14e';
+        g.setLineDash(wet ? [6, 5] : []);
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(X(prev.x), Y(prev.y));
+        g.lineTo(X(p.x), Y(p.y));
+        g.stroke();
+        prev = p;
+      }
       g.setLineDash([]);
-      g.beginPath();
-      g.moveTo(X(from.x), Y(from.y));
-      for (const p of pts) g.lineTo(X(p.x), Y(p.y));
-      g.stroke();
-    };
-    const f = route?.ferry;
-    if (route && f) {
-      line(w, f.toPort);
-      // 船程用虛線
-      g.strokeStyle = '#7fd0ff';
-      g.lineWidth = 3;
-      g.setLineDash([7, 6]);
-      g.beginPath();
-      g.moveTo(X(f.from.x), Y(f.from.y));
-      g.lineTo(X(f.to.x), Y(f.to.y));
-      g.stroke();
-      g.setLineDash([]);
-      line(f.to, f.after);
-    } else if (route) line(w, route.path);
+    }
     g.fillStyle = '#fff';
     g.beginPath();
     g.arc(X(w.x), Y(w.y), 5, 0, Math.PI * 2);
@@ -481,12 +473,23 @@ export class WorldView {
     else this.sayFerry();
   }
 
-  /** 自動渡江時講清楚去邊個港搭船 */
+  /** 路線經過嘅渡口名 */
+  private crossingsOf(path: { x: number; y: number }[]): string[] {
+    const t = this.world.terrain;
+    const names: string[] = [];
+    path.forEach((p, i) => {
+      const prev = path[i - 1] ?? { x: this.world.save.x, y: this.world.save.y };
+      if (!t.onWater(p.x, p.y) || t.onWater(prev.x, prev.y)) return;
+      const d = t.docks.reduce((b, k) => (Math.hypot(k.x - prev.x, k.y - prev.y) < Math.hypot(b.x - prev.x, b.y - prev.y) ? k : b), t.docks[0]);
+      if (d && !names.includes(d.name)) names.push(d.name);
+    });
+    return names;
+  }
+
+  /** 路線要搭船時講清楚喺邊個渡口 */
   private sayFerry() {
-    const f = this.world.ferry;
-    if (!f) return;
-    const name = (id: string) => PLACES.find((p) => p.id === id)?.name ?? '';
-    this.say(`陸路過唔到：先去${name(f.from)}搭船到${name(f.to)}`);
+    const boats = this.crossingsOf(this.world.path);
+    if (boats.length) this.say(`路線經${boats.join('、')}搭船過水`);
   }
 
   /** 附近目標太多：彈窗揀，時間暫停 */
@@ -682,6 +685,7 @@ export class WorldView {
       .filter((o): o is { p: PlaceDef; q: Projected } => !!o.q && o.q.y > horizon && o.q.y < height + 40)
       .sort((a, b) => a.q.s - b.q.s);
     for (const { p, q } of places) this.drawPlace(p, q);
+    this.drawDocks(at, horizon, height);
     this.drawVistas(at);
     for (const b of this.world.blasts) this.drawBlast(b, at);
 
@@ -766,7 +770,7 @@ export class WorldView {
     g.stroke();
     const hero = this.world.roster.hero;
     const crown = crownOf(hero.crown);
-    this.drawParty(me, radius, crown ? `#${crown.color.toString(16).padStart(6, '0')}` : '#f2c14e', this.heroLook());
+    this.drawParty(me, radius, crown ? `#${crown.color.toString(16).padStart(6, '0')}` : '#f2c14e', this.world.aboard ? 'boat' : this.heroLook());
     const label = `你 ${men} 人`;
     g.font = `900 16px ${FONT}`;
     g.lineWidth = 5;
@@ -898,6 +902,24 @@ export class WorldView {
     g.strokeText(label, q.x, q.y - size - air - 6);
     g.fillStyle = '#ffb0a0';
     g.fillText(label, q.x, q.y - size - air - 6);
+  }
+
+  /** 渡口船塢：帆船圖示同名，近啲先寫字 */
+  private drawDocks(at: (x: number, y: number) => Projected | null, horizon: number, height: number) {
+    const g = this.g;
+    for (const d of this.world.terrain.docks) {
+      const q = at(d.x + 0.5, d.y + 0.5);
+      if (!q || q.y < horizon || q.y > height + 40) continue;
+      const size = Math.max(12, 30 * q.s);
+      g.drawImage(portIcon(), q.x - size / 2, q.y - size * 0.9, size, size);
+      if (q.s < DOCKS.labelScale) continue;
+      g.font = `700 12px ${FONT}`;
+      g.lineWidth = 4;
+      g.strokeStyle = OUTLINE;
+      g.fillStyle = '#bfe6ff';
+      g.strokeText(d.name, q.x, q.y + 10);
+      g.fillText(d.name, q.x, q.y + 10);
+    }
   }
 
   /** 部隊圖示：腳踏喺地面位置，有影 */

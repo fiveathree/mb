@@ -1,4 +1,4 @@
-import { BIOMES, LANDS, MAP, PLACES, SHIP, TERRAIN_COST } from '../data/world';
+import { BIOMES, DOCKS, LANDS, MAP, PLACES, SHIP, TERRAIN_COST } from '../data/world';
 import { VISTAS, type VistaDef } from '../data/vistas';
 import { makeRng } from '../battle/terrain';
 import { paintMap } from './paint';
@@ -8,6 +8,23 @@ export type Tile = 'plain' | 'forest' | 'hill' | 'mountain' | 'water' | 'bridge'
 
 /** 深水：唔搭船過唔到 */
 export const isDeep = (t: Tile) => t === 'water' || t === 'sea' || t === 'lake';
+
+/** 渡口船塢：企喺岸邊，w 係旁邊上船嗰格水 */
+export interface Dock {
+  x: number;
+  y: number;
+  wx: number;
+  wy: number;
+  name: string;
+  kind: 'river' | 'coast';
+}
+
+/** 兩個渡口之間嘅航道 */
+export interface Crossing {
+  a: number;
+  b: number;
+  pts: { x: number; y: number }[];
+}
 
 /** 一條河嘅河道，畫地圖用 */
 export interface RiverLine {
@@ -103,6 +120,10 @@ export class WorldTerrain {
   spans: { x: number; y: number; a: number }[] = [];
   /** 港口地點 id */
   ports: string[] = [];
+  docks: Dock[] = [];
+  crossings: Crossing[] = [];
+  /** 渡口所在格 → 由呢度出發嘅航道 */
+  private dockAt = new Map<number, number[]>();
   /** 秘景位置 */
   vistas: { def: VistaDef; x: number; y: number }[] = [];
 
@@ -137,6 +158,7 @@ export class WorldTerrain {
     // 地點一定企喺陸地
     for (const p of PLACES) this.clear(p.x, p.y, 3);
     this.connect();
+    this.layDocks();
     this.findPorts();
     this.findVistas();
   }
@@ -277,6 +299,110 @@ export class WorldTerrain {
     }
   }
 
+  /** 岸邊陸地：由水向外搵第一格行得嘅地 */
+  private shore(x: number, y: number, dx: number, dy: number, max: number): { x: number; y: number; wx: number; wy: number } | null {
+    let px = x;
+    let py = y;
+    for (let i = 0; i < max; i++) {
+      const nx = px + dx;
+      const ny = py + dy;
+      if (!this.inside(nx, ny)) return null;
+      if (this.passable(nx, ny)) return isDeep(this.at(px, py)) ? { x: nx, y: ny, wx: px, wy: py } : null;
+      px = nx;
+      py = ny;
+    }
+    return null;
+  }
+
+  private dockName(x: number, y: number, kind: Dock['kind']): string {
+    const near = PLACES.filter((p) => !p.hidden).reduce((b, p) => (Math.hypot(p.x - x, p.y - y) < Math.hypot(b.x - x, b.y - y) ? p : b));
+    return `${near.name}${kind === 'river' ? '渡口' : '船塢'}`;
+  }
+
+  private addDock(d: Omit<Dock, 'name'>): number {
+    this.docks.push({ ...d, name: this.dockName(d.x, d.y, d.kind) });
+    return this.docks.length - 1;
+  }
+
+  private link(a: number, b: number) {
+    const A = this.docks[a];
+    const B = this.docks[b];
+    const water = this.waterPath(A.wx, A.wy, B.wx, B.wy);
+    if (!water) return;
+    const pts = [{ x: A.wx, y: A.wy }, ...water];
+    this.crossings.push({ a, b, pts });
+    const i = this.crossings.length - 1;
+    for (const d of [A, B]) {
+      const k = d.x + d.y * W;
+      this.dockAt.set(k, [...(this.dockAt.get(k) ?? []), i]);
+    }
+  }
+
+  /** 大江兩岸每隔一段一對渡口；沿海一串船塢，海路相連 */
+  private layDocks() {
+    for (let y = 8; y < H - 4; y += DOCKS.riverEvery) {
+      const cx = Math.round(jiangX(y));
+      let mx = cx;
+      for (let i = 0; i < 6 && !isDeep(this.at(mx, y)); i++) mx += i % 2 ? i : -i;
+      if (!isDeep(this.at(mx, y)) || this.at(mx, y) === 'sea') continue;
+      const west = this.shore(mx, y, -1, 0, DOCKS.riverScan);
+      const east = this.shore(mx, y, 1, 0, DOCKS.riverScan);
+      if (!west || !east) continue;
+      this.link(this.addDock({ ...west, kind: 'river' }), this.addDock({ ...east, kind: 'river' }));
+    }
+    const coast: number[] = [];
+    for (let x = 6; x < W - 6; x += DOCKS.coastEvery) {
+      let y = H - 1;
+      while (y > 0 && this.at(x, y) === 'sea') y--;
+      const land = this.shore(x, y + 1, 0, -1, DOCKS.coastScan);
+      if (land) coast.push(this.addDock({ ...land, kind: 'coast' }));
+    }
+    for (let i = 1; i < coast.length; i++) this.link(coast[i - 1], coast[i]);
+  }
+
+  /** 只行水嘅航道 */
+  private waterPath(sx: number, sy: number, tx: number, ty: number): { x: number; y: number }[] | null {
+    const key = (x: number, y: number) => x + y * W;
+    const g = new Map<number, number>([[key(sx, sy), 0]]);
+    const from = new Map<number, number>();
+    const open = new MinHeap();
+    open.push(key(sx, sy), 0);
+    const goal = key(tx, ty);
+    let guard = 0;
+    while (open.size && guard++ < 60000) {
+      const k = open.pop();
+      if (k === goal) {
+        const out: { x: number; y: number }[] = [];
+        for (let c = goal; c !== key(sx, sy); c = from.get(c)!) out.push({ x: c % W, y: Math.floor(c / W) });
+        return out.reverse();
+      }
+      const cx = k % W;
+      const cy = Math.floor(k / W);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if ((!dx && !dy) || !this.inside(nx, ny) || !isDeep(this.at(nx, ny))) continue;
+          const nk = key(nx, ny);
+          const ng = g.get(k)! + (dx && dy ? 1.41 : 1);
+          if (ng < (g.get(nk) ?? Infinity)) {
+            g.set(nk, ng);
+            from.set(nk, k);
+            open.push(nk, ng + Math.hypot(nx - tx, ny - ty));
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /** 呢格係咪喺船上 */
+  onWater(x: number, y: number): boolean {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    return this.inside(rx, ry) && isDeep(this.at(rx, ry));
+  }
+
   /** 秘景：按地形自動揀位，鏡像劇本都企得住 */
   private findVistas() {
     const rng = makeRng(MAP.seed + 303);
@@ -372,12 +498,38 @@ export class WorldTerrain {
     const open = new MinHeap();
     open.push(key(sx, sy), 0);
     const goal = key(tx, ty);
+    /** 經航道到達嘅格：記低係邊條、有冇倒轉行 */
+    const sailed = new Map<number, { c: number; rev: boolean }>();
     while (open.size) {
       const k = open.pop();
       if (k === goal) {
         const out: { x: number; y: number }[] = [];
-        for (let c = goal; c !== key(sx, sy); c = from.get(c)!) out.push({ x: c % W, y: Math.floor(c / W) });
+        for (let c = goal; c !== key(sx, sy); c = from.get(c)!) {
+          out.push({ x: c % W, y: Math.floor(c / W) });
+          const s = sailed.get(c);
+          if (s && from.get(c) !== undefined) {
+            const pts = this.crossings[s.c].pts;
+            // 倒序加入水面航點：上船、航行、落船
+            const seq = s.rev ? [...pts] : [...pts].reverse();
+            out.push(...seq);
+          }
+        }
         return out.reverse();
+      }
+      if (move === 'land') {
+        for (const ci of this.dockAt.get(k) ?? []) {
+          const c = this.crossings[ci];
+          const me = this.docks.findIndex((d) => d.x + d.y * W === k);
+          const other = this.docks[c.a === me ? c.b : c.a];
+          const nk = key(other.x, other.y);
+          const ng = g.get(k)! + DOCKS.boardCost + c.pts.length * DOCKS.waterCost;
+          if (ng < (g.get(nk) ?? Infinity)) {
+            g.set(nk, ng);
+            from.set(nk, k);
+            sailed.set(nk, { c: ci, rev: c.a !== me });
+            open.push(nk, ng + Math.hypot(other.x - tx, other.y - ty));
+          }
+        }
       }
       const cx = k % W;
       const cy = Math.floor(k / W);
@@ -386,6 +538,7 @@ export class WorldTerrain {
           if ((!dx && !dy) || !this.canCross(cx + dx, cy + dy, move)) continue;
           if (dx && dy && (!this.canCross(cx + dx, cy, move) || !this.canCross(cx, cy + dy, move))) continue;
           const nk = key(cx + dx, cy + dy);
+          if (sailed.has(nk) && g.get(nk)! <= g.get(k)! + 1.41) continue;
           const step = move === 'fly' ? 1 : this.cost(cx + dx, cy + dy);
           const ng = g.get(k)! + step * (dx && dy ? 1.41 : 1);
           if (ng < (g.get(nk) ?? Infinity)) {

@@ -100,6 +100,8 @@ export const LANDS = {
 
 /** 港口：搭船同打魚 */
 export const SHIP = { perTile: 1.1, minCost: 30, tilesPerDay: 45, portRange: 16, always: ['linjiang', 'iceharbor', 'southpond'], fishHours: 8, fishFood: 14, fishGold: 30 };
+/** 渡口船塢：大江每隔幾格一對、沿海每隔幾格一個；搭船嘅費用同尋路成本 */
+export const DOCKS = { riverEvery: 22, riverScan: 16, coastEvery: 30, coastScan: 20, fare: 12, boardCost: 4, waterCost: 0.8, labelScale: 0.5 };
 
 export const TIME = {
   /** 現實幾多秒一日（行軍時） */
