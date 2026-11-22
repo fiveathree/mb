@@ -207,7 +207,7 @@ export class PlaceScreens {
       };
       return `<button class="alt" id="sail_${to.id}">去 ${to.name}（${cost} 金，${days} 日）</button>`;
     }).join('');
-    this.show(`${p.name}碼頭`, '大江冇橋，過江過海都要搭船。', `
+    this.show(`${p.name}碼頭`, '大江冇橋，過江過海都要搭船。喺大地圖直接撳對岸地點，會自動行嚟港口搭船。', `
       <div class="row wrap">${rows}</div>
       <div class="row"><button class="alt" id="fish">出海打魚（${SHIP.fishHours} 個鐘）</button><button class="go" id="back">返回</button></div>`, h);
   }

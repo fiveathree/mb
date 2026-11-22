@@ -222,10 +222,22 @@ function terrainFor(scenario: string): WorldTerrain {
 }
 
 /** 大地圖模擬：行軍、時間、糧餉、山賊 */
+/** 渡江路線 */
+export interface FerryPlan {
+  from: PlaceDef;
+  to: PlaceDef;
+  toPort: { x: number; y: number }[];
+  after: { x: number; y: number }[];
+  days: number;
+  cost: number;
+}
+
 export class World {
   readonly terrain: WorldTerrain;
   path: { x: number; y: number }[] = [];
   destination: PlaceDef | null = null;
+  /** 自動渡江：去到 from 港就搭船去 to 港，再行去終點 */
+  ferry: { from: string; to: string; x: number; y: number; place: PlaceDef | null } | null = null;
   paused = false;
   private spawnT = 0;
   private graceT = 0;
@@ -502,13 +514,47 @@ export class World {
   }
 
   goTo(x: number, y: number, place: PlaceDef | null): boolean {
+    this.ferry = null;
     const route = this.terrain.path(this.save.x, this.save.y, x, y, this.moveMode());
-    if (!route) return false;
+    if (!route) {
+      // 陸路去唔到：自動行去港口搭船
+      const plan = this.planFerry(x, y);
+      if (!plan) return false;
+      this.path = plan.toPort;
+      this.destination = plan.from;
+      this.ferry = { from: plan.from.id, to: plan.to.id, x, y, place };
+      this.chasing = null;
+      this.paused = false;
+      return true;
+    }
     this.path = route;
     this.destination = place;
     this.chasing = null;
     this.paused = false;
     return true;
+  }
+
+  /** 揀最快嘅一對港口：行去上船、搭船、落船再行 */
+  planFerry(x: number, y: number): FerryPlan | null {
+    if (this.moveMode() !== 'land') return null;
+    const w = this.save;
+    const ports = this.terrain.ports.map((id) => PLACES.find((p) => p.id === id)).filter((p): p is PlaceDef => !!p && !p.gone);
+    const speed = this.partySpeed();
+    const walkDays = (n: number) => n / speed / TIME.secondsPerDay;
+    const legs = new Map(ports.map((p) => [p.id, this.terrain.path(p.x, p.y, x, y, 'land')]));
+    let best: FerryPlan | null = null;
+    for (const a of ports) {
+      const toPort = Math.hypot(a.x - w.x, a.y - w.y) < 1 ? [] : this.terrain.path(w.x, w.y, a.x, a.y, 'land');
+      if (!toPort) continue;
+      for (const b of ports) {
+        const after = legs.get(b.id);
+        if (b.id === a.id || !after) continue;
+        const sea = Math.hypot(b.x - a.x, b.y - a.y);
+        const days = walkDays(toPort.length + after.length) + sea / SHIP.tilesPerDay;
+        if (!best || days < best.days) best = { from: a, to: b, toPort, after, days, cost: Math.round(Math.max(SHIP.minCost, sea * SHIP.perTile)) };
+      }
+    }
+    return best;
   }
 
   get moving(): boolean {
@@ -813,6 +859,21 @@ export class World {
     if (!this.path.length && this.destination) {
       const place = this.destination;
       this.destination = null;
+      const f = this.ferry;
+      if (f && place.id === f.from) {
+        this.ferry = null;
+        const to = PLACES.find((p) => p.id === f.to)!;
+        const err = this.sail(to);
+        if (err) {
+          this.note(`${err}，喺${place.name}搭唔到船`);
+          return { type: 'place', place };
+        }
+        this.note(`喺${place.name}搭船到${to.name}`);
+        // 目的地就係落船嗰個港：直接當到埗
+        if (f.place && Math.hypot(f.x - to.x, f.y - to.y) < 1.5) return { type: 'place', place: f.place };
+        this.goTo(f.x, f.y, f.place);
+        return null;
+      }
       return { type: 'place', place };
     }
     return null;
